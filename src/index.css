@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  margin: 0;
+  background-color: #111827; /* gray-900 */
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
