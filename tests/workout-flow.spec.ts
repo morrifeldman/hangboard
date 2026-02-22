@@ -48,4 +48,37 @@ test.describe("Workout Flow", () => {
     // Should now be on Large Edge (hold 2)
     await expect(page.getByTestId("hold-name")).toHaveText("Large Edge", { timeout: 10_000 });
   });
+
+  test("Skip set button jumps to break phase", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.getByTestId("start-workout-btn").click();
+
+    // Wait for hang phase
+    await expect(page.getByTestId("rep-counter")).toBeVisible({ timeout: 15_000 });
+
+    // Skip the rest of the set
+    await page.getByTestId("skip-set-btn").click();
+
+    // Should immediately be in break phase
+    await expect(page.getByTestId("skip-break-btn")).toBeVisible({ timeout: 5_000 });
+  });
+
+  test("Pause button stops timer and Resume continues it", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.getByTestId("start-workout-btn").click();
+
+    // Wait for hang phase (prep is 3s in test mode)
+    await expect(page.getByTestId("rep-counter")).toBeVisible({ timeout: 15_000 });
+
+    // Pause immediately
+    await page.getByTestId("pause-btn").click();
+
+    // Wait longer than HANG_SECS (2s) — should still be hanging
+    await page.waitForTimeout(2_500);
+    await expect(page.getByTestId("phase-bar")).toContainText("Hang");
+
+    // Resume — remaining hang time expires and phase advances
+    await page.getByTestId("pause-btn").click();
+    await expect(page.getByTestId("phase-bar")).not.toContainText("Hang", { timeout: 5_000 });
+  });
 });

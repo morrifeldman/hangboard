@@ -10,6 +10,7 @@ export function PrepTimer() {
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
+  const paused = useWorkoutStore((s) => s.paused);
 
   const hold = HOLDS[holdIndex];
   const weight = effectiveWeight(hold.id, setNumber);
@@ -17,6 +18,7 @@ export function PrepTimer() {
 
   const { remaining } = useTimer({
     duration: PREP_SECS,
+    running: !paused,
     onTick: (r) => {
       if (r <= 3.05 && r > 0.05 && Math.ceil(r) !== Math.ceil(r + 0.1)) {
         audio.countdownTick();
@@ -27,6 +29,7 @@ export function PrepTimer() {
 
   return (
     <div className="flex flex-col items-center gap-6">
+      <p className="text-white font-bold text-xl" data-testid="hold-name">{hold.name}</p>
       <TimerRing
         remaining={remaining}
         duration={PREP_SECS}

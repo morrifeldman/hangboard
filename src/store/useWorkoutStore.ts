@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { HOLDS } from "../data/workout";
+import { HOLDS, SET1_REPS, SET2_REPS } from "../data/workout";
 import type { HoldDefinition } from "../data/workout";
 
 export type WorkoutPhase =
@@ -24,6 +24,7 @@ interface WorkoutStore {
   setNumber: 1 | 2;
   repIndex: number;
   overrides: Overrides;
+  paused: boolean;
 
   // Selectors
   currentHold: () => HoldDefinition;
@@ -32,7 +33,12 @@ interface WorkoutStore {
   // Actions
   startWorkout: () => void;
   advancePhase: () => void;
+  skipSet: () => void;
+  skipNextSet: () => void;
+  skipNextHold: () => void;
   bailWorkout: () => void;
+  pauseWorkout: () => void;
+  resumeWorkout: () => void;
   setSessionOverride: (holdId: string, setNum: 1 | 2, delta: number) => void;
   adjustNextWeight: (holdId: string, setNum: 1 | 2, delta: number) => void;
   resetWeights: () => void;
@@ -54,6 +60,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       setNumber: 1,
       repIndex: 0,
       overrides: {},
+      paused: false,
 
       currentHold: () => HOLDS[get().holdIndex],
 
@@ -83,48 +90,85 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
       advancePhase: () => {
         const { phase, holdIndex, setNumber, repIndex } = get();
-        const hold = HOLDS[holdIndex];
-        const totalReps = setNumber === 1 ? hold.set1Reps : hold.set2Reps;
+        const totalReps = setNumber === 1 ? SET1_REPS : SET2_REPS;
         const isLastRep = repIndex >= totalReps - 1;
         const isLastHold = holdIndex >= HOLDS.length - 1;
 
         switch (phase) {
           case "prep":
-            set({ phase: "hanging", repIndex: 0 });
+            set({ phase: "hanging", repIndex: 0, paused: false });
             break;
 
           case "hanging":
             if (!isLastRep) {
-              set({ phase: "resting" });
+              set({ phase: "resting", paused: false });
             } else if (setNumber === 1) {
-              set({ phase: "break" });
+              set({ phase: "break", paused: false });
             } else if (isLastHold) {
-              set({ phase: "done" });
+              set({ phase: "done", paused: false });
             } else {
-              set({ phase: "break" });
+              set({ phase: "break", paused: false });
             }
             break;
 
           case "resting":
-            set({ phase: "hanging", repIndex: repIndex + 1 });
+            set({ phase: "hanging", repIndex: repIndex + 1, paused: false });
             break;
 
           case "break":
             if (setNumber === 1) {
-              set({ phase: "prep", setNumber: 2, repIndex: 0 });
+              set({ phase: "prep", setNumber: 2, repIndex: 0, paused: false });
             } else {
-              set({ phase: "prep", holdIndex: holdIndex + 1, setNumber: 1, repIndex: 0 });
+              set({ phase: "prep", holdIndex: holdIndex + 1, setNumber: 1, repIndex: 0, paused: false });
             }
             break;
 
           case "done":
-            set({ phase: "idle" });
+            set({ phase: "idle", paused: false });
             break;
         }
       },
 
+      skipSet: () => {
+        const { holdIndex, setNumber } = get();
+        const isLastHold = holdIndex >= HOLDS.length - 1;
+        if (setNumber === 2 && isLastHold) {
+          set({ phase: "done", paused: false });
+        } else {
+          set({ phase: "break", paused: false });
+        }
+      },
+
+      skipNextSet: () => {
+        const { holdIndex } = get();
+        const isLastHold = holdIndex >= HOLDS.length - 1;
+        if (isLastHold) {
+          set({ phase: "done", paused: false });
+        } else {
+          set({ setNumber: 2, phase: "break", paused: false });
+        }
+      },
+
+      skipNextHold: () => {
+        const { holdIndex } = get();
+        const nextHoldIndex = holdIndex + 1;
+        if (nextHoldIndex >= HOLDS.length - 1) {
+          set({ phase: "done", paused: false });
+        } else {
+          set({ holdIndex: nextHoldIndex, setNumber: 2, phase: "break", paused: false });
+        }
+      },
+
       bailWorkout: () => {
-        set({ phase: "idle" });
+        set({ phase: "idle", paused: false });
+      },
+
+      pauseWorkout: () => {
+        set({ paused: true });
+      },
+
+      resumeWorkout: () => {
+        set({ paused: false });
       },
 
       setSessionOverride: (holdId, setNum, delta) => {

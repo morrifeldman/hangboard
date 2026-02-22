@@ -81,7 +81,7 @@ export function HomeScreen() {
                       adjustNextWeight(hold.id, 1, d);
                       adjustNextWeight(hold.id, 2, d);
                     }}
-                    label="Base weight (S2 moves with S1)"
+                    label="Base weight (Set 2 moves with Set 1)"
                   />
                 </div>
               )}

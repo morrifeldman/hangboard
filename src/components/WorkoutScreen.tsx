@@ -12,6 +12,9 @@ export function WorkoutScreen() {
   const repIndex = useWorkoutStore((s) => s.repIndex);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const bailWorkout = useWorkoutStore((s) => s.bailWorkout);
+  const paused = useWorkoutStore((s) => s.paused);
+  const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
+  const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
 
   const [confirming, setConfirming] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -28,7 +31,6 @@ export function WorkoutScreen() {
   };
 
   const hold = HOLDS[holdIndex];
-  const holdsTotal = HOLDS.length;
 
   // Auto-dismiss done screen after a moment
   useEffect(() => {
@@ -70,33 +72,54 @@ export function WorkoutScreen() {
     }
   };
 
+  // A hold segment is "done" when past, or when it's current and the between-holds break is running
+  const isHoldDone = (i: number) =>
+    i < holdIndex || (i === holdIndex && phase === "break" && setNumber === 2);
+
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="text-gray-400 text-xs uppercase tracking-wide">
-            {holdIndex + 1} / {holdsTotal}
-          </p>
-          <h1 className="text-white font-bold text-lg leading-tight" data-testid="hold-name">
-            {hold.name}
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
+      <header className="bg-gray-800 px-4 pt-3 pb-2">
+        <div className="flex items-center justify-between mb-2">
+          <div>
             <p className="text-gray-400 text-xs uppercase tracking-wide">Set</p>
             <p className="text-white font-bold text-lg">{setNumber} / 2</p>
           </div>
-          <button
-            onClick={handleEndClick}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-              confirming
-                ? "bg-red-600 text-white"
-                : "bg-gray-700 text-gray-300"
-            }`}
-            data-testid="bail-btn"
-          >
-            {confirming ? "Confirm?" : "End"}
-          </button>
+          <div className="flex items-center gap-3">
+            {phase !== "done" && (
+              <button
+                onClick={paused ? resumeWorkout : pauseWorkout}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-700 text-gray-300 transition-colors"
+                data-testid="pause-btn"
+              >
+                {paused ? "Resume" : "Pause"}
+              </button>
+            )}
+            <button
+              onClick={handleEndClick}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                confirming
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-700 text-gray-300"
+              }`}
+              data-testid="bail-btn"
+            >
+              {confirming ? "Confirm?" : "End"}
+            </button>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          {HOLDS.map((h, i) => (
+            <div
+              key={h.id}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${
+                isHoldDone(i)
+                  ? "bg-white/50"
+                  : i === holdIndex
+                  ? "bg-white"
+                  : "bg-gray-600"
+              }`}
+            />
+          ))}
         </div>
       </header>
 
