@@ -1,0 +1,3 @@
+#!/bin/sh
+# Reject commits that break the TypeScript build
+npm run build

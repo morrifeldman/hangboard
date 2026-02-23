@@ -11,6 +11,17 @@ npm run build        # production build to dist/
 npx playwright test  # run all tests (auto-starts dev server with VITE_TEST_MODE=true)
 ```
 
+## Git Hooks
+
+A pre-commit hook blocks commits that break the TypeScript build. It runs `npm run build` before every commit.
+
+The hook lives at `scripts/pre-commit`. Install it once after cloning:
+
+```bash
+cp scripts/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
 ## Test Mode
 `playwright.config.ts` sets `VITE_TEST_MODE=true` in the webServer command, which shortens:
 - Timers: HANG=2s, REST=1s, BREAK=5s, PREP=3s
