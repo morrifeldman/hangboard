@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { HOLDS, SET1_REPS, SET2_REPS } from "../data/workout";
+import { HOLDS, HOLDS_B, SET1_REPS, SET2_REPS } from "../data/workout";
 import type { HoldDefinition } from "../data/workout";
 import * as SM from "../lib/stateMachine";
 
 import type { WorkoutPhase } from "../lib/stateMachine";
 export type { WorkoutPhase };
+
+export type WorkoutId = "a" | "b";
 
 type StoredWeights = Record<string, { set1: number; set2: number }>;
 type Overrides = Record<string, { set1: number | null; set2: number | null }>;
@@ -13,20 +15,24 @@ type Overrides = Record<string, { set1: number | null; set2: number | null }>;
 interface WorkoutStore {
   // Persisted
   weights: StoredWeights;
+  weightsB: StoredWeights;
+  selectedWorkout: WorkoutId;
 
   // Session (not persisted)
   phase: WorkoutPhase;
   holdIndex: number;
-  setNumber: 1 | 2;
+  setNumber: number;
   repIndex: number;
   overrides: Overrides;
   paused: boolean;
 
   // Selectors
+  currentHolds: () => readonly HoldDefinition[];
   currentHold: () => HoldDefinition;
-  effectiveWeight: (holdId: string, setNum: 1 | 2) => number;
+  effectiveWeight: (holdId: string, setNum: number) => number;
 
   // Actions
+  setSelectedWorkout: (id: WorkoutId) => void;
   startWorkout: () => void;
   advancePhase: () => void;
   skipSet: () => void;
@@ -35,21 +41,33 @@ interface WorkoutStore {
   bailWorkout: () => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
-  setSessionOverride: (holdId: string, setNum: 1 | 2, delta: number) => void;
-  adjustNextWeight: (holdId: string, setNum: 1 | 2, delta: number) => void;
+  setSessionOverride: (holdId: string, setNum: number, delta: number) => void;
+  adjustNextWeight: (holdId: string, setNum: number, delta: number) => void;
   resetWeights: () => void;
 }
 
-function defaultWeights(): StoredWeights {
+function defaultWeightsA(): StoredWeights {
   return Object.fromEntries(
     HOLDS.map((h) => [h.id, { set1: h.defaultSet1Weight, set2: h.defaultSet2Weight }])
   );
 }
 
+function defaultWeightsB(): StoredWeights {
+  return Object.fromEntries(
+    HOLDS_B.map((h) => [h.id, { set1: h.defaultSet1Weight, set2: h.defaultSet2Weight }])
+  );
+}
+
+function holdsFor(id: WorkoutId): readonly HoldDefinition[] {
+  return id === "b" ? HOLDS_B : HOLDS;
+}
+
 export const useWorkoutStore = create<WorkoutStore>()(
   persist(
     (set, get) => ({
-      weights: defaultWeights(),
+      weights: defaultWeightsA(),
+      weightsB: defaultWeightsB(),
+      selectedWorkout: "a",
 
       phase: "idle",
       holdIndex: 0,
@@ -58,20 +76,30 @@ export const useWorkoutStore = create<WorkoutStore>()(
       overrides: {},
       paused: false,
 
-      currentHold: () => HOLDS[get().holdIndex],
+      currentHolds: () => holdsFor(get().selectedWorkout),
+
+      currentHold: () => holdsFor(get().selectedWorkout)[get().holdIndex],
 
       effectiveWeight: (holdId, setNum) => {
+        const key = setNum <= 1 ? "set1" : "set2";
         const override = get().overrides[holdId];
-        const overrideVal = override?.[setNum === 1 ? "set1" : "set2"] ?? null;
+        const overrideVal = override?.[key] ?? null;
         if (overrideVal !== null) return overrideVal;
-        const stored = get().weights[holdId];
+
+        const storedMap = get().selectedWorkout === "b" ? get().weightsB : get().weights;
+        const stored = storedMap[holdId];
         if (!stored) {
-          const hold = HOLDS.find((h) => h.id === holdId);
-          return setNum === 1
+          const holds = holdsFor(get().selectedWorkout);
+          const hold = holds.find((h) => h.id === holdId);
+          return key === "set1"
             ? (hold?.defaultSet1Weight ?? 0)
             : (hold?.defaultSet2Weight ?? 0);
         }
-        return setNum === 1 ? stored.set1 : stored.set2;
+        return stored[key];
+      },
+
+      setSelectedWorkout: (id) => {
+        set({ selectedWorkout: id });
       },
 
       startWorkout: () => {
@@ -85,19 +113,23 @@ export const useWorkoutStore = create<WorkoutStore>()(
       },
 
       advancePhase: () => {
-        set((s) => ({ ...SM.advancePhase(s, HOLDS, SET1_REPS, SET2_REPS), paused: false }));
+        const holds = holdsFor(get().selectedWorkout);
+        set((s) => ({ ...SM.advancePhase(s, holds, SET1_REPS, SET2_REPS), paused: false }));
       },
 
       skipSet: () => {
-        set((s) => ({ ...SM.skipSet(s, HOLDS), paused: false }));
+        const holds = holdsFor(get().selectedWorkout);
+        set((s) => ({ ...SM.skipSet(s, holds), paused: false }));
       },
 
       skipNextSet: () => {
-        set((s) => ({ ...SM.skipNextSet(s, HOLDS), paused: false }));
+        const holds = holdsFor(get().selectedWorkout);
+        set((s) => ({ ...SM.skipNextSet(s, holds), paused: false }));
       },
 
       skipNextHold: () => {
-        set((s) => ({ ...SM.skipNextHold(s, HOLDS), paused: false }));
+        const holds = holdsFor(get().selectedWorkout);
+        set((s) => ({ ...SM.skipNextHold(s, holds), paused: false }));
       },
 
       bailWorkout: () => {
@@ -113,8 +145,8 @@ export const useWorkoutStore = create<WorkoutStore>()(
       },
 
       setSessionOverride: (holdId, setNum, delta) => {
+        const key = setNum <= 1 ? "set1" : "set2";
         const current = get().overrides[holdId] ?? { set1: null, set2: null };
-        const key = setNum === 1 ? "set1" : "set2";
         const base = get().effectiveWeight(holdId, setNum);
         set({
           overrides: {
@@ -125,23 +157,41 @@ export const useWorkoutStore = create<WorkoutStore>()(
       },
 
       adjustNextWeight: (holdId, setNum, delta) => {
-        const stored = get().weights[holdId] ?? { set1: 0, set2: 0 };
-        const key = setNum === 1 ? "set1" : "set2";
-        set({
-          weights: {
-            ...get().weights,
-            [holdId]: { ...stored, [key]: stored[key] + delta },
-          },
-        });
+        const key = setNum <= 1 ? "set1" : "set2";
+        if (get().selectedWorkout === "b") {
+          const stored = get().weightsB[holdId] ?? { set1: 0, set2: 0 };
+          set({
+            weightsB: {
+              ...get().weightsB,
+              [holdId]: { ...stored, [key]: stored[key] + delta },
+            },
+          });
+        } else {
+          const stored = get().weights[holdId] ?? { set1: 0, set2: 0 };
+          set({
+            weights: {
+              ...get().weights,
+              [holdId]: { ...stored, [key]: stored[key] + delta },
+            },
+          });
+        }
       },
 
       resetWeights: () => {
-        set({ weights: defaultWeights() });
+        if (get().selectedWorkout === "b") {
+          set({ weightsB: defaultWeightsB() });
+        } else {
+          set({ weights: defaultWeightsA() });
+        }
       },
     }),
     {
       name: "hangboard-weights",
-      partialize: (s) => ({ weights: s.weights }),
+      partialize: (s) => ({
+        weights: s.weights,
+        weightsB: s.weightsB,
+        selectedWorkout: s.selectedWorkout,
+      }),
     }
   )
 );

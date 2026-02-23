@@ -1,24 +1,31 @@
+import { useEffect } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { HOLDS, PREP_SECS } from "../data/workout";
+import { PREP_SECS } from "../data/workout";
 import { useTimer } from "../hooks/useTimer";
 import { useAudio } from "../hooks/useAudio";
 import { TimerRing } from "./TimerRing";
 import { formatWeight } from "../lib/format";
 
 export function PrepTimer() {
-  const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
   const paused = useWorkoutStore((s) => s.paused);
+  const currentHold = useWorkoutStore((s) => s.currentHold);
 
-  const hold = HOLDS[holdIndex];
+  const hold = currentHold();
   const weight = effectiveWeight(hold.id, setNumber);
   const audio = useAudio();
 
+  // Pull-up items skip the hang phase entirely — jump straight to the rest timer
+  useEffect(() => {
+    if (hold.isRestOnly) advancePhase();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hold.id]);
+
   const { remaining } = useTimer({
     duration: PREP_SECS,
-    running: !paused,
+    running: !paused && !hold.isRestOnly,
     onTick: (r) => {
       if (r <= 3.05 && r > 0.05 && Math.ceil(r) !== Math.ceil(r + 0.1)) {
         audio.countdownTick();
@@ -26,6 +33,8 @@ export function PrepTimer() {
     },
     onExpire: advancePhase,
   });
+
+  if (hold.isRestOnly) return null;
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -39,6 +48,9 @@ export function PrepTimer() {
       <p className="text-gray-300 text-lg font-semibold tabular-nums">
         {formatWeight(weight)}
       </p>
+      {(hold.numSets ?? 2) > 1 && (
+        <p className="text-gray-500 text-sm">Set {setNumber} of {hold.numSets ?? 2}</p>
+      )}
     </div>
   );
 }

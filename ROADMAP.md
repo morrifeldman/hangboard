@@ -20,7 +20,9 @@ _Last updated: 2026-02-22_
 
 ---
 
-## Option 2: Second Workout
+## ✅ Option 2: Second Workout
+
+**Status: done**
 
 **Complexity: Medium**
 

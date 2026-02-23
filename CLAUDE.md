@@ -36,9 +36,11 @@ fuser -k 5173/tcp
 
 ## Key Architecture
 
-- `src/data/holds.ts` — HOLDS array, no Vite env, safe to import in tests/Node
-- `src/data/workout.ts` — re-exports HOLDS + all test-aware constants (HANG_SECS, SET1_REPS, etc.)
-- `src/store/useWorkoutStore.ts` — Zustand store; only `weights` persisted to localStorage
+- `src/data/holds.ts` — HoldDefinition interface + HOLDS array (Workout A); no Vite env, safe to import in tests/Node
+- `src/data/workout-b.ts` — HOLDS_B array (Workout B: MacLeod Max Hang, 11 items)
+- `src/data/workout.ts` — re-exports HOLDS, HOLDS_B + all test-aware constants (HANG_SECS, SET1_REPS, etc.)
+- `src/lib/stateMachine.ts` — pure state machine; supports numSets, repsPerSet, isRestOnly per hold
+- `src/store/useWorkoutStore.ts` — Zustand store; persists weights + weightsB + selectedWorkout
 - `src/hooks/useTimer.ts` — setInterval-based timer
 - `src/lib/audio.ts` — Web Audio API singleton, lazy init; must be called inside a user gesture
 

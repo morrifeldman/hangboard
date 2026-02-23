@@ -1,5 +1,5 @@
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { HOLDS, BREAK_SECS } from "../data/workout";
+import { BREAK_SECS } from "../data/workout";
 import { useTimer } from "../hooks/useTimer";
 import { TimerRing } from "./TimerRing";
 import { WeightAdjuster } from "./WeightAdjuster";
@@ -14,28 +14,39 @@ export function BreakTimer() {
   const adjustNextWeight = useWorkoutStore((s) => s.adjustNextWeight);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
   const setSessionOverride = useWorkoutStore((s) => s.setSessionOverride);
+  const currentHolds = useWorkoutStore((s) => s.currentHolds);
   const weights = useWorkoutStore((s) => s.weights);
+  const weightsB = useWorkoutStore((s) => s.weightsB);
+  const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
 
-  const hold = HOLDS[holdIndex];
-  const nextHold = HOLDS[holdIndex + 1];
+  const holds = currentHolds();
+  const hold = holds[holdIndex];
+  const nextHold = holds[holdIndex + 1];
+  const numSets = hold.numSets ?? 2;
+  const breakDuration = hold.breakSecs ?? BREAK_SECS;
 
   const { remaining } = useTimer({
-    duration: BREAK_SECS,
+    duration: breakDuration,
     running: !paused,
     onExpire: advancePhase,
   });
 
-  // Between set 1 and set 2 — show upcoming set 2 weight
-  const betweenSets = setNumber === 1;
+  // Between sets of the same hold (not the last set yet)
+  const betweenSets = setNumber < numSets;
+  // After the last set — between this hold and the next
+  const betweenHolds = !betweenSets;
 
-  // Between set 2 and next hold — show next-workout progression
-  const betweenHolds = setNumber === 2;
-  const stored = weights[hold.id] ?? { set1: hold.defaultSet1Weight, set2: hold.defaultSet2Weight };
+  const storedMap = selectedWorkout === "b" ? weightsB : weights;
+  const stored = storedMap[hold.id] ?? { set1: hold.defaultSet1Weight, set2: hold.defaultSet2Weight };
 
-  const lastLabel = betweenSets ? `${hold.name} Set 1` : hold.name;
-  const upNextLabel = betweenSets ? `${hold.name} Set 2` : nextHold?.name ?? null;
+  const lastLabel = betweenSets ? `${hold.name} Set ${setNumber}` : hold.name;
+  const upNextLabel = betweenSets ? `${hold.name} Set ${setNumber + 1}` : (nextHold?.name ?? null);
+
+  // For isRestOnly holds the ring label becomes the exercise name
+  const ringLabel = hold.isRestOnly ? hold.name.toUpperCase() : "BREAK";
+
+  // Set 2 weight adjuster: only for 2-set holds (workout A style)
   const set2Weight = effectiveWeight(hold.id, 2);
-
   const handleSet2Delta = (delta: number) => {
     adjustNextWeight(hold.id, 2, delta);
     setSessionOverride(hold.id, 2, delta);
@@ -58,12 +69,13 @@ export function BreakTimer() {
 
       <TimerRing
         remaining={remaining}
-        duration={BREAK_SECS}
-        label="BREAK"
+        duration={breakDuration}
+        label={ringLabel}
         color="stroke-blue-400"
       />
 
-      {betweenSets && (
+      {/* Set 2 weight adjuster — only for classic 2-set holds */}
+      {betweenSets && numSets === 2 && (
         <div className="w-full bg-gray-800 rounded-xl p-4 space-y-3">
           <p className="text-gray-400 text-sm text-center">Set 2</p>
           <WeightAdjuster
@@ -73,6 +85,7 @@ export function BreakTimer() {
         </div>
       )}
 
+      {/* Progression panels — between holds, for non-skipProgression holds */}
       {betweenHolds && !hold.skipProgression && (
         <div className="w-full bg-gray-800 rounded-xl p-4 space-y-3">
           <p className="text-gray-400 text-sm text-center">Next workout — {hold.name}</p>
@@ -84,8 +97,8 @@ export function BreakTimer() {
         </div>
       )}
 
-      {betweenHolds && nextHold && (() => {
-        const nextStored = weights[nextHold.id] ?? { set1: nextHold.defaultSet1Weight, set2: nextHold.defaultSet2Weight };
+      {betweenHolds && nextHold && !nextHold.isRestOnly && (() => {
+        const nextStored = storedMap[nextHold.id] ?? { set1: nextHold.defaultSet1Weight, set2: nextHold.defaultSet2Weight };
         return (
           <div className="w-full bg-gray-800 rounded-xl p-4 space-y-3">
             <p className="text-gray-400 text-sm text-center">Up next — {nextHold.name}</p>
@@ -112,10 +125,10 @@ export function BreakTimer() {
             className="min-h-[56px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-gray-300 font-semibold text-base"
             data-testid="skip-next-set-btn"
           >
-            Skip Set 2
+            Skip Set {setNumber + 1}
           </button>
         )}
-        {betweenHolds && (
+        {betweenHolds && !hold.isRestOnly && (
           <button
             onClick={skipNextHold}
             className="min-h-[56px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-gray-300 font-semibold text-base"

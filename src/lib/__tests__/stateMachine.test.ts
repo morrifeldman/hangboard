@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { advancePhase, skipSet, skipNextSet, skipNextHold } from '../stateMachine';
 import type { SessionState } from '../stateMachine';
+import type { HoldDefinition } from '../../data/holds';
 import { HOLDS } from '../../data/holds';
+import { HOLDS_B } from '../../data/workout-b';
 
 const SET1 = 3;
 const SET2 = 2;
@@ -17,9 +19,20 @@ function state(overrides: Partial<SessionState>): SessionState {
   };
 }
 
+// Minimal hold factory for state machine tests
+function hold(overrides: Partial<HoldDefinition> = {}): HoldDefinition {
+  return {
+    id: 'test', name: 'Test', defaultSet1Weight: 0, defaultSet2Weight: 0,
+    set1Reps: SET1, set2Reps: SET2,
+    ...overrides,
+  };
+}
+
 const lastHoldIndex = HOLDS.length - 1;
 
-describe('advancePhase', () => {
+// ── Workout A (existing 2-set repeater holds) ─────────────────────────────
+
+describe('advancePhase — workout A (numSets=2 default)', () => {
   it('prep → hanging, resets repIndex to 0', () => {
     const s = state({ phase: 'prep', repIndex: 99 });
     const next = advancePhase(s, HOLDS, SET1, SET2);
@@ -91,50 +104,153 @@ describe('advancePhase', () => {
   });
 });
 
-describe('skipSet', () => {
-  it('mid-workout → break', () => {
-    const s = state({ setNumber: 1, holdIndex: 0 });
-    const next = skipSet(s, HOLDS);
+// ── numSets=3 (Max Hang main holds) ──────────────────────────────────────
+
+describe('advancePhase — numSets=3, repsPerSet=1', () => {
+  const holds3 = [hold({ numSets: 3, repsPerSet: 1 }), hold({ numSets: 3, repsPerSet: 1 })];
+
+  it('hanging (set1, rep0) → break (only 1 rep per set)', () => {
+    const s = state({ setNumber: 1, repIndex: 0 });
+    const next = advancePhase(s, holds3, SET1, SET2);
     expect(next.phase).toBe('break');
+  });
+
+  it('break after set1 → prep set2', () => {
+    const s = state({ phase: 'break', setNumber: 1 });
+    const next = advancePhase(s, holds3, SET1, SET2);
+    expect(next.phase).toBe('prep');
+    expect(next.setNumber).toBe(2);
+  });
+
+  it('break after set2 → prep set3', () => {
+    const s = state({ phase: 'break', setNumber: 2 });
+    const next = advancePhase(s, holds3, SET1, SET2);
+    expect(next.phase).toBe('prep');
+    expect(next.setNumber).toBe(3);
+  });
+
+  it('break after set3, not last hold → prep next hold set1', () => {
+    const s = state({ phase: 'break', setNumber: 3, holdIndex: 0 });
+    const next = advancePhase(s, holds3, SET1, SET2);
+    expect(next.phase).toBe('prep');
+    expect(next.holdIndex).toBe(1);
+    expect(next.setNumber).toBe(1);
+  });
+
+  it('break after set3, last hold → done', () => {
+    const s = state({ phase: 'break', setNumber: 3, holdIndex: 1 });
+    const next = advancePhase(s, holds3, SET1, SET2);
+    expect(next.phase).toBe('done');
+  });
+});
+
+// ── numSets=1 (warmup single hangs) ──────────────────────────────────────
+
+describe('advancePhase — numSets=1, repsPerSet=1', () => {
+  const holds1 = [hold({ numSets: 1, repsPerSet: 1 }), hold({ numSets: 1, repsPerSet: 1 })];
+
+  it('hanging → break (last set, not last rep check)', () => {
+    const s = state({ setNumber: 1, repIndex: 0 });
+    const next = advancePhase(s, holds1, SET1, SET2);
+    expect(next.phase).toBe('break');
+  });
+
+  it('break (set1=last set) → prep next hold', () => {
+    const s = state({ phase: 'break', setNumber: 1, holdIndex: 0 });
+    const next = advancePhase(s, holds1, SET1, SET2);
+    expect(next.phase).toBe('prep');
+    expect(next.holdIndex).toBe(1);
+    expect(next.setNumber).toBe(1);
+  });
+
+  it('break (set1=last set) on last hold → done', () => {
+    const s = state({ phase: 'break', setNumber: 1, holdIndex: 1 });
+    const next = advancePhase(s, holds1, SET1, SET2);
+    expect(next.phase).toBe('done');
+  });
+});
+
+// ── workout B smoke test (full HOLDS_B array) ─────────────────────────────
+
+describe('advancePhase — HOLDS_B smoke tests', () => {
+  it('first jug hang completes → break', () => {
+    const s = state({ setNumber: 1, repIndex: 0, holdIndex: 0 });
+    const next = advancePhase(s, HOLDS_B, 1, 1);
+    expect(next.phase).toBe('break');
+  });
+
+  it('Chisel set2 break → prep set3', () => {
+    // holdIndex 8 = b-chisel (numSets:3)
+    const s = state({ phase: 'break', setNumber: 2, holdIndex: 8 });
+    const next = advancePhase(s, HOLDS_B, 1, 1);
+    expect(next.phase).toBe('prep');
+    expect(next.setNumber).toBe(3);
+  });
+
+  it('Open set3 (last hold, last set) → done', () => {
+    // holdIndex 10 = b-open (numSets:3)
+    const s = state({ phase: 'break', setNumber: 3, holdIndex: 10 });
+    const next = advancePhase(s, HOLDS_B, 1, 1);
+    expect(next.phase).toBe('done');
+  });
+});
+
+// ── skipSet ───────────────────────────────────────────────────────────────
+
+describe('skipSet', () => {
+  it('mid-workout set1 → break', () => {
+    const s = state({ setNumber: 1, holdIndex: 0 });
+    expect(skipSet(s, HOLDS).phase).toBe('break');
   });
 
   it('set2 not last hold → break', () => {
     const s = state({ setNumber: 2, holdIndex: 0 });
-    const next = skipSet(s, HOLDS);
-    expect(next.phase).toBe('break');
+    expect(skipSet(s, HOLDS).phase).toBe('break');
   });
 
   it('set2 last hold → done', () => {
     const s = state({ setNumber: 2, holdIndex: lastHoldIndex });
-    const next = skipSet(s, HOLDS);
-    expect(next.phase).toBe('done');
+    expect(skipSet(s, HOLDS).phase).toBe('done');
   });
 
-  it('set1 last hold → break (not done — set2 still remains)', () => {
+  it('set1 last hold → break (set2 still remains)', () => {
     const s = state({ setNumber: 1, holdIndex: lastHoldIndex });
-    const next = skipSet(s, HOLDS);
-    expect(next.phase).toBe('break');
+    expect(skipSet(s, HOLDS).phase).toBe('break');
+  });
+
+  it('numSets=3: set3 last hold → done', () => {
+    const holds3 = [hold({ numSets: 3 })];
+    const s = state({ setNumber: 3, holdIndex: 0 });
+    expect(skipSet(s, holds3).phase).toBe('done');
+  });
+
+  it('numSets=3: set2 not last hold → break', () => {
+    const holds3 = [hold({ numSets: 3 }), hold({ numSets: 3 })];
+    const s = state({ setNumber: 2, holdIndex: 0 });
+    expect(skipSet(s, holds3).phase).toBe('break');
   });
 });
 
+// ── skipNextSet ───────────────────────────────────────────────────────────
+
 describe('skipNextSet', () => {
-  it('not last hold → break, setNumber=2', () => {
+  it('not last hold → break, setNumber=numSets', () => {
     const s = state({ holdIndex: 0 });
     const next = skipNextSet(s, HOLDS);
     expect(next.phase).toBe('break');
-    expect(next.setNumber).toBe(2);
+    expect(next.setNumber).toBe(2); // numSets=2 default
   });
 
   it('last hold → done', () => {
     const s = state({ holdIndex: lastHoldIndex });
-    const next = skipNextSet(s, HOLDS);
-    expect(next.phase).toBe('done');
+    expect(skipNextSet(s, HOLDS).phase).toBe('done');
   });
 });
 
+// ── skipNextHold ──────────────────────────────────────────────────────────
+
 describe('skipNextHold', () => {
   it('not penultimate hold → break, holdIndex+1, setNumber=2', () => {
-    // With 8 holds, index 0 → nextHoldIndex=1 which is < 7, so → break
     const s = state({ holdIndex: 0 });
     const next = skipNextHold(s, HOLDS);
     expect(next.phase).toBe('break');
@@ -143,12 +259,12 @@ describe('skipNextHold', () => {
   });
 
   it('penultimate hold (nextHold = last) → done', () => {
-    // nextHoldIndex = lastHoldIndex, which is >= HOLDS.length - 1, so → done
     const s = state({ holdIndex: lastHoldIndex - 1 });
-    const next = skipNextHold(s, HOLDS);
-    expect(next.phase).toBe('done');
+    expect(skipNextHold(s, HOLDS).phase).toBe('done');
   });
 });
+
+// ── immutability ──────────────────────────────────────────────────────────
 
 describe('immutability', () => {
   it('advancePhase does not mutate input', () => {

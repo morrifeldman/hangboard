@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { HOLDS } from "../data/workout";
+import type { WorkoutId } from "../store/useWorkoutStore";
 import { formatWeight, formatOffset } from "../lib/format";
 import { initAudio } from "../lib/audio";
 import { WeightAdjuster } from "./WeightAdjuster";
@@ -10,14 +10,26 @@ type EditKey = { holdId: string; set: 1 | 2 } | null;
 export function HomeScreen() {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const weights = useWorkoutStore((s) => s.weights);
+  const weightsB = useWorkoutStore((s) => s.weightsB);
+  const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
+  const setSelectedWorkout = useWorkoutStore((s) => s.setSelectedWorkout);
   const adjustNextWeight = useWorkoutStore((s) => s.adjustNextWeight);
+  const currentHolds = useWorkoutStore((s) => s.currentHolds);
 
   const [editing, setEditing] = useState<EditKey>(null);
+
+  const holds = currentHolds();
+  const storedMap = selectedWorkout === "b" ? weightsB : weights;
 
   const handleStart = () => {
     setEditing(null);
     initAudio();
     startWorkout();
+  };
+
+  const handleSelectWorkout = (id: WorkoutId) => {
+    setEditing(null);
+    setSelectedWorkout(id);
   };
 
   const toggleEdit = (holdId: string, set: 1 | 2) => {
@@ -26,18 +38,42 @@ export function HomeScreen() {
     );
   };
 
+  const workouts: { id: WorkoutId; label: string }[] = [
+    { id: "a", label: "Repeaters" },
+    { id: "b", label: "Max Hang" },
+  ];
+
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 py-4">
         <h1 className="text-white font-bold text-2xl">Hangboard</h1>
       </header>
 
+      {/* Workout picker */}
+      <div className="px-4 pt-3 pb-1 flex gap-2">
+        {workouts.map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => handleSelectWorkout(id)}
+            className={`flex-1 py-2.5 rounded-xl font-bold text-base transition-colors ${
+              selectedWorkout === id
+                ? "bg-green-600 text-white"
+                : "bg-gray-800 text-gray-400"
+            }`}
+            data-testid={`workout-tab-${id}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <main className="flex-1 flex flex-col px-4 py-4 gap-2 overflow-y-auto">
-{HOLDS.map((hold) => {
-          const stored = weights[hold.id] ?? {
+        {holds.map((hold) => {
+          const stored = storedMap[hold.id] ?? {
             set1: hold.defaultSet1Weight,
             set2: hold.defaultSet2Weight,
           };
+          const isMultiSet = (hold.numSets ?? 2) >= 2 && !hold.isRestOnly;
           const editingS1 = editing?.holdId === hold.id && editing.set === 1;
           const editingS2 = editing?.holdId === hold.id && editing.set === 2;
 
@@ -50,26 +86,32 @@ export function HomeScreen() {
               {/* Row header */}
               <div className="px-4 py-3 flex items-center justify-between">
                 <span className="text-white font-medium">{hold.name}</span>
-                <div className="flex flex-col items-end">
-                  <button
-                    onClick={() => toggleEdit(hold.id, 1)}
-                    className={`py-0.5 px-2 text-sm tabular-nums font-semibold transition-colors ${
-                      editingS1 ? "text-indigo-400" : "text-gray-200"
-                    }`}
-                    data-testid={`weight-${hold.id}-set1`}
-                  >
-                    {formatWeight(stored.set1)}
-                  </button>
-                  <button
-                    onClick={() => toggleEdit(hold.id, 2)}
-                    className={`py-0.5 px-2 text-sm tabular-nums transition-colors ${
-                      editingS2 ? "text-indigo-400" : "text-gray-500"
-                    }`}
-                    data-testid={`weight-${hold.id}-set2`}
-                  >
-                    {formatWeight(stored.set2)}
-                  </button>
-                </div>
+                {hold.isRestOnly ? (
+                  <span className="text-gray-500 text-sm italic">rest only</span>
+                ) : (
+                  <div className="flex flex-col items-end">
+                    <button
+                      onClick={() => toggleEdit(hold.id, 1)}
+                      className={`py-0.5 px-2 text-sm tabular-nums font-semibold transition-colors ${
+                        editingS1 ? "text-indigo-400" : "text-gray-200"
+                      }`}
+                      data-testid={`weight-${hold.id}-set1`}
+                    >
+                      {formatWeight(stored.set1)}
+                    </button>
+                    {isMultiSet && (
+                      <button
+                        onClick={() => toggleEdit(hold.id, 2)}
+                        className={`py-0.5 px-2 text-sm tabular-nums transition-colors ${
+                          editingS2 ? "text-indigo-400" : "text-gray-500"
+                        }`}
+                        data-testid={`weight-${hold.id}-set2`}
+                      >
+                        {formatWeight(stored.set2)}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Inline editor — S1 moves both sets together */}
@@ -81,13 +123,13 @@ export function HomeScreen() {
                       adjustNextWeight(hold.id, 1, d);
                       adjustNextWeight(hold.id, 2, d);
                     }}
-                    label="Base weight (Set 2 moves with Set 1)"
+                    label={isMultiSet ? "Base weight (Set 2 moves with Set 1)" : "Weight"}
                   />
                 </div>
               )}
 
-              {/* Inline editor — S2 only */}
-              {editingS2 && (
+              {/* Inline editor — S2 offset only */}
+              {editingS2 && isMultiSet && (
                 <div className="border-t border-gray-700 px-4 py-4">
                   <WeightAdjuster
                     value={stored.set2 - stored.set1}

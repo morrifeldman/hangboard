@@ -1,5 +1,6 @@
 export type { HoldDefinition } from "./holds";
 export { HOLDS } from "./holds";
+export { HOLDS_B } from "./workout-b";
 
 export const PREP_SECS = import.meta.env.VITE_TEST_MODE === "true" ? 1 : 10;
 export const HANG_SECS = import.meta.env.VITE_TEST_MODE === "true" ? 1 : 7;

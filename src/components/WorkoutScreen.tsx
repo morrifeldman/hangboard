@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { HOLDS } from "../data/workout";
 import { PrepTimer } from "./PrepTimer";
 import { HangTimer } from "./HangTimer";
 import { BreakTimer } from "./BreakTimer";
@@ -15,6 +14,7 @@ export function WorkoutScreen() {
   const paused = useWorkoutStore((s) => s.paused);
   const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
+  const currentHolds = useWorkoutStore((s) => s.currentHolds);
 
   const [confirming, setConfirming] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,6 +37,10 @@ export function WorkoutScreen() {
       return () => clearTimeout(t);
     }
   }, [phase, advancePhase]);
+
+  const holds = currentHolds();
+  const currentHoldDef = holds[holdIndex];
+  const numSets = currentHoldDef?.numSets ?? 2;
 
   const renderPanel = () => {
     switch (phase) {
@@ -70,9 +74,15 @@ export function WorkoutScreen() {
     }
   };
 
-  // A hold segment is "done" when past, or when it's current and the between-holds break is running
-  const isHoldDone = (i: number) =>
-    i < holdIndex || (i === holdIndex && phase === "break" && setNumber === 2);
+  // A hold segment is "done" when past it, or when it's the current hold in its final break
+  const isHoldDone = (i: number) => {
+    if (i < holdIndex) return true;
+    if (i === holdIndex && phase === "break") {
+      const h = holds[i];
+      return setNumber >= (h?.numSets ?? 2);
+    }
+    return false;
+  };
 
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
@@ -80,7 +90,7 @@ export function WorkoutScreen() {
         <div className="flex items-center justify-between mb-2">
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wide">Set</p>
-            <p className="text-white font-bold text-lg">{setNumber} / 2</p>
+            <p className="text-white font-bold text-lg">{setNumber} / {numSets}</p>
           </div>
           <div className="flex items-center gap-3">
             {phase !== "done" && (
@@ -106,7 +116,7 @@ export function WorkoutScreen() {
           </div>
         </div>
         <div className="flex gap-1">
-          {HOLDS.map((h, i) => (
+          {holds.map((h, i) => (
             <div
               key={h.id}
               className={`h-1.5 flex-1 rounded-full transition-colors ${

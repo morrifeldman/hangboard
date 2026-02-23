@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { HANG_SECS, REST_SECS, HOLDS, SET1_REPS, SET2_REPS } from "../data/workout";
+import { HANG_SECS, REST_SECS, SET1_REPS, SET2_REPS } from "../data/workout";
 import { useTimer } from "../hooks/useTimer";
 import { useAudio } from "../hooks/useAudio";
 import { useWorkoutStore } from "../store/useWorkoutStore";
@@ -7,21 +7,22 @@ import { TimerRing } from "./TimerRing";
 
 export function HangTimer() {
   const phase = useWorkoutStore((s) => s.phase);
-  const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const repIndex = useWorkoutStore((s) => s.repIndex);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const skipSet = useWorkoutStore((s) => s.skipSet);
   const paused = useWorkoutStore((s) => s.paused);
+  const currentHold = useWorkoutStore((s) => s.currentHold);
 
   const audio = useAudio();
   const firedStartRef = useRef(false);
 
   const isHanging = phase === "hanging";
   const isResting = phase === "resting";
-  const duration = isHanging ? HANG_SECS : REST_SECS;
-  const hold = HOLDS[holdIndex];
-  const totalReps = setNumber === 1 ? SET1_REPS : SET2_REPS;
+  const hold = currentHold();
+  const hangDuration = hold.hangSecs ?? HANG_SECS;
+  const duration = isHanging ? hangDuration : REST_SECS;
+  const totalReps = hold.repsPerSet ?? (setNumber === 1 ? SET1_REPS : SET2_REPS);
 
   // Fire hang-start audio/haptic once when hanging phase begins
   useEffect(() => {
@@ -40,12 +41,9 @@ export function HangTimer() {
     running: (isHanging || isResting) && !paused,
     onTick: (r) => {
       if (isHanging && (r <= 3.05 && r > 0.05)) {
-        const secs = Math.ceil(r);
-        // Fire tick once per second in countdown zone
         if (Math.ceil(r) !== Math.ceil(r + 0.1)) {
           audio.countdownTick();
         }
-        void secs;
       }
     },
     onExpire: () => {
