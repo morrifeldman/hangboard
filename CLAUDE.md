@@ -8,7 +8,8 @@ Vite 7 + React 19 + TypeScript 5.9 + Tailwind 3 + Zustand 5 + vite-plugin-pwa + 
 ```bash
 npm run dev          # dev server on :5173 (normal timers: 7s hang, 3s rest, 180s break, 7 reps)
 npm run build        # production build to dist/
-npx playwright test  # run all tests (auto-starts dev server with VITE_TEST_MODE=true)
+npm run test:unit    # Vitest unit tests (~20 cases, <5s, no browser needed)
+npx playwright test  # E2E tests (auto-starts dev server with VITE_TEST_MODE=true)
 ```
 
 ## Git Hooks
@@ -24,7 +25,7 @@ chmod +x .git/hooks/pre-commit
 
 ## Test Mode
 `playwright.config.ts` sets `VITE_TEST_MODE=true` in the webServer command, which shortens:
-- Timers: HANG=2s, REST=1s, BREAK=5s, PREP=3s
+- Timers: HANG=1s, REST=1s, BREAK=5s, PREP=1s
 - Reps: SET1=3, SET2=2
 
 **Critical gotcha**: `playwright.config.ts` uses `reuseExistingServer: true`. If `npm run dev` is already running on port 5173, Playwright will reuse it and tests will fail (full timers hit 60s timeout). Always kill any dev server before running tests:
