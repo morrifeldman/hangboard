@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 
-// Test mode: PREP_SECS=1, HANG_SECS=1, REST_SECS=1, BREAK_SECS=5
+// Uses the hidden "Test" workout (/?test): prepSecs=3, hangSecs=2, restSecs=1, breakSecs=5, repsPerSet=2
 
 test.describe("Workout Flow", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?test");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+    await page.getByTestId("workout-tab-test").click();
   });
 
   test("Start workout → prep phase for first hold (Jug)", async ({ page }) => {
@@ -18,7 +19,7 @@ test.describe("Workout Flow", () => {
   test("Prep auto-advances to hang phase", async ({ page }) => {
     test.setTimeout(60_000);
     await page.getByTestId("start-workout-btn").click();
-    // Wait for prep to expire and hanging phase to begin (up to 15s covers both test and real timers)
+    // prepSecs=3 — hang phase begins within a few seconds
     await expect(page.getByTestId("rep-counter")).toBeVisible({ timeout: 15_000 });
   });
 
@@ -40,13 +41,13 @@ test.describe("Workout Flow", () => {
     test.setTimeout(60_000);
     await page.getByTestId("start-workout-btn").click();
 
-    // Wait for hang phase (prep is 3s in test mode)
+    // Wait for hang phase (prepSecs=3)
     await expect(page.getByTestId("rep-counter")).toBeVisible({ timeout: 15_000 });
 
     // Pause immediately
     await page.getByTestId("pause-btn").click();
 
-    // Wait longer than HANG_SECS (1s) — should still be hanging
+    // Wait longer than 1s but less than hangSecs (2s) — should still be hanging
     await page.waitForTimeout(1_500);
     await expect(page.getByTestId("phase-bar")).toContainText("Hang");
 

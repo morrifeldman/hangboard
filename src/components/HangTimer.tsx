@@ -21,7 +21,8 @@ export function HangTimer() {
   const isResting = phase === "resting";
   const hold = currentHold();
   const hangDuration = hold.hangSecs ?? HANG_SECS;
-  const duration = isHanging ? hangDuration : REST_SECS;
+  const restDuration = hold.restSecs ?? REST_SECS;
+  const duration = isHanging ? hangDuration : restDuration;
   const totalReps = hold.repsPerSet ?? (setNumber === 1 ? SET1_REPS : SET2_REPS);
 
   // Fire hang-start audio/haptic once when hanging phase begins

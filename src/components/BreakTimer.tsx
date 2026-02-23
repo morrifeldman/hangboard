@@ -75,7 +75,7 @@ export function BreakTimer() {
       />
 
       {/* Set 2 weight adjuster — only for classic 2-set holds */}
-      {betweenSets && numSets === 2 && (
+      {betweenSets && numSets === 2 && !hold.skipProgression && (
         <div className="w-full bg-gray-800 rounded-xl p-4 space-y-3">
           <p className="text-gray-400 text-sm text-center">Set 2</p>
           <WeightAdjuster

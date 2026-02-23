@@ -40,6 +40,13 @@ describe('advancePhase — workout A (numSets=2 default)', () => {
     expect(next.repIndex).toBe(0);
   });
 
+  it('prep with isRestOnly hold → break (skips hang entirely)', () => {
+    const restHolds = [hold({ isRestOnly: true, numSets: 2 }), hold()];
+    const s = state({ phase: 'prep', holdIndex: 0, setNumber: 1 });
+    const next = advancePhase(s, restHolds, SET1, SET2);
+    expect(next.phase).toBe('break');
+  });
+
   it('hanging mid-set → resting (repIndex unchanged)', () => {
     const s = state({ repIndex: 0 }); // not last rep (SET1=3)
     const next = advancePhase(s, HOLDS, SET1, SET2);
@@ -179,17 +186,24 @@ describe('advancePhase — HOLDS_B smoke tests', () => {
     expect(next.phase).toBe('break');
   });
 
+  it('isRestOnly (Pull-ups) prep → break (skips hang)', () => {
+    // holdIndex 1 = b-pullup (isRestOnly, numSets:2)
+    const s = state({ phase: 'prep', holdIndex: 1, setNumber: 1 });
+    const next = advancePhase(s, HOLDS_B, 1, 1);
+    expect(next.phase).toBe('break');
+  });
+
   it('Chisel set2 break → prep set3', () => {
-    // holdIndex 8 = b-chisel (numSets:3)
-    const s = state({ phase: 'break', setNumber: 2, holdIndex: 8 });
+    // holdIndex 6 = b-chisel (numSets:3) after merging jug/pullup pairs
+    const s = state({ phase: 'break', setNumber: 2, holdIndex: 6 });
     const next = advancePhase(s, HOLDS_B, 1, 1);
     expect(next.phase).toBe('prep');
     expect(next.setNumber).toBe(3);
   });
 
   it('Open set3 (last hold, last set) → done', () => {
-    // holdIndex 10 = b-open (numSets:3)
-    const s = state({ phase: 'break', setNumber: 3, holdIndex: 10 });
+    // holdIndex 8 = b-open (numSets:3) after merging jug/pullup pairs
+    const s = state({ phase: 'break', setNumber: 3, holdIndex: 8 });
     const next = advancePhase(s, HOLDS_B, 1, 1);
     expect(next.phase).toBe('done');
   });

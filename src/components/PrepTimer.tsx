@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { PREP_SECS } from "../data/workout";
+
 import { useTimer } from "../hooks/useTimer";
 import { useAudio } from "../hooks/useAudio";
 import { TimerRing } from "./TimerRing";
@@ -16,6 +17,7 @@ export function PrepTimer() {
   const hold = currentHold();
   const weight = effectiveWeight(hold.id, setNumber);
   const audio = useAudio();
+  const prepDuration = hold.prepSecs ?? PREP_SECS;
 
   // Pull-up items skip the hang phase entirely — jump straight to the rest timer
   useEffect(() => {
@@ -24,7 +26,7 @@ export function PrepTimer() {
   }, [hold.id]);
 
   const { remaining } = useTimer({
-    duration: PREP_SECS,
+    duration: prepDuration,
     running: !paused && !hold.isRestOnly,
     onTick: (r) => {
       if (r <= 3.05 && r > 0.05 && Math.ceil(r) !== Math.ceil(r + 0.1)) {
@@ -41,7 +43,7 @@ export function PrepTimer() {
       <p className="text-white font-bold text-xl" data-testid="hold-name">{hold.name}</p>
       <TimerRing
         remaining={remaining}
-        duration={PREP_SECS}
+        duration={prepDuration}
         label="GET READY"
         color="stroke-orange-400"
       />

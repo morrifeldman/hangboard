@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { WorkoutId } from "../store/useWorkoutStore";
+import type { HoldDefinition } from "../data/holds";
 import { formatWeight, formatOffset } from "../lib/format";
 import { initAudio } from "../lib/audio";
 import { WeightAdjuster } from "./WeightAdjuster";
 
 type EditKey = { holdId: string; set: 1 | 2 } | null;
+
+function repLabel(hold: HoldDefinition): string {
+  const numSets = hold.numSets ?? 2;
+  if (hold.isRestOnly) return numSets > 1 ? `× ${numSets} sets` : "";
+  if (hold.repsPerSet !== undefined) {
+    return numSets === 1 ? `${hold.repsPerSet} rep` : `${hold.repsPerSet} rep × ${numSets} sets`;
+  }
+  const { set1Reps, set2Reps } = hold;
+  if (set1Reps === set2Reps) return `${set1Reps} reps × ${numSets} sets`;
+  return `${set1Reps} / ${set2Reps} reps`;
+}
 
 export function HomeScreen() {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
@@ -38,9 +50,11 @@ export function HomeScreen() {
     );
   };
 
+  const isTestMode = new URLSearchParams(window.location.search).has("test");
   const workouts: { id: WorkoutId; label: string }[] = [
     { id: "a", label: "Repeaters" },
     { id: "b", label: "Max Hang" },
+    ...(isTestMode ? [{ id: "test" as WorkoutId, label: "Test" }] : []),
   ];
 
   return (
@@ -73,7 +87,7 @@ export function HomeScreen() {
             set1: hold.defaultSet1Weight,
             set2: hold.defaultSet2Weight,
           };
-          const isMultiSet = (hold.numSets ?? 2) >= 2 && !hold.isRestOnly;
+          const isMultiSet = (hold.numSets ?? 2) === 2 && !hold.isRestOnly && !hold.skipProgression;
           const editingS1 = editing?.holdId === hold.id && editing.set === 1;
           const editingS2 = editing?.holdId === hold.id && editing.set === 2;
 
@@ -85,9 +99,12 @@ export function HomeScreen() {
             >
               {/* Row header */}
               <div className="px-4 py-3 flex items-center justify-between">
-                <span className="text-white font-medium">{hold.name}</span>
+                <div>
+                  <p className="text-white font-medium">{hold.name}</p>
+                  <p className="text-gray-500 text-xs">{repLabel(hold)}</p>
+                </div>
                 {hold.isRestOnly ? (
-                  <span className="text-gray-500 text-sm italic">rest only</span>
+                  <span className="py-0.5 px-2 text-sm tabular-nums font-semibold text-gray-200">BW</span>
                 ) : (
                   <div className="flex flex-col items-end">
                     <button

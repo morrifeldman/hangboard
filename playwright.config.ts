@@ -23,7 +23,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "VITE_TEST_MODE=true npm run dev -- --port 5174",
+    command: "npm run dev -- --port 5174",
     url: "http://localhost:5174",
     reuseExistingServer: !process.env.CI,
     timeout: 30000,

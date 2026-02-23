@@ -28,6 +28,7 @@ export function advancePhase(
 
   switch (s.phase) {
     case 'prep':
+      if (hold.isRestOnly) return { ...s, phase: 'break' };
       return { ...s, phase: 'hanging', repIndex: 0 };
     case 'hanging':
       if (!isLastRep) return { ...s, phase: 'resting' };

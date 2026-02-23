@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { HOLDS, HOLDS_B, SET1_REPS, SET2_REPS } from "../data/workout";
+import { HOLDS, HOLDS_B, HOLDS_TEST, SET1_REPS, SET2_REPS } from "../data/workout";
 import type { HoldDefinition } from "../data/workout";
 import * as SM from "../lib/stateMachine";
 
 import type { WorkoutPhase } from "../lib/stateMachine";
 export type { WorkoutPhase };
 
-export type WorkoutId = "a" | "b";
+export type WorkoutId = "a" | "b" | "test";
 
 type StoredWeights = Record<string, { set1: number; set2: number }>;
 type Overrides = Record<string, { set1: number | null; set2: number | null }>;
@@ -59,7 +59,9 @@ function defaultWeightsB(): StoredWeights {
 }
 
 function holdsFor(id: WorkoutId): readonly HoldDefinition[] {
-  return id === "b" ? HOLDS_B : HOLDS;
+  if (id === "b") return HOLDS_B;
+  if (id === "test") return HOLDS_TEST;
+  return HOLDS;
 }
 
 export const useWorkoutStore = create<WorkoutStore>()(
@@ -190,7 +192,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       partialize: (s) => ({
         weights: s.weights,
         weightsB: s.weightsB,
-        selectedWorkout: s.selectedWorkout,
+        selectedWorkout: s.selectedWorkout === "test" ? "a" : s.selectedWorkout,
       }),
     }
   )

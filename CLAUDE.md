@@ -28,7 +28,11 @@ chmod +x .git/hooks/pre-commit
 - Timers: HANG=1s, REST=1s, BREAK=5s, PREP=1s
 - Reps: SET1=3, SET2=2
 
-**Critical gotcha**: `playwright.config.ts` uses `reuseExistingServer: true`. If `npm run dev` is already running on port 5173, Playwright will reuse it and tests will fail (full timers hit 60s timeout). Always kill any dev server before running tests:
+**Critical gotcha**: `playwright.config.ts` uses `reuseExistingServer: true`. This cuts both ways:
+- If `npm run dev` is running before tests → Playwright reuses it (full timers, tests fail)
+- If Playwright's test server is still alive after tests → `npm run dev` won't start, and the app shows 1s timers
+
+Always kill port 5173 before running tests *and* before running the dev server after tests:
 
 ```bash
 fuser -k 5173/tcp

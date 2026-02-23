@@ -6,8 +6,10 @@ export interface HoldDefinition {
   set1Reps: number;
   set2Reps: number;
   skipProgression?: boolean;
-  // Per-hold timer overrides (default: global HANG_SECS / BREAK_SECS constants)
+  // Per-hold timer overrides (default: global PREP_SECS / HANG_SECS / BREAK_SECS constants)
+  prepSecs?: number;
   hangSecs?: number;
+  restSecs?: number;
   breakSecs?: number;
   // Set structure overrides (defaults: numSets=2, use set1Reps/set2Reps)
   numSets?: number;
