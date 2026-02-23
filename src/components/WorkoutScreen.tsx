@@ -30,8 +30,6 @@ export function WorkoutScreen() {
     }
   };
 
-  const hold = HOLDS[holdIndex];
-
   // Auto-dismiss done screen after a moment
   useEffect(() => {
     if (phase === "done") {
