@@ -117,4 +117,24 @@ describe('buildSessionRecord', () => {
     expect(rec.holds[0].set1.reps).toBe(5);
     expect(rec.holds[0].set2!.reps).toBe(5);
   });
+
+  it('populates hold notes when holdNotes provided', () => {
+    const rec = buildSessionRecord({
+      ...BASE,
+      bailed: false,
+      holdIndex: 2,
+      setNumber: 2,
+      holdNotes: { edge: 'felt easy' },
+    });
+    expect(rec.holds.find((h) => h.holdId === 'edge')?.notes).toBe('felt easy');
+    expect(rec.holds.find((h) => h.holdId === 'jug')?.notes).toBeUndefined();
+    expect(rec.holds.find((h) => h.holdId === 'slop')?.notes).toBeUndefined();
+  });
+
+  it('leaves all hold notes undefined when holdNotes not provided', () => {
+    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 2, setNumber: 2 });
+    for (const h of rec.holds) {
+      expect(h.notes).toBeUndefined();
+    }
+  });
 });

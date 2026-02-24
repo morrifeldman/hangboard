@@ -4,7 +4,12 @@ import { useTimer } from "../hooks/useTimer";
 import { TimerRing } from "./TimerRing";
 import { WeightAdjuster } from "./WeightAdjuster";
 
-export function BreakTimer() {
+type Props = {
+  noteValue: string;
+  onNoteChange: (v: string) => void;
+};
+
+export function BreakTimer({ noteValue, onNoteChange }: Props) {
   const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
@@ -110,6 +115,16 @@ export function BreakTimer() {
           </div>
         );
       })()}
+
+      <textarea
+        value={noteValue}
+        onChange={(e) => onNoteChange(e.target.value)}
+        placeholder={`Notes on ${lastLabel} (optional)`}
+        rows={2}
+        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm
+                   placeholder-gray-600 resize-none border border-gray-700
+                   focus:outline-none focus:border-gray-500"
+      />
 
       <div className="flex w-full gap-3">
         <button

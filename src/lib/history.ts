@@ -84,6 +84,7 @@ type BuildArgs = {
   holds: readonly HoldDefinition[];
   effectiveWeight: (holdId: string, setNum: 1 | 2) => number;
   notes?: string;
+  holdNotes?: Record<string, string>;
 };
 
 export function buildSessionRecord({
@@ -96,6 +97,7 @@ export function buildSessionRecord({
   holds,
   effectiveWeight,
   notes,
+  holdNotes,
 }: BuildArgs): SessionRecord {
   const holdRecords: SessionHoldRecord[] = holds.map((hold, i) => {
     const numSets = hold.numSets ?? 2;
@@ -138,7 +140,13 @@ export function buildSessionRecord({
           }
         : null;
 
-    return { holdId: hold.id, holdName: hold.name, set1, set2 };
+    return {
+      holdId: hold.id,
+      holdName: hold.name,
+      set1,
+      set2,
+      ...(holdNotes?.[hold.id] ? { notes: holdNotes[hold.id] } : {}),
+    };
   });
 
   return {

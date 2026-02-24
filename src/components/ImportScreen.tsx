@@ -56,6 +56,24 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     initialRecord?.workoutType === "a" ? offsetFromRecord(HOLDS, initialRecord) : 10
   );
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
+  const [holdNotesState, setHoldNotesState] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (initialRecord?.holds ?? [])
+        .filter((h) => h.notes)
+        .map((h) => [h.holdId, h.notes!])
+    )
+  );
+  // Which hold note fields are currently open (auto-open holds that already have notes)
+  const [expandedNoteHolds, setExpandedNoteHolds] = useState<Set<string>>(
+    () => new Set((initialRecord?.holds ?? []).filter((h) => h.notes).map((h) => h.holdId))
+  );
+
+  const toggleNote = (holdId: string) =>
+    setExpandedNoteHolds((prev) => {
+      const next = new Set(prev);
+      next.has(holdId) ? next.delete(holdId) : next.add(holdId);
+      return next;
+    });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -87,6 +105,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         holdName: hold.name,
         set1: { weight: w, reps: reps1, completed: true },
         set2: numSets >= 2 ? { weight: w + offset, reps: reps2, completed: true } : null,
+        ...(holdNotesState[hold.id] ? { notes: holdNotesState[hold.id] } : {}),
       };
     });
 
@@ -222,35 +241,79 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           {holds.map((hold, i) => {
             const offset = workoutType === "a" ? set2Offset : hold.defaultSet2Weight - hold.defaultSet1Weight;
             const w = weights[i] ?? 0;
+            const hasNote = !!holdNotesState[hold.id];
+            const noteOpen = expandedNoteHolds.has(hold.id);
             return (
               <div
                 key={hold.id}
-                className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-gray-700 last:border-0"
+                className="px-4 py-2.5 flex flex-col border-b border-gray-700 last:border-0"
               >
-                <span className="text-gray-300 text-sm flex-1 truncate">{hold.name}</span>
-                {hold.isRestOnly || hold.skipProgression ? (
-                  <span className="text-gray-500 text-xs font-mono">BW</span>
-                ) : offset !== 0 ? (
-                  <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  {/* Hold name — tappable in edit mode to open note field */}
+                  {editing ? (
+                    <button
+                      onClick={() => toggleNote(hold.id)}
+                      className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
+                    >
+                      <span className="text-gray-300 text-sm truncate">{hold.name}</span>
+                      {/* Pencil icon: indigo when note exists, near-invisible otherwise */}
+                      <svg
+                        width="11" height="11" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2.5"
+                        strokeLinecap="round" strokeLinejoin="round"
+                        className={`flex-shrink-0 transition-colors ${hasNote ? "text-indigo-400" : "text-gray-700"}`}
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <span className="text-gray-300 text-sm flex-1 truncate">{hold.name}</span>
+                  )}
+                  {hold.isRestOnly || hold.skipProgression ? (
+                    <span className="text-gray-500 text-xs font-mono">BW</span>
+                  ) : offset !== 0 ? (
+                    <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={w}
+                        onChange={(e) => updateWeight(i, e.target.value)}
+                        className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                      />
+                      <span className="text-gray-600 text-xs px-1">→</span>
+                      <span className="w-14 bg-gray-800 text-gray-500 text-right px-2 py-1 text-sm font-mono">
+                        {w + offset}
+                      </span>
+                    </div>
+                  ) : (
                     <input
                       type="number"
                       step="0.5"
                       value={w}
                       onChange={(e) => updateWeight(i, e.target.value)}
-                      className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                      className="w-20 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-400"
                     />
-                    <span className="text-gray-600 text-xs px-1">→</span>
-                    <span className="w-14 bg-gray-800 text-gray-500 text-right px-2 py-1 text-sm font-mono">
-                      {w + offset}
-                    </span>
-                  </div>
-                ) : (
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={w}
-                    onChange={(e) => updateWeight(i, e.target.value)}
-                    className="w-20 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-400"
+                  )}
+                </div>
+                {/* Note field — slides open when toggled */}
+                {editing && noteOpen && (
+                  <textarea
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    autoFocus
+                    value={holdNotesState[hold.id] ?? ""}
+                    onChange={(e) =>
+                      setHoldNotesState((prev) => ({ ...prev, [hold.id]: e.target.value }))
+                    }
+                    onBlur={() => {
+                      // auto-collapse if the user left it empty
+                      if (!holdNotesState[hold.id]) toggleNote(hold.id);
+                    }}
+                    placeholder={`Note on ${hold.name}…`}
+                    rows={2}
+                    className="mt-2 w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                               placeholder-gray-600 resize-none border border-gray-700
+                               focus:outline-none focus:border-indigo-500/50"
                   />
                 )}
               </div>

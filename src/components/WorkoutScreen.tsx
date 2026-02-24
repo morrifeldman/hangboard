@@ -21,6 +21,7 @@ export function WorkoutScreen() {
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
 
   const [confirming, setConfirming] = useState(false);
+  const [holdNotes, setHoldNotes] = useState<Record<string, string>>({});
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sessionNotes, setSessionNotes] = useState("");
@@ -40,6 +41,7 @@ export function WorkoutScreen() {
       holds,
       effectiveWeight: (holdId, setNum) => effectiveWeight(holdId, setNum),
       notes: notes || undefined,
+      holdNotes,
     });
     addSession(record).catch(console.error);
   };
@@ -93,7 +95,14 @@ export function WorkoutScreen() {
       case "resting":
         return <HangTimer />;
       case "break":
-        return <BreakTimer />;
+        return (
+          <BreakTimer
+            noteValue={holdNotes[currentHoldDef?.id ?? ""] ?? ""}
+            onNoteChange={(v) =>
+              setHoldNotes((prev) => ({ ...prev, [currentHoldDef.id]: v }))
+            }
+          />
+        );
       case "done":
         return (
           <div className="flex flex-col items-center gap-6 px-6 w-full max-w-sm">
