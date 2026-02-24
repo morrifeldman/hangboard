@@ -3,6 +3,7 @@ import { useWorkoutStore } from "../store/useWorkoutStore";
 import { PrepTimer } from "./PrepTimer";
 import { HangTimer } from "./HangTimer";
 import { BreakTimer } from "./BreakTimer";
+import { addSession, buildSessionRecord } from "../lib/history";
 
 export function WorkoutScreen() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -15,14 +16,34 @@ export function WorkoutScreen() {
   const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
   const currentHolds = useWorkoutStore((s) => s.currentHolds);
+  const startedAt = useWorkoutStore((s) => s.startedAt);
+  const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
+  const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
 
   const [confirming, setConfirming] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const saveSession = (bailed: boolean) => {
+    if (selectedWorkout === "test" || startedAt === null) return;
+    const holds = currentHolds();
+    const record = buildSessionRecord({
+      workoutType: selectedWorkout,
+      startedAt,
+      completedAt: Date.now(),
+      bailed,
+      holdIndex,
+      setNumber,
+      holds,
+      effectiveWeight: (holdId, setNum) => effectiveWeight(holdId, setNum),
+    });
+    addSession(record).catch(console.error);
+  };
 
   const handleEndClick = () => {
     if (confirming) {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       setConfirming(false);
+      saveSession(true);
       bailWorkout();
     } else {
       setConfirming(true);
@@ -30,13 +51,15 @@ export function WorkoutScreen() {
     }
   };
 
-  // Auto-dismiss done screen after a moment
+  // Auto-dismiss done screen after a moment; save session record on completion
   useEffect(() => {
     if (phase === "done") {
+      saveSession(false);
       const t = setTimeout(advancePhase, 3000);
       return () => clearTimeout(t);
     }
-  }, [phase, advancePhase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const holds = currentHolds();
   const currentHoldDef = holds[holdIndex];

@@ -19,7 +19,11 @@ function repLabel(hold: HoldDefinition): string {
   return `${set1Reps} / ${set2Reps} reps`;
 }
 
-export function HomeScreen() {
+type HomeScreenProps = {
+  onShowHistory: () => void;
+};
+
+export function HomeScreen({ onShowHistory }: HomeScreenProps) {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const weights = useWorkoutStore((s) => s.weights);
   const weightsB = useWorkoutStore((s) => s.weightsB);
@@ -59,8 +63,29 @@ export function HomeScreen() {
 
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-4 py-4">
+      <header className="bg-gray-800 px-4 py-4 flex items-center justify-between">
         <h1 className="text-white font-bold text-2xl">Hangboard</h1>
+        <button
+          onClick={onShowHistory}
+          aria-label="View workout history"
+          className="text-gray-400 hover:text-white transition-colors p-1"
+        >
+          {/* Clock icon */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+        </button>
       </header>
 
       {/* Workout picker */}

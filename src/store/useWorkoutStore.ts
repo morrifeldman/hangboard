@@ -25,6 +25,7 @@ interface WorkoutStore {
   repIndex: number;
   overrides: Overrides;
   paused: boolean;
+  startedAt: number | null;
 
   // Selectors
   currentHolds: () => readonly HoldDefinition[];
@@ -77,6 +78,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       repIndex: 0,
       overrides: {},
       paused: false,
+      startedAt: null,
 
       currentHolds: () => holdsFor(get().selectedWorkout),
 
@@ -111,6 +113,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
           setNumber: 1,
           repIndex: 0,
           overrides: {},
+          startedAt: Date.now(),
         });
       },
 
