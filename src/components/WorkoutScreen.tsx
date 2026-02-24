@@ -23,7 +23,11 @@ export function WorkoutScreen() {
   const [confirming, setConfirming] = useState(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveSession = (bailed: boolean) => {
+  const [sessionNotes, setSessionNotes] = useState("");
+  const sessionNotesRef = useRef("");
+  const [doneCountdown, setDoneCountdown] = useState(10);
+
+  const saveSession = (bailed: boolean, notes: string) => {
     if (selectedWorkout === "test" || startedAt === null) return;
     const holds = currentHolds();
     const record = buildSessionRecord({
@@ -35,6 +39,7 @@ export function WorkoutScreen() {
       setNumber,
       holds,
       effectiveWeight: (holdId, setNum) => effectiveWeight(holdId, setNum),
+      notes: notes || undefined,
     });
     addSession(record).catch(console.error);
   };
@@ -43,7 +48,7 @@ export function WorkoutScreen() {
     if (confirming) {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       setConfirming(false);
-      saveSession(true);
+      saveSession(true, "");
       bailWorkout();
     } else {
       setConfirming(true);
@@ -51,13 +56,28 @@ export function WorkoutScreen() {
     }
   };
 
-  // Auto-dismiss done screen after a moment; save session record on completion
+  // Done screen: show notes textarea + 10s countdown
   useEffect(() => {
-    if (phase === "done") {
-      saveSession(false);
-      const t = setTimeout(advancePhase, 3000);
-      return () => clearTimeout(t);
-    }
+    if (phase !== "done") return;
+
+    setSessionNotes("");
+    sessionNotesRef.current = "";
+    setDoneCountdown(10);
+
+    const interval = setInterval(() => {
+      if (sessionNotesRef.current !== "") return; // paused while typing
+      setDoneCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          saveSession(false, "");
+          advancePhase();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -76,9 +96,30 @@ export function WorkoutScreen() {
         return <BreakTimer />;
       case "done":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 text-center">
-            <p className="text-4xl font-bold text-white">Done!</p>
-            <p className="text-gray-400">Great work.</p>
+          <div className="flex flex-col items-center gap-6 px-6 w-full max-w-sm">
+            <div className="text-center">
+              <p className="text-4xl font-bold text-white">Done!</p>
+              <p className="text-gray-400 mt-1">Great work.</p>
+            </div>
+            <textarea
+              value={sessionNotes}
+              onChange={(e) => {
+                setSessionNotes(e.target.value);
+                sessionNotesRef.current = e.target.value;
+              }}
+              placeholder="Any notes? (optional)"
+              rows={3}
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+            />
+            <button
+              onClick={() => {
+                saveSession(false, sessionNotes);
+                advancePhase();
+              }}
+              className="w-full py-3 rounded-xl font-semibold bg-green-600 text-white text-base"
+            >
+              {sessionNotes === "" ? `Close (${doneCountdown}s)` : "Close"}
+            </button>
           </div>
         );
       default:

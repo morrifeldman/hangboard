@@ -14,6 +14,7 @@ export type SessionHoldRecord = {
   holdName: string;
   set1: SessionSetRecord;
   set2: SessionSetRecord | null; // null when hold.numSets === 1
+  notes?: string;
 };
 
 export type SessionRecord = {
@@ -23,6 +24,8 @@ export type SessionRecord = {
   completedAt: number;
   bailed: boolean;
   holds: SessionHoldRecord[];
+  notes?: string;
+  imported?: boolean;
 };
 
 // ─── IndexedDB setup ─────────────────────────────────────────────────────────
@@ -64,6 +67,11 @@ export async function deleteSession(id: string): Promise<void> {
   await db.delete(STORE, id);
 }
 
+export async function updateSession(record: SessionRecord): Promise<void> {
+  const db = await getDB();
+  await db.put(STORE, record);
+}
+
 // ─── Session record builder (pure — unit-testable) ───────────────────────────
 
 type BuildArgs = {
@@ -75,6 +83,7 @@ type BuildArgs = {
   setNumber: number;
   holds: readonly HoldDefinition[];
   effectiveWeight: (holdId: string, setNum: 1 | 2) => number;
+  notes?: string;
 };
 
 export function buildSessionRecord({
@@ -86,6 +95,7 @@ export function buildSessionRecord({
   setNumber,
   holds,
   effectiveWeight,
+  notes,
 }: BuildArgs): SessionRecord {
   const holdRecords: SessionHoldRecord[] = holds.map((hold, i) => {
     const numSets = hold.numSets ?? 2;
@@ -138,5 +148,6 @@ export function buildSessionRecord({
     completedAt,
     bailed,
     holds: holdRecords,
+    ...(notes ? { notes } : {}),
   };
 }
