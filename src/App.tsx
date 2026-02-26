@@ -6,9 +6,10 @@ import { HomeScreen } from "./components/HomeScreen";
 import { WorkoutScreen } from "./components/WorkoutScreen";
 import { HistoryScreen } from "./components/HistoryScreen";
 import { ImportScreen } from "./components/ImportScreen";
+import { ProgressScreen } from "./components/ProgressScreen";
 import type { SessionRecord } from "./lib/history";
 
-type AppView = "home" | "history" | "import" | "edit";
+type AppView = "home" | "history" | "import" | "edit" | "progress";
 
 export default function App() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -56,5 +57,14 @@ export default function App() {
     );
   }
 
-  return <HomeScreen onShowHistory={() => setView("history")} />;
+  if (view === "progress") {
+    return <ProgressScreen onBack={() => setView("home")} />;
+  }
+
+  return (
+    <HomeScreen
+      onShowHistory={() => setView("history")}
+      onShowProgress={() => setView("progress")}
+    />
+  );
 }

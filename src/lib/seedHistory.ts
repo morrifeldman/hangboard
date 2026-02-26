@@ -81,19 +81,19 @@ async function doSeed(): Promise<void> {
   const sessions: SessionRecord[] = [
     // ── Older paper-journal imports ──────────────────────────────────────────
     repeaters(63, -5,   { imported: true, notes: "backfilled from paper journal" }),
-    repeaters(56, -5,   { imported: true }),
-    repeaters(49, -5,   { imported: true, notes: "felt a bit off" }),
-    repeaters(42, -2.5, { imported: true }),
-    repeaters(35, -2.5, { imported: true }),
+    repeaters(57, -5,   { imported: true }),
+    repeaters(50, -5,   { imported: true, notes: "felt a bit off" }),
+    repeaters(43, -2.5, { imported: true }),
+    repeaters(36, -2.5, { imported: true }),
 
     // ── Live sessions from recent weeks ─────────────────────────────────────
     maxHang(28, -2.5,   { notes: "first max hang session" }),
-    repeaters(26, 0),
-    maxHang(21, 0),
+    repeaters(25, 0),
+    maxHang(22, 0),
     repeaters(19, 0,    { notes: "wide pinch feeling weak" }),
-    maxHang(14, 0,      { notes: "good session" }),
+    maxHang(15, 0,      { notes: "good session" }),
     repeaters(12, 0),
-    maxHang(7, 2.5),
+    maxHang(8, 2.5),
     repeaters(5, 2.5,   { notes: "nearly bailed on sloper but pushed through" }),
     maxHang(3, 2.5),
     repeaters(1, 2.5),

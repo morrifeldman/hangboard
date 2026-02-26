@@ -1,6 +1,6 @@
 # Hangboard PWA — Roadmap
 
-_Last updated: 2026-02-22_
+_Last updated: 2026-02-24_
 
 ## ✅ Option 1: Faster Tests / State Machine Extraction
 
@@ -83,3 +83,64 @@ inserts records into idb via a hidden `/import` page or a Node script.
 **Test impact:** New unit tests for session record construction; 1-2 E2E tests for history screen rendering.
 
 **Recommended order:** Do after Option 1 (fast tests) and optionally Option 2 (if history should cover multiple workout types from the start).
+
+---
+
+## Future: Combined Climbing Training Dashboard
+
+**Vision:** Absorb the `climbing-pyramid-tracker` app into this one, creating a unified
+training + performance dashboard. The hangboard app is the right technical base.
+
+### Why this app absorbs (not the other way around)
+
+- **TypeScript** — essential as the codebase grows; pyramid tracker is plain JS
+- **IndexedDB** — localStorage has a ~5MB cap and no indexing; pyramid tracker will hit this with climb history; IndexedDB scales indefinitely
+- **PWA** — a training log should be installable and offline-capable
+- **Tests** — hangboard has Vitest unit tests + Playwright E2E; pyramid tracker has none
+- **Zustand** — cleaner than prop-drilling climb state through a large component tree
+
+### What gets brought over from the pyramid tracker
+
+- Climb data model (route name, grade, style, date, location, type, attempts)
+- Mountain Project import: CSV parsing + URL import via Vercel serverless function (CORS proxy) — already Vercel-compatible
+- Pyramid + timeline visualisations (`ClimbGrid.jsx` and friends)
+- Grade normalisation logic (`gradeUtils.js`) — port carefully with unit tests, it's non-trivial
+
+### Key architectural changes needed
+
+1. **Real routing** — the current `AppView` string-switch pattern won't scale to this many
+   screens. Add React Router or TanStack Router before the surface area grows further.
+
+2. **New IndexedDB store** — add a `climbs` object store alongside `sessions` in the same
+   `hangboard-history` DB. Both queryable from a unified calendar view.
+
+3. **Calendar becomes the home screen** — the unified 12-week grid shows training type and
+   performance cubes side by side. The hangboard weight picker becomes a drill-down.
+
+4. **TypeScript-ify the pyramid tracker logic** — grade utils and CSV parsing especially.
+
+### Training type taxonomy
+
+| Type | Examples | Key metric |
+|---|---|---|
+| Hangboard | Repeaters, Max Hang | Added weight |
+| Endurance | 20/30 min ARC | Duration |
+| Power | Bouldering, campus, tension board | Grade / intensity |
+| Power endurance | 4×4s, routes | Sets / grade |
+| CIR | Continuous interval repeat — onsight-level lapping | Duration |
+| Performance | Sends (from pyramid tracker) | Grade / style |
+
+### Calendar colour scheme (proposed)
+
+Each training type gets a distinct colour in the calendar grid, replacing the current
+green/blue/purple A-B-both scheme.
+
+### Migration path
+
+1. Add routing
+2. Migrate pyramid tracker climb data to IndexedDB
+3. Port grade normalisation + CSV import to TypeScript with tests
+4. Generalise `buildCalendar` to accept typed activities (not just `"a" | "b"`)
+5. Build unified calendar home screen
+6. Port pyramid/timeline visualisations
+7. Rename / rebrand the app
