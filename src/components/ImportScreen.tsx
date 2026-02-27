@@ -43,12 +43,14 @@ function offsetFromRecord(holds: readonly HoldDefinition[], record: SessionRecor
 
 export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
-  const initialHolds = initialRecord?.workoutType === "b" ? HOLDS_B : HOLDS;
+  // "beginner" sessions are treated as "a" in the edit UI (same hold structure)
+  const initialType: "a" | "b" = initialRecord?.workoutType === "b" ? "b" : "a";
+  const initialHolds = initialType === "b" ? HOLDS_B : HOLDS;
 
   const [dateValue, setDateValue] = useState(() =>
     initialRecord ? localDateString(initialRecord.startedAt) : todayString()
   );
-  const [workoutType, setWorkoutType] = useState<"a" | "b">(initialRecord?.workoutType ?? "a");
+  const [workoutType, setWorkoutType] = useState<"a" | "b">(initialType);
   const [weights, setWeights] = useState<number[]>(() =>
     initialRecord ? weightsFromRecord(initialHolds, initialRecord) : defaultWeights(HOLDS)
   );

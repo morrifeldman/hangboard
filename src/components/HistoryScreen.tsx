@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getSessions } from "../lib/history";
+import { useEffect, useRef, useState } from "react";
+import { getSessions, addSession } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 
 type Props = {
@@ -35,7 +35,9 @@ function formatDuration(startedAt: number, completedAt: number): string {
 }
 
 function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: SessionRecord) => void }) {
-  const workoutLabel = record.workoutType === "b" ? "Max Hang" : "Repeaters";
+  const workoutLabel =
+    record.workoutType === "b" ? "Max Hang" :
+    record.workoutType === "beginner" ? "Beginner" : "Repeaters";
   const duration = formatDuration(record.startedAt, record.completedAt);
 
   return (
@@ -83,6 +85,8 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
 export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getSessions()
@@ -90,6 +94,39 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImportStatus("Importing…");
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error("Expected a JSON array");
+      const validTypes = new Set(["a", "b", "beginner"]);
+      let count = 0;
+      for (const item of data) {
+        if (
+          typeof item !== "object" || item === null ||
+          typeof item.id !== "string" ||
+          !validTypes.has(item.workoutType) ||
+          typeof item.startedAt !== "number" ||
+          !Array.isArray(item.holds)
+        ) {
+          throw new Error(`Invalid record: ${JSON.stringify(item).slice(0, 60)}`);
+        }
+        await addSession({ ...item, id: crypto.randomUUID(), imported: true } as SessionRecord);
+        count++;
+      }
+      const refreshed = await getSessions();
+      setSessions(refreshed);
+      setImportStatus(`Imported ${count} session${count !== 1 ? "s" : ""}`);
+    } catch (err) {
+      setImportStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    setTimeout(() => setImportStatus(null), 4000);
+  };
 
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
@@ -106,6 +143,27 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
         </button>
         <h1 className="text-white font-bold text-lg flex-1">Workout History</h1>
         <button
+          onClick={() => fileInputRef.current?.click()}
+          className="text-gray-400 hover:text-white transition-colors p-1"
+          aria-label="Import JSON"
+          title="Import JSON file"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <polyline points="9 15 12 18 15 15"/>
+          </svg>
+        </button>
+        <input
+          type="file"
+          accept=".json"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <button
           onClick={onImport}
           className="text-gray-400 hover:text-white transition-colors p-1"
           aria-label="Log past workout"
@@ -117,6 +175,11 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
           </svg>
         </button>
       </header>
+      {importStatus && (
+        <div className="bg-gray-800 border-t border-gray-700 px-4 py-2 text-sm text-gray-300">
+          {importStatus}
+        </div>
+      )}
 
       <main className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         {loading && <p className="text-gray-500 text-center py-12">Loading…</p>}

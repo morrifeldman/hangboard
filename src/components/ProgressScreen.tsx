@@ -92,7 +92,26 @@ export function ProgressScreen({ onBack }: Props) {
     setHoldIndex(0);
   };
 
-  const holds = workoutType === "a" ? HOLDS : HOLDS_B;
+  // Extra holds from imported "a" sessions (e.g. "crimp") not in the standard HOLDS array
+  const extraHolds = useMemo(() => {
+    if (workoutType !== "a") return [];
+    const knownIds = new Set(HOLDS.map((h) => h.id));
+    const result: { id: string; name: string }[] = [];
+    const seen = new Set<string>();
+    for (const s of sessions) {
+      if (s.workoutType !== "a") continue;
+      for (const h of s.holds) {
+        if (!knownIds.has(h.holdId) && !seen.has(h.holdId)) {
+          result.push({ id: h.holdId, name: h.holdName });
+          seen.add(h.holdId);
+        }
+      }
+    }
+    return result;
+  }, [sessions, workoutType]);
+
+  const holds: { id: string; name: string }[] =
+    workoutType === "a" ? [...HOLDS, ...extraHolds] : HOLDS_B;
   const selectedHold = holds[holdIndex];
 
   const trend = useMemo(

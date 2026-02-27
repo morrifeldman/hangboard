@@ -66,12 +66,13 @@ export function buildTrend(
  */
 export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
   // Build a lookup keyed by ISO date string "YYYY-MM-DD"
-  const dayMap = new Map<string, Set<"a" | "b">>();
+  // "beginner" sessions are mapped to "a" for calendar coloring (green like repeaters)
+  const dayMap = new Map<string, Set<string>>();
   for (const s of sessions) {
     const d = new Date(s.startedAt);
     const key = isoDate(d);
     if (!dayMap.has(key)) dayMap.set(key, new Set());
-    dayMap.get(key)!.add(s.workoutType);
+    dayMap.get(key)!.add(s.workoutType === "beginner" ? "a" : s.workoutType);
   }
 
   // Find the Monday of the current ISO week

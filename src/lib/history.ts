@@ -19,7 +19,7 @@ export type SessionHoldRecord = {
 
 export type SessionRecord = {
   id: string;
-  workoutType: "a" | "b";
+  workoutType: "a" | "b" | "beginner";
   startedAt: number;
   completedAt: number;
   bailed: boolean;
@@ -75,7 +75,7 @@ export async function updateSession(record: SessionRecord): Promise<void> {
 // ─── Session record builder (pure — unit-testable) ───────────────────────────
 
 type BuildArgs = {
-  workoutType: "a" | "b";
+  workoutType: "a" | "b" | "beginner";
   startedAt: number;
   completedAt: number;
   bailed: boolean;
