@@ -3,7 +3,6 @@ import {
   buildTrend,
   buildCalendar,
   calendarMonthLabels,
-  computeStats,
 } from "../progressData";
 import type { SessionRecord } from "../history";
 
@@ -200,17 +199,3 @@ describe("calendarMonthLabels", () => {
   });
 });
 
-// ─── computeStats ─────────────────────────────────────────────────────────────
-
-describe("computeStats", () => {
-  it("returns 0 for empty sessions", () => {
-    expect(computeStats([]).totalCompleted).toBe(0);
-  });
-
-  it("counts only non-bailed sessions", () => {
-    const s1 = makeSession({ id: "1", workoutType: "a", startedAt: ts("2024-01-05") });
-    const s2 = makeSession({ id: "2", workoutType: "a", startedAt: ts("2024-01-10"), bailed: true });
-    expect(computeStats([s1, s2]).totalCompleted).toBe(1);
-  });
-
-});

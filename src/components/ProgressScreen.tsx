@@ -14,7 +14,6 @@ import {
   buildTrend,
   buildCalendar,
   calendarMonthLabels,
-  computeStats,
 } from "../lib/progressData";
 import type { TrendPoint, CalendarDay } from "../lib/progressData";
 import { HOLDS } from "../data/holds";
@@ -111,7 +110,9 @@ export function ProgressScreen({ onBack }: Props) {
   }, [sessions, workoutType]);
 
   const holds: { id: string; name: string }[] =
-    workoutType === "a" ? [...HOLDS, ...extraHolds] : HOLDS_B;
+    workoutType === "a"
+      ? [...HOLDS.filter((h) => !h.skipProgression), ...extraHolds]
+      : HOLDS_B.filter((h) => !h.skipProgression);
   const selectedHold = holds[holdIndex];
 
   const trend = useMemo(
@@ -122,8 +123,6 @@ export function ProgressScreen({ onBack }: Props) {
 
   const calendarWeeks = useMemo(() => buildCalendar(sessions), [sessions]);
   const monthLabels = useMemo(() => calendarMonthLabels(calendarWeeks), [calendarWeeks]);
-  const stats = useMemo(() => computeStats(sessions), [sessions]);
-
   const isTrendingUp =
     chartPoints.length >= 2 &&
     chartPoints[chartPoints.length - 1].weight >= chartPoints[0].weight;
@@ -161,13 +160,6 @@ export function ProgressScreen({ onBack }: Props) {
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
 
-          {/* ── Stats ── */}
-          <section>
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Stats</p>
-            <div className="bg-gray-800 rounded-xl px-4 py-3 flex items-center justify-center">
-              <StatPill value={String(stats.totalCompleted)} label="sessions completed" />
-            </div>
-          </section>
 
           {/* ── Consistency calendar ── */}
           <section>
@@ -315,14 +307,6 @@ export function ProgressScreen({ onBack }: Props) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatPill({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-white font-bold text-lg tabular-nums">{value}</span>
-      <span className="text-gray-500 text-xs">{label}</span>
-    </div>
-  );
-}
 
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (

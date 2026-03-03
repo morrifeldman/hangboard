@@ -136,14 +136,6 @@ export function calendarMonthLabels(weeks: CalendarDay[][]): string[] {
   return labels;
 }
 
-// ─── computeStats ─────────────────────────────────────────────────────────────
-
-export function computeStats(sessions: SessionRecord[]): {
-  totalCompleted: number;
-} {
-  return { totalCompleted: sessions.filter((s) => !s.bailed).length };
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isoDate(d: Date): string {
