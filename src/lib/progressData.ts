@@ -31,7 +31,7 @@ export function buildTrend(
 ): TrendPoint[] {
   const filtered = sessions
     .filter((s) => s.workoutType === workoutType)
-    .filter((s) => s.holds.some((h) => h.holdId === holdId));
+    .filter((s) => s.holds.some((h) => h.holdId === holdId && h.set1.completed));
 
   // Take newest 20, then reverse to oldest→newest
   const sliced = filtered.slice(0, 20).reverse();

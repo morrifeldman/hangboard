@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { seedTestHistory } from "./lib/seedHistory";
+import { useState } from "react";
 import { useWorkoutStore } from "./store/useWorkoutStore";
 import { useWakeLock } from "./hooks/useWakeLock";
 import { HomeScreen } from "./components/HomeScreen";
@@ -18,12 +17,6 @@ export default function App() {
   const [editRecord, setEditRecord] = useState<SessionRecord | null>(null);
 
   useWakeLock(isActive);
-
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("test")) {
-      seedTestHistory().catch(console.error);
-    }
-  }, []);
 
   if (isActive) return <WorkoutScreen />;
 
