@@ -23,6 +23,7 @@ export function WorkoutScreen() {
   const [confirming, setConfirming] = useState(false);
   const [holdNotes, setHoldNotes] = useState<Record<string, string>>({});
   const [setNotesLive, setSetNotesLive] = useState<Record<string, { set1: string; set2: string }>>({});
+  const [failedSets, setFailedSets] = useState<Record<string, { set1?: boolean; set2?: boolean }>>({});
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sessionNotes, setSessionNotes] = useState("");
@@ -44,6 +45,7 @@ export function WorkoutScreen() {
       notes: notes || undefined,
       holdNotes,
       setNotes: setNotesLive,
+      failedSets,
     });
     addSession(record).catch(console.error);
   };
@@ -112,6 +114,13 @@ export function WorkoutScreen() {
             holdNoteValue={holdNotes[hid] ?? ""}
             onHoldNoteChange={(v) =>
               setHoldNotes((prev) => ({ ...prev, [hid]: v }))
+            }
+            isFailed={failedSets[hid]?.[setKey] ?? false}
+            onToggleFailed={() =>
+              setFailedSets((prev) => ({
+                ...prev,
+                [hid]: { ...prev[hid], [setKey]: !(prev[hid]?.[setKey]) },
+              }))
             }
           />
         );

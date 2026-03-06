@@ -305,6 +305,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             const noteOpen = expandedNoteHolds.has(hold.id);
             const numSets = hold.numSets ?? 2;
             const isCompleted = !editing || (origHoldMap.get(hold.id)?.set1.completed ?? true);
+            const set2Completed = !editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true);
             return (
               <div
                 key={hold.id}
@@ -350,13 +351,19 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                         className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                       />
                       <span className="text-gray-600 text-xs px-1">→</span>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={w2}
-                        onChange={(e) => updateWeight2(i, e.target.value)}
-                        className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                      />
+                      {set2Completed ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={w2}
+                          onChange={(e) => updateWeight2(i, e.target.value)}
+                          className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                        />
+                      ) : (
+                        <span className="w-20 text-gray-500 text-right px-2 py-1 text-sm font-mono line-through inline-block">
+                          {w2}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <input

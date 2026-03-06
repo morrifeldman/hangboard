@@ -95,6 +95,7 @@ type BuildArgs = {
   notes?: string;
   holdNotes?: Record<string, string>;
   setNotes?: Record<string, { set1?: string; set2?: string }>;
+  failedSets?: Record<string, { set1?: boolean; set2?: boolean }>;
 };
 
 export function buildSessionRecord({
@@ -109,6 +110,7 @@ export function buildSessionRecord({
   notes,
   holdNotes,
   setNotes,
+  failedSets,
 }: BuildArgs): SessionRecord {
   const holdRecords: SessionHoldRecord[] = holds.map((hold, i) => {
     const numSets = hold.numSets ?? 2;
@@ -135,6 +137,9 @@ export function buildSessionRecord({
       set1Completed = false;
       set2Completed = false;
     }
+
+    if (failedSets?.[hold.id]?.set1) set1Completed = false;
+    if (failedSets?.[hold.id]?.set2) set2Completed = false;
 
     const set1: SessionSetRecord = {
       weight: effectiveWeight(hold.id, 1),

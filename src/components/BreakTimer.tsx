@@ -9,9 +9,11 @@ type Props = {
   onSetNoteChange: (v: string) => void;
   holdNoteValue: string;
   onHoldNoteChange: (v: string) => void;
+  isFailed: boolean;
+  onToggleFailed: () => void;
 };
 
-export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHoldNoteChange }: Props) {
+export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHoldNoteChange, isFailed, onToggleFailed }: Props) {
   const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
@@ -118,6 +120,18 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         );
       })()}
 
+      {!hold.isRestOnly && (
+        <button
+          onClick={onToggleFailed}
+          className={`w-full py-2 rounded-lg text-sm font-semibold transition-colors ${
+            isFailed
+              ? "bg-red-900/50 text-red-400 border border-red-700/50"
+              : "bg-gray-800 text-gray-600 border border-gray-700"
+          }`}
+        >
+          Failed last set
+        </button>
+      )}
       <textarea
         value={setNoteValue}
         onChange={(e) => onSetNoteChange(e.target.value)}
