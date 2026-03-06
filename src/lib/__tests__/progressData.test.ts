@@ -39,23 +39,23 @@ function ts(dateStr: string): number {
 
 describe("buildTrend", () => {
   it("returns empty array for empty sessions", () => {
-    expect(buildTrend([], "jug", "a")).toEqual([]);
+    expect(buildTrend([], "jug", "repeaters")).toEqual([]);
   });
 
   it("returns empty array when no sessions match workoutType", () => {
-    const s = makeSession({ id: "1", workoutType: "b", startedAt: ts("2024-01-10") });
-    expect(buildTrend([s], "jug", "a")).toEqual([]);
+    const s = makeSession({ id: "1", workoutType: "max-hang", startedAt: ts("2024-01-10") });
+    expect(buildTrend([s], "jug", "repeaters")).toEqual([]);
   });
 
   it("returns empty array when hold not present in sessions", () => {
-    const s = makeSession({ id: "1", workoutType: "a", startedAt: ts("2024-01-10") });
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10") });
     // Session has "jug" and "large-edge" but not "sloper"
-    expect(buildTrend([s], "sloper", "a")).toEqual([]);
+    expect(buildTrend([s], "sloper", "repeaters")).toEqual([]);
   });
 
   it("returns single point for a single matching session", () => {
-    const s = makeSession({ id: "1", workoutType: "a", startedAt: ts("2024-01-10") });
-    const result = buildTrend([s], "jug", "a");
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10") });
+    const result = buildTrend([s], "jug", "repeaters");
     expect(result).toHaveLength(1);
     expect(result[0].weight).toBe(0);
     expect(result[0].bailed).toBe(false);
@@ -64,38 +64,38 @@ describe("buildTrend", () => {
 
   it("returns points ordered oldest→newest", () => {
     const sessions = [
-      makeSession({ id: "3", workoutType: "a", startedAt: ts("2024-01-15") }),
-      makeSession({ id: "2", workoutType: "a", startedAt: ts("2024-01-10") }),
-      makeSession({ id: "1", workoutType: "a", startedAt: ts("2024-01-05") }),
+      makeSession({ id: "3", workoutType: "repeaters", startedAt: ts("2024-01-15") }),
+      makeSession({ id: "2", workoutType: "repeaters", startedAt: ts("2024-01-10") }),
+      makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05") }),
     ]; // newest-first (as getSessions returns)
 
-    const result = buildTrend(sessions, "jug", "a");
+    const result = buildTrend(sessions, "jug", "repeaters");
     expect(result[0].date.getTime()).toBeLessThan(result[1].date.getTime());
     expect(result[1].date.getTime()).toBeLessThan(result[2].date.getTime());
   });
 
   it("marks bailed sessions correctly", () => {
-    const s = makeSession({ id: "1", workoutType: "a", startedAt: ts("2024-01-10"), bailed: true });
-    const result = buildTrend([s], "jug", "a");
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10"), bailed: true });
+    const result = buildTrend([s], "jug", "repeaters");
     expect(result[0].bailed).toBe(true);
   });
 
   it("marks isPR at the highest weight point", () => {
     const sessions = [
       makeSession({
-        id: "3", workoutType: "a", startedAt: ts("2024-01-15"),
+        id: "3", workoutType: "repeaters", startedAt: ts("2024-01-15"),
         holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 5, reps: 7, completed: true }, set2: null }],
       }),
       makeSession({
-        id: "2", workoutType: "a", startedAt: ts("2024-01-10"),
+        id: "2", workoutType: "repeaters", startedAt: ts("2024-01-10"),
         holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
       }),
       makeSession({
-        id: "1", workoutType: "a", startedAt: ts("2024-01-05"),
+        id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05"),
         holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 3, reps: 7, completed: true }, set2: null }],
       }),
     ];
-    const result = buildTrend(sessions, "jug", "a");
+    const result = buildTrend(sessions, "jug", "repeaters");
     // Oldest→newest: 5kg, 10kg, 3kg ... wait, let me reorder:
     // sessions is newest-first: id=3 (Jan15, 5kg), id=2 (Jan10, 10kg), id=1 (Jan5, 3kg)
     // After slice(0,20).reverse(): Jan5(3kg), Jan10(10kg), Jan15(5kg)
@@ -111,13 +111,13 @@ describe("buildTrend", () => {
     const sessions = Array.from({ length: 25 }, (_, i) =>
       makeSession({
         id: String(i),
-        workoutType: "a",
+        workoutType: "repeaters",
         startedAt: ts("2024-01-01") + i * 86400000,
         holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: i, reps: 7, completed: true }, set2: null }],
       })
     ).reverse(); // newest-first
 
-    const result = buildTrend(sessions, "jug", "a");
+    const result = buildTrend(sessions, "jug", "repeaters");
     expect(result).toHaveLength(20);
     // Should be the 20 most recent (i=5..24), ordered oldest→newest
     expect(result[0].weight).toBe(5);
@@ -143,17 +143,17 @@ describe("buildCalendar", () => {
     // Use a day guaranteed to be in the last 12 weeks
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 7);
-    const s = makeSession({ id: "1", workoutType: "a", startedAt: recentDate.getTime() });
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
     const grid = buildCalendar([s]);
     const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("a");
+    expect(found?.workoutType).toBe("repeaters");
   });
 
   it("marks 'both' when a day has both workout types", () => {
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 5);
-    const sa = makeSession({ id: "1", workoutType: "a", startedAt: recentDate.getTime() });
-    const sb = makeSession({ id: "2", workoutType: "b", startedAt: recentDate.getTime() + 3600000 });
+    const sa = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
+    const sb = makeSession({ id: "2", workoutType: "max-hang", startedAt: recentDate.getTime() + 3600000 });
     const grid = buildCalendar([sa, sb]);
     const found = grid.flat().find((d) => d.workoutType !== null);
     expect(found?.workoutType).toBe("both");
@@ -170,7 +170,7 @@ describe("buildCalendar", () => {
   it("does not include sessions older than 12 weeks", () => {
     const oldDate = new Date();
     oldDate.setDate(oldDate.getDate() - 90); // ~13 weeks ago
-    const s = makeSession({ id: "1", workoutType: "a", startedAt: oldDate.getTime() });
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: oldDate.getTime() });
     const grid = buildCalendar([s]);
     const anyMarked = grid.flat().some((d) => d.workoutType !== null);
     expect(anyMarked).toBe(false);

@@ -7,7 +7,7 @@ import * as SM from "../lib/stateMachine";
 import type { WorkoutPhase } from "../lib/stateMachine";
 export type { WorkoutPhase };
 
-export type WorkoutId = "a" | "b" | "test";
+export type WorkoutId = "repeaters" | "max-hang" | "test";
 
 type StoredWeights = Record<string, { set1: number; set2: number }>;
 type Overrides = Record<string, { set1: number | null; set2: number | null }>;
@@ -60,7 +60,7 @@ function defaultWeightsB(): StoredWeights {
 }
 
 function holdsFor(id: WorkoutId): readonly HoldDefinition[] {
-  if (id === "b") return HOLDS_B;
+  if (id === "max-hang") return HOLDS_B;
   if (id === "test") return HOLDS_TEST;
   return HOLDS;
 }
@@ -70,7 +70,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
     (set, get) => ({
       weights: defaultWeightsA(),
       weightsB: defaultWeightsB(),
-      selectedWorkout: "a",
+      selectedWorkout: "repeaters",
 
       phase: "idle",
       holdIndex: 0,
@@ -90,7 +90,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
         const overrideVal = override?.[key] ?? null;
         if (overrideVal !== null) return overrideVal;
 
-        const storedMap = get().selectedWorkout === "b" ? get().weightsB : get().weights;
+        const storedMap = get().selectedWorkout === "max-hang" ? get().weightsB : get().weights;
         const stored = storedMap[holdId];
         if (!stored) {
           const holds = holdsFor(get().selectedWorkout);
@@ -163,7 +163,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
       adjustNextWeight: (holdId, setNum, delta) => {
         const key = setNum <= 1 ? "set1" : "set2";
-        if (get().selectedWorkout === "b") {
+        if (get().selectedWorkout === "max-hang") {
           const stored = get().weightsB[holdId] ?? { set1: 0, set2: 0 };
           set({
             weightsB: {
@@ -183,7 +183,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       },
 
       resetWeights: () => {
-        if (get().selectedWorkout === "b") {
+        if (get().selectedWorkout === "max-hang") {
           set({ weightsB: defaultWeightsB() });
         } else {
           set({ weights: defaultWeightsA() });
@@ -195,7 +195,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       partialize: (s) => ({
         weights: s.weights,
         weightsB: s.weightsB,
-        selectedWorkout: s.selectedWorkout === "test" ? "a" : s.selectedWorkout,
+        selectedWorkout: s.selectedWorkout === "test" ? "repeaters" : s.selectedWorkout,
       }),
     }
   )

@@ -27,7 +27,7 @@ function repeaters(
 
   return {
     id: crypto.randomUUID(),
-    workoutType: "a",
+    workoutType: "repeaters",
     startedAt: start,
     completedAt: end,
     bailed: opts.bailed ?? false,
@@ -58,7 +58,7 @@ function maxHang(
 
   return {
     id: crypto.randomUUID(),
-    workoutType: "b",
+    workoutType: "max-hang",
     startedAt: start,
     completedAt: end,
     bailed: false,

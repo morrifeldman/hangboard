@@ -65,8 +65,8 @@ function CustomDot({ cx, cy, payload }: DotProps) {
 // ─── Calendar helpers ─────────────────────────────────────────────────────────
 
 function colorFor(t: CalendarDay["workoutType"]): string {
-  if (t === "a") return "bg-green-600";
-  if (t === "b") return "bg-blue-500";
+  if (t === "repeaters") return "bg-green-600";
+  if (t === "max-hang") return "bg-blue-500";
   if (t === "both") return "bg-purple-500";
   return "bg-gray-800";
 }
@@ -76,7 +76,7 @@ function colorFor(t: CalendarDay["workoutType"]): string {
 export function ProgressScreen({ onBack }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [workoutType, setWorkoutType] = useState<"a" | "b">("a");
+  const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
   const [holdIndex, setHoldIndex] = useState(0);
 
   useEffect(() => {
@@ -86,19 +86,19 @@ export function ProgressScreen({ onBack }: Props) {
   }, []);
 
   // Reset hold picker when switching workout type
-  const handleWorkoutType = (t: "a" | "b") => {
+  const handleWorkoutType = (t: "repeaters" | "max-hang") => {
     setWorkoutType(t);
     setHoldIndex(0);
   };
 
   // Extra holds from imported "a" sessions (e.g. "crimp") not in the standard HOLDS array
   const extraHolds = useMemo(() => {
-    if (workoutType !== "a") return [];
+    if (workoutType !== "repeaters") return [];
     const knownIds = new Set(HOLDS.map((h) => h.id));
     const result: { id: string; name: string }[] = [];
     const seen = new Set<string>();
     for (const s of sessions) {
-      if (s.workoutType !== "a") continue;
+      if (s.workoutType !== "repeaters" && s.workoutType !== "beginner") continue;
       for (const h of s.holds) {
         if (!knownIds.has(h.holdId) && !seen.has(h.holdId)) {
           result.push({ id: h.holdId, name: h.holdName });
@@ -110,7 +110,7 @@ export function ProgressScreen({ onBack }: Props) {
   }, [sessions, workoutType]);
 
   const holds: { id: string; name: string }[] =
-    workoutType === "a"
+    workoutType === "repeaters"
       ? [...HOLDS.filter((h) => !h.skipProgression), ...extraHolds]
       : HOLDS_B.filter((h) => !h.skipProgression);
   const selectedHold = holds[holdIndex];
@@ -130,7 +130,7 @@ export function ProgressScreen({ onBack }: Props) {
   const lineColor = isTrendingUp ? "#22c55e" : "#6366f1";
 
   const hasSessions = sessions.length > 0;
-  const workoutLabel = workoutType === "a" ? "Repeaters" : "Max Hang";
+  const workoutLabel = workoutType === "repeaters" ? "Repeaters" : "Max Hang";
 
   return (
     <div className="h-dvh bg-gray-900 flex flex-col overflow-hidden">
@@ -211,7 +211,7 @@ export function ProgressScreen({ onBack }: Props) {
             <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-3">
               {/* A / B toggle */}
               <div className="flex gap-2">
-                {(["a", "b"] as const).map((t) => (
+                {(["repeaters", "max-hang"] as const).map((t) => (
                   <button
                     key={t}
                     onClick={() => handleWorkoutType(t)}
@@ -221,7 +221,7 @@ export function ProgressScreen({ onBack }: Props) {
                         : "bg-gray-700 text-gray-400"
                     }`}
                   >
-                    {t === "a" ? "Repeaters" : "Max Hang"}
+                    {t === "repeaters" ? "Repeaters" : "Max Hang"}
                   </button>
                 ))}
               </div>

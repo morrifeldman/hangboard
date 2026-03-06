@@ -7,6 +7,7 @@ export type SessionSetRecord = {
   weight: number;
   reps: number;
   completed: boolean;
+  notes?: string;
 };
 
 export type SessionHoldRecord = {
@@ -19,7 +20,7 @@ export type SessionHoldRecord = {
 
 export type SessionRecord = {
   id: string;
-  workoutType: "a" | "b" | "beginner";
+  workoutType: "repeaters" | "max-hang" | "beginner";
   startedAt: number;
   completedAt: number;
   bailed: boolean;
@@ -59,7 +60,15 @@ export async function addSession(record: SessionRecord): Promise<void> {
 export async function getSessions(): Promise<SessionRecord[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex(STORE, "by-start");
-  return all.reverse();
+  // Migrate legacy workout type values stored before the rename
+  const normalized = all.map((s) => ({
+    ...s,
+    workoutType:
+      s.workoutType === "a" ? "repeaters" :
+      s.workoutType === "b" ? "max-hang" :
+      s.workoutType,
+  }));
+  return normalized.reverse();
 }
 
 export async function deleteSession(id: string): Promise<void> {
@@ -75,7 +84,7 @@ export async function updateSession(record: SessionRecord): Promise<void> {
 // ─── Session record builder (pure — unit-testable) ───────────────────────────
 
 type BuildArgs = {
-  workoutType: "a" | "b" | "beginner";
+  workoutType: "repeaters" | "max-hang" | "beginner";
   startedAt: number;
   completedAt: number;
   bailed: boolean;
@@ -85,6 +94,7 @@ type BuildArgs = {
   effectiveWeight: (holdId: string, setNum: 1 | 2) => number;
   notes?: string;
   holdNotes?: Record<string, string>;
+  setNotes?: Record<string, { set1?: string; set2?: string }>;
 };
 
 export function buildSessionRecord({
@@ -98,6 +108,7 @@ export function buildSessionRecord({
   effectiveWeight,
   notes,
   holdNotes,
+  setNotes,
 }: BuildArgs): SessionRecord {
   const holdRecords: SessionHoldRecord[] = holds.map((hold, i) => {
     const numSets = hold.numSets ?? 2;
@@ -129,6 +140,7 @@ export function buildSessionRecord({
       weight: effectiveWeight(hold.id, 1),
       reps: reps1,
       completed: set1Completed,
+      ...(setNotes?.[hold.id]?.set1 ? { notes: setNotes[hold.id].set1 } : {}),
     };
 
     const set2: SessionSetRecord | null =
@@ -137,6 +149,7 @@ export function buildSessionRecord({
             weight: effectiveWeight(hold.id, 2),
             reps: reps2,
             completed: set2Completed,
+            ...(setNotes?.[hold.id]?.set2 ? { notes: setNotes[hold.id].set2 } : {}),
           }
         : null;
 

@@ -11,7 +11,7 @@ export type TrendPoint = {
 
 export type CalendarDay = {
   date: Date;
-  workoutType: "a" | "b" | "both" | null;
+  workoutType: "repeaters" | "max-hang" | "both" | null;
 };
 
 // ─── buildTrend ───────────────────────────────────────────────────────────────
@@ -27,10 +27,10 @@ export type CalendarDay = {
 export function buildTrend(
   sessions: SessionRecord[],
   holdId: string,
-  workoutType: "a" | "b"
+  workoutType: "repeaters" | "max-hang"
 ): TrendPoint[] {
   const filtered = sessions
-    .filter((s) => s.workoutType === workoutType)
+    .filter((s) => s.workoutType === workoutType || (workoutType === "repeaters" && s.workoutType === "beginner"))
     .filter((s) => s.holds.some((h) => h.holdId === holdId && h.set1.completed));
 
   // Take newest 20, then reverse to oldest→newest
@@ -72,7 +72,7 @@ export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
     const d = new Date(s.startedAt);
     const key = isoDate(d);
     if (!dayMap.has(key)) dayMap.set(key, new Set());
-    dayMap.get(key)!.add(s.workoutType === "beginner" ? "a" : s.workoutType);
+    dayMap.get(key)!.add(s.workoutType === "beginner" ? "repeaters" : s.workoutType);
   }
 
   // Find the Monday of the current ISO week
@@ -96,11 +96,11 @@ export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
       date.setDate(startMonday.getDate() + w * 7 + d);
       const key = isoDate(date);
       const types = dayMap.get(key);
-      let workoutType: "a" | "b" | "both" | null = null;
+      let workoutType: "repeaters" | "max-hang" | "both" | null = null;
       if (types) {
-        const hasA = types.has("a");
-        const hasB = types.has("b");
-        workoutType = hasA && hasB ? "both" : hasA ? "a" : "b";
+        const hasA = types.has("repeaters");
+        const hasB = types.has("max-hang");
+        workoutType = hasA && hasB ? "both" : hasA ? "repeaters" : "max-hang";
       }
       week.push({ date: new Date(date), workoutType });
     }

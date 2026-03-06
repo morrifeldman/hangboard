@@ -36,7 +36,7 @@ function formatDuration(startedAt: number, completedAt: number): string {
 
 function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: SessionRecord) => void }) {
   const workoutLabel =
-    record.workoutType === "b" ? "Max Hang" :
+    record.workoutType === "max-hang" ? "Max Hang" :
     record.workoutType === "beginner" ? "Beginner" : "Repeaters";
   const duration = formatDuration(record.startedAt, record.completedAt);
 
@@ -104,7 +104,7 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!Array.isArray(data)) throw new Error("Expected a JSON array");
-      const validTypes = new Set(["a", "b", "beginner"]);
+      const validTypes = new Set(["repeaters", "max-hang", "beginner"]);
       let count = 0;
       for (const item of data) {
         if (
@@ -116,7 +116,7 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
         ) {
           throw new Error(`Invalid record: ${JSON.stringify(item).slice(0, 60)}`);
         }
-        await addSession({ ...item, id: crypto.randomUUID(), imported: true } as SessionRecord);
+        await addSession({ ...item, imported: true } as SessionRecord);
         count++;
       }
       const refreshed = await getSessions();

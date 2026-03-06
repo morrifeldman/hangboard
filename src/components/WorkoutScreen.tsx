@@ -22,6 +22,7 @@ export function WorkoutScreen() {
 
   const [confirming, setConfirming] = useState(false);
   const [holdNotes, setHoldNotes] = useState<Record<string, string>>({});
+  const [setNotesLive, setSetNotesLive] = useState<Record<string, { set1: string; set2: string }>>({});
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sessionNotes, setSessionNotes] = useState("");
@@ -42,6 +43,7 @@ export function WorkoutScreen() {
       effectiveWeight: (holdId, setNum) => effectiveWeight(holdId, setNum),
       notes: notes || undefined,
       holdNotes,
+      setNotes: setNotesLive,
     });
     addSession(record).catch(console.error);
   };
@@ -94,15 +96,26 @@ export function WorkoutScreen() {
       case "hanging":
       case "resting":
         return <HangTimer />;
-      case "break":
+      case "break": {
+        const hid = currentHoldDef?.id ?? "";
+        const betweenSets = setNumber < numSets;
+        const setKey = betweenSets ? "set1" : "set2";
         return (
           <BreakTimer
-            noteValue={holdNotes[currentHoldDef?.id ?? ""] ?? ""}
-            onNoteChange={(v) =>
-              setHoldNotes((prev) => ({ ...prev, [currentHoldDef.id]: v }))
+            setNoteValue={setNotesLive[hid]?.[setKey] ?? ""}
+            onSetNoteChange={(v) =>
+              setSetNotesLive((prev) => ({
+                ...prev,
+                [hid]: { ...prev[hid], [setKey]: v },
+              }))
+            }
+            holdNoteValue={holdNotes[hid] ?? ""}
+            onHoldNoteChange={(v) =>
+              setHoldNotes((prev) => ({ ...prev, [hid]: v }))
             }
           />
         );
+      }
       case "done":
         return (
           <div className="flex flex-col items-center gap-6 px-6 w-full max-w-sm">

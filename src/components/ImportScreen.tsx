@@ -3,7 +3,7 @@ import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
-import type { SessionRecord, SessionHoldRecord } from "../lib/history";
+import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 
 
 type Props = {
@@ -26,38 +26,35 @@ function defaultWeights(holds: readonly HoldDefinition[]): number[] {
   return holds.map((h) => h.defaultSet1Weight);
 }
 
-function weightsFromRecord(holds: readonly HoldDefinition[], record: SessionRecord): number[] {
-  return holds.map((hold) => {
-    const hr = record.holds.find((h) => h.holdId === hold.id);
-    return hr ? hr.set1.weight : hold.defaultSet1Weight;
-  });
-}
-
-function offsetFromRecord(holds: readonly HoldDefinition[], record: SessionRecord): number {
-  for (const hold of holds) {
-    if (hold.isRestOnly || hold.skipProgression) continue;
-    const hr = record.holds.find((h) => h.holdId === hold.id);
-    if (hr?.set2) return hr.set2.weight - hr.set1.weight;
+function offsetFromRecord(record: SessionRecord): number {
+  for (const h of record.holds) {
+    if (h.set1.completed && h.set2?.completed) return h.set2.weight - h.set1.weight;
   }
   return 10;
 }
 
 export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
-  // "beginner" sessions are treated as "a" in the edit UI (same hold structure)
-  const initialType: "a" | "b" = initialRecord?.workoutType === "b" ? "b" : "a";
-  const initialHolds = initialType === "b" ? HOLDS_B : HOLDS;
+  // "beginner" sessions are treated as "repeaters" in the edit UI (same hold structure)
+  const initialType: "repeaters" | "max-hang" = initialRecord?.workoutType === "max-hang" ? "max-hang" : "repeaters";
 
   const [dateValue, setDateValue] = useState(() =>
     initialRecord ? localDateString(initialRecord.startedAt) : todayString()
   );
-  const [workoutType, setWorkoutType] = useState<"a" | "b">(initialType);
+  const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">(initialType);
   const [weights, setWeights] = useState<number[]>(() =>
-    initialRecord ? weightsFromRecord(initialHolds, initialRecord) : defaultWeights(HOLDS)
+    initialRecord ? initialRecord.holds.map((h) => h.set1.weight) : defaultWeights(HOLDS)
   );
-  const [set2Offset, setSet2Offset] = useState(() =>
-    initialRecord?.workoutType === "a" ? offsetFromRecord(HOLDS, initialRecord) : 10
+  const [weights2, setWeights2] = useState<number[]>(() =>
+    initialRecord
+      ? initialRecord.holds.map((h) => h.set2?.weight ?? h.set1.weight)
+      : HOLDS.map((h) => h.defaultSet1Weight + 10)
   );
+  const [set2Offset, setSet2Offset] = useState(() => {
+    if (!initialRecord) return 10;
+    if (initialRecord.workoutType === "max-hang") return 10;
+    return offsetFromRecord(initialRecord);
+  });
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
   const [holdNotesState, setHoldNotesState] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -66,9 +63,20 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         .map((h) => [h.holdId, h.notes!])
     )
   );
-  // Which hold note fields are currently open (auto-open holds that already have notes)
+  const [setNotesState, setSetNotesState] = useState<Record<string, { set1: string; set2: string }>>(() =>
+    Object.fromEntries(
+      (initialRecord?.holds ?? [])
+        .filter((h) => h.set1.notes || h.set2?.notes)
+        .map((h) => [h.holdId, { set1: h.set1.notes ?? "", set2: h.set2?.notes ?? "" }])
+    )
+  );
+  // Which hold note fields are currently open (auto-open holds that already have any notes)
   const [expandedNoteHolds, setExpandedNoteHolds] = useState<Set<string>>(
-    () => new Set((initialRecord?.holds ?? []).filter((h) => h.notes).map((h) => h.holdId))
+    () => new Set(
+      (initialRecord?.holds ?? [])
+        .filter((h) => h.notes || h.set1.notes || h.set2?.notes)
+        .map((h) => h.holdId)
+    )
   );
 
   const toggleNote = (holdId: string) =>
@@ -80,11 +88,32 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const holds = workoutType === "a" ? HOLDS : HOLDS_B;
+  // Map of holdId → original record hold for edit mode (completion status, original weights)
+  const origHoldMap = new Map((initialRecord?.holds ?? []).map((h) => [h.holdId, h]));
 
-  const handleTypeChange = (type: "a" | "b") => {
+  // In edit mode use the actual holds from the record (preserves non-standard holds like Small Crimp)
+  const allDefs = [...HOLDS, ...HOLDS_B];
+  const holds: readonly HoldDefinition[] = editing && initialRecord
+    ? initialRecord.holds.map((h): HoldDefinition =>
+        allDefs.find((d) => d.id === h.holdId) ?? {
+          id: h.holdId,
+          name: h.holdName,
+          defaultSet1Weight: h.set1.weight,
+          defaultSet2Weight: h.set2?.weight ?? h.set1.weight,
+          set1Reps: h.set1.reps,
+          set2Reps: h.set2?.reps ?? h.set1.reps,
+          numSets: h.set2 !== null ? 2 : 1,
+        }
+      )
+    : workoutType === "repeaters" ? HOLDS : HOLDS_B;
+
+  const handleTypeChange = (type: "repeaters" | "max-hang") => {
     setWorkoutType(type);
-    setWeights(defaultWeights(type === "a" ? HOLDS : HOLDS_B));
+    const newHolds = type === "repeaters" ? HOLDS : HOLDS_B;
+    setWeights(defaultWeights(newHolds));
+    setWeights2(newHolds.map((h) =>
+      type === "repeaters" ? h.defaultSet1Weight + set2Offset : h.defaultSet2Weight
+    ));
   };
 
   const updateWeight = (index: number, raw: string) => {
@@ -96,18 +125,38 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     });
   };
 
+  const updateWeight2 = (index: number, raw: string) => {
+    const value = parseFloat(raw);
+    setWeights2((prev) => {
+      const next = [...prev];
+      next[index] = isNaN(value) ? 0 : value;
+      return next;
+    });
+  };
+
   const buildHoldRecords = (): SessionHoldRecord[] =>
     holds.map((hold, i) => {
       const numSets = hold.numSets ?? 2;
       const reps1 = hold.repsPerSet ?? hold.set1Reps;
       const reps2 = hold.repsPerSet ?? hold.set2Reps;
+      const origHold = origHoldMap.get(hold.id);
+      const set1Completed = !editing || (origHold?.set1.completed ?? true);
+      const set2Completed = !editing || (origHold?.set2?.completed ?? true);
       const w = hold.isRestOnly || hold.skipProgression ? 0 : (weights[i] ?? 0);
-      const offset = workoutType === "a" ? set2Offset : hold.defaultSet2Weight - hold.defaultSet1Weight;
+      const w2 = hold.isRestOnly || hold.skipProgression ? 0 : (weights2[i] ?? 0);
+      const sn = setNotesState[hold.id];
+      const set1: SessionSetRecord = {
+        weight: w, reps: reps1, completed: set1Completed,
+        ...(sn?.set1 ? { notes: sn.set1 } : {}),
+      };
+      const set2: SessionSetRecord | null = numSets >= 2
+        ? { weight: w2, reps: reps2, completed: set2Completed, ...(sn?.set2 ? { notes: sn.set2 } : {}) }
+        : null;
       return {
         holdId: hold.id,
         holdName: hold.name,
-        set1: { weight: w, reps: reps1, completed: true },
-        set2: numSets >= 2 ? { weight: w + offset, reps: reps2, completed: true } : null,
+        set1,
+        set2,
         ...(holdNotesState[hold.id] ? { notes: holdNotesState[hold.id] } : {}),
       };
     });
@@ -196,15 +245,16 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         <div className="flex items-center gap-3">
           <span className="text-gray-400 text-sm w-12 flex-shrink-0">Type</span>
           <div className="flex gap-2">
-            {([["a", "Repeaters"], ["b", "Max Hang"]] as const).map(([t, label]) => (
+            {([["repeaters", "Repeaters"], ["max-hang", "Max Hang"]] as const).map(([t, label]) => (
               <button
                 key={t}
                 onClick={() => handleTypeChange(t)}
+                disabled={editing}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   workoutType === t
                     ? "bg-indigo-600 text-white"
                     : "bg-gray-800 text-gray-400 border border-gray-700"
-                }`}
+                } disabled:opacity-50 disabled:cursor-default`}
               >
                 {label}
               </button>
@@ -212,8 +262,8 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           </div>
         </div>
 
-        {/* Set 2 offset — Repeaters only */}
-        {workoutType === "a" && (
+        {/* Set 2 offset — Repeaters only; batch-updates set 2 weights */}
+        {workoutType === "repeaters" && (
           <div className="flex items-center gap-3">
             <span className="text-gray-400 text-sm w-12 flex-shrink-0">Offset</span>
             <div className="flex items-center gap-2">
@@ -222,7 +272,13 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                 type="number"
                 step="0.5"
                 value={set2Offset}
-                onChange={(e) => setSet2Offset(parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  const newOffset = parseFloat(e.target.value) || 0;
+                  setSet2Offset(newOffset);
+                  setWeights2(weights.map((w, i) =>
+                    (holds[i].isRestOnly || holds[i].skipProgression) ? 0 : w + newOffset
+                  ));
+                }}
                 className="w-16 bg-gray-800 text-white text-right rounded-lg px-3 py-2 text-sm font-mono border border-gray-700 focus:outline-none focus:border-gray-500"
               />
               <span className="text-gray-500 text-sm">lbs heavier</span>
@@ -238,28 +294,30 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           <div className="px-4 py-2 border-b border-gray-700 flex items-center justify-between">
             <span className="text-gray-500 text-xs uppercase tracking-wide">Hold</span>
             <span className="text-gray-500 text-xs uppercase tracking-wide text-right">
-              {workoutType === "a" ? "Set 1 / Set 2" : "Weight"}
+              {workoutType === "repeaters" ? "Set 1 / Set 2" : "Weight"}
             </span>
           </div>
           {holds.map((hold, i) => {
-            const offset = workoutType === "a" ? set2Offset : hold.defaultSet2Weight - hold.defaultSet1Weight;
             const w = weights[i] ?? 0;
-            const hasNote = !!holdNotesState[hold.id];
+            const w2 = weights2[i] ?? 0;
+            const sn = setNotesState[hold.id];
+            const hasNote = !!holdNotesState[hold.id] || !!sn?.set1 || !!sn?.set2;
             const noteOpen = expandedNoteHolds.has(hold.id);
+            const numSets = hold.numSets ?? 2;
+            const isCompleted = !editing || (origHoldMap.get(hold.id)?.set1.completed ?? true);
             return (
               <div
                 key={hold.id}
                 className="px-4 py-2.5 flex flex-col border-b border-gray-700 last:border-0"
               >
                 <div className="flex items-center gap-3">
-                  {/* Hold name — tappable in edit mode to open note field */}
-                  {editing ? (
+                  {/* Hold name */}
+                  {editing && isCompleted ? (
                     <button
                       onClick={() => toggleNote(hold.id)}
                       className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
                     >
                       <span className="text-gray-300 text-sm truncate">{hold.name}</span>
-                      {/* Pencil icon: indigo when note exists, near-invisible otherwise */}
                       <svg
                         width="11" height="11" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2.5"
@@ -271,11 +329,18 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                       </svg>
                     </button>
                   ) : (
-                    <span className="text-gray-300 text-sm flex-1 truncate">{hold.name}</span>
+                    <span className={`text-sm flex-1 truncate ${isCompleted ? "text-gray-300" : "text-gray-600"}`}>
+                      {hold.name}
+                    </span>
                   )}
-                  {hold.isRestOnly || hold.skipProgression ? (
+                  {/* Weight display */}
+                  {!isCompleted ? (
+                    <span className="text-gray-600 text-sm font-mono">
+                      {hold.isRestOnly || hold.skipProgression ? "BW" : numSets >= 2 ? `${w} → ${w2}` : String(w)}
+                    </span>
+                  ) : hold.isRestOnly || hold.skipProgression ? (
                     <span className="text-gray-500 text-xs font-mono">BW</span>
-                  ) : offset !== 0 ? (
+                  ) : numSets >= 2 ? (
                     <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
                       <input
                         type="number"
@@ -285,9 +350,13 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                         className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                       />
                       <span className="text-gray-600 text-xs px-1">→</span>
-                      <span className="w-14 bg-gray-800 text-gray-500 text-right px-2 py-1 text-sm font-mono">
-                        {w + offset}
-                      </span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={w2}
+                        onChange={(e) => updateWeight2(i, e.target.value)}
+                        className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                      />
                     </div>
                   ) : (
                     <input
@@ -299,25 +368,53 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                     />
                   )}
                 </div>
-                {/* Note field — slides open when toggled */}
-                {editing && noteOpen && (
-                  <textarea
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
-                    autoFocus
-                    value={holdNotesState[hold.id] ?? ""}
-                    onChange={(e) =>
-                      setHoldNotesState((prev) => ({ ...prev, [hold.id]: e.target.value }))
-                    }
-                    onBlur={() => {
-                      // auto-collapse if the user left it empty
-                      if (!holdNotesState[hold.id]) toggleNote(hold.id);
-                    }}
-                    placeholder={`Note on ${hold.name}…`}
-                    rows={2}
-                    className="mt-2 w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                               placeholder-gray-600 resize-none border border-gray-700
-                               focus:outline-none focus:border-indigo-500/50"
-                  />
+                {/* Note fields — slide open when toggled (completed holds only) */}
+                {editing && isCompleted && noteOpen && (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    <textarea
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                      autoFocus
+                      value={holdNotesState[hold.id] ?? ""}
+                      onChange={(e) =>
+                        setHoldNotesState((prev) => ({ ...prev, [hold.id]: e.target.value }))
+                      }
+                      placeholder={`Note on ${hold.name}…`}
+                      rows={1}
+                      className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                                 placeholder-gray-600 resize-none border border-gray-700
+                                 focus:outline-none focus:border-indigo-500/50"
+                    />
+                    <textarea
+                      value={setNotesState[hold.id]?.set1 ?? ""}
+                      onChange={(e) =>
+                        setSetNotesState((prev) => ({
+                          ...prev,
+                          [hold.id]: { ...prev[hold.id], set1: e.target.value },
+                        }))
+                      }
+                      placeholder="Set 1 note…"
+                      rows={1}
+                      className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                                 placeholder-gray-600 resize-none border border-gray-700
+                                 focus:outline-none focus:border-indigo-500/50"
+                    />
+                    {numSets >= 2 && (
+                      <textarea
+                        value={setNotesState[hold.id]?.set2 ?? ""}
+                        onChange={(e) =>
+                          setSetNotesState((prev) => ({
+                            ...prev,
+                            [hold.id]: { ...prev[hold.id], set2: e.target.value },
+                          }))
+                        }
+                        placeholder="Set 2 note…"
+                        rows={1}
+                        className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                                   placeholder-gray-600 resize-none border border-gray-700
+                                   focus:outline-none focus:border-indigo-500/50"
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             );

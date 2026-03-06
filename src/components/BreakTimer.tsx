@@ -5,11 +5,13 @@ import { TimerRing } from "./TimerRing";
 import { WeightAdjuster } from "./WeightAdjuster";
 
 type Props = {
-  noteValue: string;
-  onNoteChange: (v: string) => void;
+  setNoteValue: string;
+  onSetNoteChange: (v: string) => void;
+  holdNoteValue: string;
+  onHoldNoteChange: (v: string) => void;
 };
 
-export function BreakTimer({ noteValue, onNoteChange }: Props) {
+export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHoldNoteChange }: Props) {
   const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
@@ -41,7 +43,7 @@ export function BreakTimer({ noteValue, onNoteChange }: Props) {
   // After the last set — between this hold and the next
   const betweenHolds = !betweenSets;
 
-  const storedMap = selectedWorkout === "b" ? weightsB : weights;
+  const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
   const stored = storedMap[hold.id] ?? { set1: hold.defaultSet1Weight, set2: hold.defaultSet2Weight };
 
   const lastLabel = betweenSets ? `${hold.name} Set ${setNumber}` : hold.name;
@@ -117,14 +119,25 @@ export function BreakTimer({ noteValue, onNoteChange }: Props) {
       })()}
 
       <textarea
-        value={noteValue}
-        onChange={(e) => onNoteChange(e.target.value)}
-        placeholder={`Notes on ${lastLabel} (optional)`}
+        value={setNoteValue}
+        onChange={(e) => onSetNoteChange(e.target.value)}
+        placeholder={betweenSets ? `Set 1 note… (optional)` : `Set 2 note… (optional)`}
         rows={2}
         className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm
                    placeholder-gray-600 resize-none border border-gray-700
                    focus:outline-none focus:border-gray-500"
       />
+      {betweenHolds && (
+        <textarea
+          value={holdNoteValue}
+          onChange={(e) => onHoldNoteChange(e.target.value)}
+          placeholder={`Notes on ${hold.name} (optional)`}
+          rows={2}
+          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm
+                     placeholder-gray-600 resize-none border border-gray-700
+                     focus:outline-none focus:border-gray-500"
+        />
+      )}
 
       <div className="flex w-full gap-3">
         <button

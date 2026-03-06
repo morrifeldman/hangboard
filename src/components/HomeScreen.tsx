@@ -86,7 +86,7 @@ export function HomeScreen({ onShowHistory, onShowProgress }: HomeScreenProps) {
   }, []);
 
   const holds = currentHolds();
-  const storedMap = selectedWorkout === "b" ? weightsB : weights;
+  const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
 
   const handleStart = () => {
     setEditing(null);
@@ -107,8 +107,8 @@ export function HomeScreen({ onShowHistory, onShowProgress }: HomeScreenProps) {
 
   const isTestMode = new URLSearchParams(window.location.search).has("test");
   const workouts: { id: WorkoutId; label: string }[] = [
-    { id: "a", label: "Repeaters" },
-    { id: "b", label: "Max Hang" },
+    { id: "repeaters", label: "Repeaters" },
+    { id: "max-hang", label: "Max Hang" },
     ...(isTestMode ? [{ id: "test" as WorkoutId, label: "Test" }] : []),
   ];
 
@@ -190,7 +190,7 @@ export function HomeScreen({ onShowHistory, onShowProgress }: HomeScreenProps) {
           const isMultiSet = (hold.numSets ?? 2) === 2 && !hold.isRestOnly && !hold.skipProgression;
           const editingS1 = editing?.holdId === hold.id && editing.set === 1;
           const editingS2 = editing?.holdId === hold.id && editing.set === 2;
-          const sparkPoints = buildTrend(sessions, hold.id, selectedWorkout === "b" ? "b" : "a");
+          const sparkPoints = buildTrend(sessions, hold.id, selectedWorkout === "max-hang" ? "max-hang" : "repeaters");
 
           return (
             <div

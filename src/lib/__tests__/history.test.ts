@@ -25,7 +25,7 @@ function weights(holdId: string, setNum: 1 | 2): number {
 }
 
 const BASE = {
-  workoutType: 'a' as const,
+  workoutType: 'repeaters' as const,
   startedAt: 1000,
   completedAt: 2000,
   holds: HOLDS,
@@ -103,7 +103,7 @@ describe('buildSessionRecord', () => {
 
   it('sets correct metadata fields', () => {
     const rec = buildSessionRecord({ ...BASE, bailed: true, holdIndex: 0, setNumber: 1 });
-    expect(rec.workoutType).toBe('a');
+    expect(rec.workoutType).toBe('repeaters');
     expect(rec.startedAt).toBe(1000);
     expect(rec.completedAt).toBe(2000);
     expect(rec.bailed).toBe(true);
