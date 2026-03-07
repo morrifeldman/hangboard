@@ -67,9 +67,10 @@ function repLabel(hold: HoldDefinition): string {
 type HomeScreenProps = {
   onShowHistory: () => void;
   onShowProgress: () => void;
+  onLogGym: () => void;
 };
 
-export function HomeScreen({ onShowHistory, onShowProgress }: HomeScreenProps) {
+export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScreenProps) {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const weights = useWorkoutStore((s) => s.weights);
   const weightsB = useWorkoutStore((s) => s.weightsB);
@@ -265,13 +266,19 @@ export function HomeScreen({ onShowHistory, onShowProgress }: HomeScreenProps) {
         })}
       </main>
 
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 flex flex-col gap-3">
         <button
           onClick={handleStart}
           className="min-h-[64px] w-full rounded-2xl bg-green-600 active:bg-green-500 text-white font-bold text-2xl"
           data-testid="start-workout-btn"
         >
           Start Workout
+        </button>
+        <button
+          onClick={onLogGym}
+          className="w-full py-2.5 rounded-xl text-orange-400 text-sm font-semibold active:text-orange-300 transition-colors"
+        >
+          Log Gym Session
         </button>
       </div>
     </div>

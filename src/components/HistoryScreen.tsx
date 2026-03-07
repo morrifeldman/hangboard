@@ -1,12 +1,58 @@
 import { useEffect, useRef, useState } from "react";
 import { getSessions, addSession } from "../lib/history";
-import type { SessionRecord } from "../lib/history";
+import type { SessionRecord, GymData } from "../lib/history";
 
 type Props = {
   onBack: () => void;
   onImport: () => void;
+  onImportGym: () => void;
   onEdit: (record: SessionRecord) => void;
 };
+
+const GYM_LABELS: Record<string, string> = {
+  "arc":              "ARC",
+  "cir":              "CIR",
+  "power-endurance":  "Power Endurance",
+  "4x4":              "4×4",
+  "performance":      "Performance",
+  "boulder-ladder":   "Boulder Ladder",
+  "hard-bouldering":  "Hard Bouldering",
+  "limit-bouldering": "Limit Bouldering",
+};
+
+function workoutLabel(record: SessionRecord): string {
+  if (record.workoutType === "max-hang") return "Max Hang";
+  if (record.workoutType === "beginner") return "Beginner";
+  if (record.workoutType === "repeaters") return "Repeaters";
+  return GYM_LABELS[record.workoutType] ?? record.workoutType;
+}
+
+function gymSummary(data: GymData): string {
+  switch (data.type) {
+    case "arc": {
+      const parts: string[] = [`${data.climbMin} min`];
+      if (data.maxGrade) parts.push(`Max ${data.maxGrade}`);
+      return parts.join(" · ");
+    }
+    case "cir": {
+      const parts: string[] = [`${data.repeats} repeats`];
+      if (data.climbRating) parts.push(data.climbRating);
+      parts.push(`~${data.avgRestSec}s rest`);
+      return parts.join(" · ");
+    }
+    case "power-endurance":
+      return `${data.climbSec}s on / ${data.restSec}s off · ${data.reps} reps`;
+    case "4x4":
+      return `${data.completed4x4s} 4×4s · ${data.climbSec}s on / ${data.restSec}s off`;
+    case "performance":
+      return `${data.grade} · ${data.tries} tries · ${data.sends} sends`;
+    case "boulder-ladder":
+      return `Top ${data.topV} · ${data.durationMin} min`;
+    case "hard-bouldering":
+    case "limit-bouldering":
+      return `${data.level} · ${data.durationMin} min`;
+  }
+}
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, {
@@ -35,10 +81,9 @@ function formatDuration(startedAt: number, completedAt: number): string {
 }
 
 function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: SessionRecord) => void }) {
-  const workoutLabel =
-    record.workoutType === "max-hang" ? "Max Hang" :
-    record.workoutType === "beginner" ? "Beginner" : "Repeaters";
+  const label = workoutLabel(record);
   const duration = formatDuration(record.startedAt, record.completedAt);
+  const isGym = record.gymData !== undefined;
 
   return (
     <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
@@ -52,16 +97,21 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
             <span className="text-gray-400 text-xs">{formatTime(record.startedAt)}</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded-full font-medium">
-              {workoutLabel}
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              isGym ? "bg-orange-500/20 text-orange-400" : "bg-gray-700 text-gray-300"
+            }`}>
+              {label}
             </span>
-            <span className="text-gray-400 text-xs">{duration}</span>
+            {!isGym && <span className="text-gray-400 text-xs">{duration}</span>}
             {record.bailed && <span className="text-yellow-400 text-xs font-medium">Bailed</span>}
             {record.imported && <span className="text-indigo-400 text-xs font-medium">Imported</span>}
             {record.notes && (
               <span className="text-gray-500 text-xs italic truncate max-w-[160px]">"{record.notes}"</span>
             )}
           </div>
+          {isGym && record.gymData && (
+            <p className="text-gray-400 text-xs mt-0.5">{gymSummary(record.gymData)}</p>
+          )}
         </div>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -82,10 +132,17 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
   );
 }
 
-export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
+const ALL_VALID_TYPES = new Set([
+  "repeaters", "max-hang", "beginner",
+  "arc", "cir", "power-endurance", "4x4",
+  "performance", "boulder-ladder", "hard-bouldering", "limit-bouldering",
+]);
+
+export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -104,13 +161,12 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!Array.isArray(data)) throw new Error("Expected a JSON array");
-      const validTypes = new Set(["repeaters", "max-hang", "beginner"]);
       let count = 0;
       for (const item of data) {
         if (
           typeof item !== "object" || item === null ||
           typeof item.id !== "string" ||
-          !validTypes.has(item.workoutType) ||
+          !ALL_VALID_TYPES.has(item.workoutType) ||
           typeof item.startedAt !== "number" ||
           !Array.isArray(item.holds)
         ) {
@@ -163,17 +219,36 @@ export function HistoryScreen({ onBack, onImport, onEdit }: Props) {
           onChange={handleFileChange}
           className="hidden"
         />
-        <button
-          onClick={onImport}
-          className="text-gray-400 hover:text-white transition-colors p-1"
-          aria-label="Log past workout"
-          title="Log past workout"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14" /><path d="M5 12h14" />
-          </svg>
-        </button>
+        {/* + button with inline menu */}
+        <div className="relative">
+          <button
+            onClick={() => setAddMenuOpen((v) => !v)}
+            className="text-gray-400 hover:text-white transition-colors p-1"
+            aria-label="Log workout"
+            title="Log workout"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14" /><path d="M5 12h14" />
+            </svg>
+          </button>
+          {addMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-gray-700 rounded-xl shadow-lg z-10 overflow-hidden min-w-[160px]">
+              <button
+                onClick={() => { setAddMenuOpen(false); onImport(); }}
+                className="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-gray-600 transition-colors"
+              >
+                Hangboard
+              </button>
+              <button
+                onClick={() => { setAddMenuOpen(false); onImportGym(); }}
+                className="w-full text-left px-4 py-3 text-sm text-orange-400 hover:bg-gray-600 transition-colors border-t border-gray-600"
+              >
+                Gym Session
+              </button>
+            </div>
+          )}
+        </div>
       </header>
       {importStatus && (
         <div className="bg-gray-800 border-t border-gray-700 px-4 py-2 text-sm text-gray-300">

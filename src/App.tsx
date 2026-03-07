@@ -5,16 +5,18 @@ import { HomeScreen } from "./components/HomeScreen";
 import { WorkoutScreen } from "./components/WorkoutScreen";
 import { HistoryScreen } from "./components/HistoryScreen";
 import { ImportScreen } from "./components/ImportScreen";
+import { GymLogScreen } from "./components/GymLogScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
 import type { SessionRecord } from "./lib/history";
 
-type AppView = "home" | "history" | "import" | "edit" | "progress";
+type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress";
 
 export default function App() {
   const phase = useWorkoutStore((s) => s.phase);
   const isActive = phase !== "idle";
   const [view, setView] = useState<AppView>("home");
   const [editRecord, setEditRecord] = useState<SessionRecord | null>(null);
+  const [gymEditRecord, setGymEditRecord] = useState<SessionRecord | null>(null);
 
   useWakeLock(isActive);
 
@@ -25,7 +27,16 @@ export default function App() {
       <HistoryScreen
         onBack={() => setView("home")}
         onImport={() => setView("import")}
-        onEdit={(record) => { setEditRecord(record); setView("edit"); }}
+        onImportGym={() => setView("gym-log")}
+        onEdit={(record) => {
+          if (record.gymData !== undefined) {
+            setGymEditRecord(record);
+            setView("gym-edit");
+          } else {
+            setEditRecord(record);
+            setView("edit");
+          }
+        }}
       />
     );
   }
@@ -50,6 +61,26 @@ export default function App() {
     );
   }
 
+  if (view === "gym-log") {
+    return (
+      <GymLogScreen
+        onBack={() => setView("history")}
+        onSaved={() => setView("history")}
+      />
+    );
+  }
+
+  if (view === "gym-edit" && gymEditRecord) {
+    return (
+      <GymLogScreen
+        onBack={() => setView("history")}
+        onSaved={() => { setGymEditRecord(null); setView("history"); }}
+        onDeleted={() => { setGymEditRecord(null); setView("history"); }}
+        initialRecord={gymEditRecord}
+      />
+    );
+  }
+
   if (view === "progress") {
     return <ProgressScreen onBack={() => setView("home")} />;
   }
@@ -58,6 +89,7 @@ export default function App() {
     <HomeScreen
       onShowHistory={() => setView("history")}
       onShowProgress={() => setView("progress")}
+      onLogGym={() => setView("gym-log")}
     />
   );
 }

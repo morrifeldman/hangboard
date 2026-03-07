@@ -3,6 +3,20 @@ import type { HoldDefinition } from "../data/holds";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type GymWorkoutType =
+  | "arc" | "cir" | "power-endurance" | "4x4"
+  | "performance" | "boulder-ladder" | "hard-bouldering" | "limit-bouldering";
+
+export type GymData =
+  | { type: "arc";              climbMin: number; wallMin?: number; maxGrade?: string }
+  | { type: "cir";              repeats: number; climbRating?: string; avgRestSec: number }
+  | { type: "power-endurance";  climbSec: number; restSec: number; reps: number }
+  | { type: "4x4";              climbSec: number; restSec: number; completed4x4s: number }
+  | { type: "performance";      grade: string; tries: number; sends: number }
+  | { type: "boulder-ladder";   topV: string; durationMin: number }
+  | { type: "hard-bouldering";  level: string; durationMin: number }
+  | { type: "limit-bouldering"; level: string; durationMin: number };
+
 export type SessionSetRecord = {
   weight: number;
   reps: number;
@@ -20,13 +34,14 @@ export type SessionHoldRecord = {
 
 export type SessionRecord = {
   id: string;
-  workoutType: "repeaters" | "max-hang" | "beginner";
+  workoutType: "repeaters" | "max-hang" | "beginner" | GymWorkoutType;
   startedAt: number;
   completedAt: number;
   bailed: boolean;
   holds: SessionHoldRecord[];
   notes?: string;
   imported?: boolean;
+  gymData?: GymData;
 };
 
 // ─── IndexedDB setup ─────────────────────────────────────────────────────────

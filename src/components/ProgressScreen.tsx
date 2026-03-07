@@ -68,6 +68,8 @@ function colorFor(t: CalendarDay["workoutType"]): string {
   if (t === "repeaters") return "bg-green-600";
   if (t === "max-hang") return "bg-blue-500";
   if (t === "both") return "bg-purple-500";
+  if (t === "gym") return "bg-orange-500";
+  if (t === "gym+hangboard") return "bg-amber-400";
   return "bg-gray-800";
 }
 
@@ -201,6 +203,8 @@ export function ProgressScreen({ onBack }: Props) {
                 <LegendItem color="bg-green-600" label="Repeaters" />
                 <LegendItem color="bg-blue-500" label="Max Hang" />
                 <LegendItem color="bg-purple-500" label="Both" />
+                <LegendItem color="bg-orange-500" label="Gym" />
+                <LegendItem color="bg-amber-400" label="Gym + Board" />
               </div>
             </div>
           </section>
@@ -227,7 +231,7 @@ export function ProgressScreen({ onBack }: Props) {
               </div>
 
               {/* Hold picker */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <div className="flex gap-2 overflow-x-auto -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {holds.map((hold, i) => (
                   <button
                     key={hold.id}
@@ -256,7 +260,7 @@ export function ProgressScreen({ onBack }: Props) {
                 <ResponsiveContainer width="100%" height={160}>
                   <LineChart
                     data={chartPoints}
-                    margin={{ top: 12, right: 8, bottom: 0, left: 32 }}
+                    margin={{ top: 20, right: 8, bottom: 0, left: 32 }}
                   >
                     <XAxis
                       dataKey="label"

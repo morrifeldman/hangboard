@@ -11,7 +11,7 @@ export type TrendPoint = {
 
 export type CalendarDay = {
   date: Date;
-  workoutType: "repeaters" | "max-hang" | "both" | null;
+  workoutType: "repeaters" | "max-hang" | "both" | "gym" | "gym+hangboard" | null;
 };
 
 // ─── buildTrend ───────────────────────────────────────────────────────────────
@@ -66,13 +66,18 @@ export function buildTrend(
  */
 export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
   // Build a lookup keyed by ISO date string "YYYY-MM-DD"
-  // "beginner" sessions are mapped to "a" for calendar coloring (green like repeaters)
+  // "beginner" sessions are mapped to "repeaters" for calendar coloring (green)
+  // gym sessions are tracked separately
   const dayMap = new Map<string, Set<string>>();
   for (const s of sessions) {
     const d = new Date(s.startedAt);
     const key = isoDate(d);
     if (!dayMap.has(key)) dayMap.set(key, new Set());
-    dayMap.get(key)!.add(s.workoutType === "beginner" ? "repeaters" : s.workoutType);
+    if (s.gymData !== undefined) {
+      dayMap.get(key)!.add("gym");
+    } else {
+      dayMap.get(key)!.add(s.workoutType === "beginner" ? "repeaters" : s.workoutType);
+    }
   }
 
   // Find the Monday of the current ISO week
@@ -96,11 +101,15 @@ export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
       date.setDate(startMonday.getDate() + w * 7 + d);
       const key = isoDate(date);
       const types = dayMap.get(key);
-      let workoutType: "repeaters" | "max-hang" | "both" | null = null;
+      let workoutType: CalendarDay["workoutType"] = null;
       if (types) {
         const hasA = types.has("repeaters");
         const hasB = types.has("max-hang");
-        workoutType = hasA && hasB ? "both" : hasA ? "repeaters" : "max-hang";
+        const hasGym = types.has("gym");
+        const hasHangboard = hasA || hasB;
+        if (hasGym && hasHangboard) workoutType = "gym+hangboard";
+        else if (hasGym) workoutType = "gym";
+        else workoutType = hasA && hasB ? "both" : hasA ? "repeaters" : "max-hang";
       }
       week.push({ date: new Date(date), workoutType });
     }
