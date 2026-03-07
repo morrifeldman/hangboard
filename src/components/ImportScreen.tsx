@@ -99,17 +99,17 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   // In edit mode use the actual holds from the record (preserves non-standard holds like Small Crimp)
   const allDefs = [...HOLDS, ...HOLDS_B];
   const holds: readonly HoldDefinition[] = editing && initialRecord
-    ? initialRecord.holds.map((h): HoldDefinition =>
-        allDefs.find((d) => d.id === h.holdId) ?? {
+    ? initialRecord.holds.map((h): HoldDefinition => {
+        const def = allDefs.find((d) => d.id === h.holdId) ?? {
           id: h.holdId,
           name: h.holdName,
           defaultSet1Weight: h.set1.weight,
           defaultSet2Weight: h.set2?.weight ?? h.set1.weight,
           set1Reps: h.set1.reps,
           set2Reps: h.set2?.reps ?? h.set1.reps,
-          numSets: h.set2 !== null ? 2 : 1,
-        }
-      )
+        };
+        return { ...def, numSets: h.set2 !== null ? 2 : 1 };
+      })
     : workoutType === "repeaters" ? HOLDS : HOLDS_B;
 
   const handleTypeChange = (type: "repeaters" | "max-hang") => {

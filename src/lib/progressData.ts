@@ -8,6 +8,7 @@ export type TrendPoint = {
   bailed: boolean;
   isPR: boolean;
   set2Failed: boolean; // set2 existed but was not completed
+  isBeginner: boolean;
   sessionId: string;
 };
 
@@ -59,6 +60,7 @@ export function buildTrend(
       bailed: s.bailed,
       isPR: !set2Failed && weight === maxWeight,
       set2Failed,
+      isBeginner: s.workoutType === "beginner",
       sessionId: s.id,
     };
   });

@@ -26,7 +26,7 @@ type Props = { onBack: () => void; onEditSession: (record: SessionRecord) => voi
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
 
-type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean; set2Failed: boolean; sessionId: string };
+type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean; set2Failed: boolean; isBeginner: boolean; sessionId: string };
 
 function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -36,6 +36,7 @@ function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
     bailed: p.bailed,
     isPR: p.isPR,
     set2Failed: p.set2Failed,
+    isBeginner: p.isBeginner,
     sessionId: p.sessionId,
   }));
 }
@@ -49,15 +50,17 @@ type DotProps = {
 
 function CustomDot({ cx, cy, payload, onClick }: DotProps) {
   if (cx == null || cy == null || payload == null) return null;
-  const r = payload.isPR ? 5 : 3;
-  const color = payload.set2Failed
+  const r = payload.isBeginner ? 3 : payload.isPR ? 5 : 3;
+  const color = payload.isBeginner
+    ? "#6b7280" // muted gray for beginner — de-emphasized
+    : payload.set2Failed
     ? "#f59e0b"
     : payload.bailed
     ? "#6b7280"
     : payload.isPR
     ? "#22c55e"
     : "#6366f1";
-  const fill = payload.bailed && !payload.set2Failed ? "transparent" : color;
+  const fill = (payload.bailed && !payload.set2Failed) || payload.isBeginner ? "transparent" : color;
 
   return (
     <g
@@ -66,7 +69,15 @@ function CustomDot({ cx, cy, payload, onClick }: DotProps) {
     >
       {/* large invisible tap target for mobile */}
       <circle cx={cx} cy={cy} r={14} fill="transparent" />
-      <circle cx={cx} cy={cy} r={r} fill={fill} stroke={color} strokeWidth={1.5} />
+      {payload.isBeginner ? (
+        <rect
+          x={cx - r} y={cy - r} width={r * 2} height={r * 2}
+          transform={`rotate(45, ${cx}, ${cy})`}
+          fill={fill} stroke={color} strokeWidth={1.5}
+        />
+      ) : (
+        <circle cx={cx} cy={cy} r={r} fill={fill} stroke={color} strokeWidth={1.5} />
+      )}
       {payload.isPR && (
         <text x={cx} y={cy - 9} textAnchor="middle" fill="#22c55e" fontSize={8} fontWeight="bold">
           PR
