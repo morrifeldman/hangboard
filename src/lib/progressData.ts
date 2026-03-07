@@ -7,6 +7,8 @@ export type TrendPoint = {
   date: Date;
   bailed: boolean;
   isPR: boolean;
+  set2Failed: boolean; // set2 existed but was not completed
+  sessionId: string;
 };
 
 export type CalendarDay = {
@@ -38,21 +40,26 @@ export function buildTrend(
 
   if (sliced.length === 0) return [];
 
-  // Find max weight to mark PR
+  // Find max weight to mark PR — only count sessions where set2 was null or completed
   let maxWeight = -Infinity;
   for (const s of sliced) {
     const hr = s.holds.find((h) => h.holdId === holdId);
-    if (hr) maxWeight = Math.max(maxWeight, hr.set1.weight);
+    if (hr && (hr.set2 === null || hr.set2.completed)) {
+      maxWeight = Math.max(maxWeight, hr.set1.weight);
+    }
   }
 
   return sliced.map((s) => {
     const hr = s.holds.find((h) => h.holdId === holdId)!;
     const weight = hr.set1.weight;
+    const set2Failed = hr.set2 !== null && !hr.set2.completed;
     return {
       weight,
       date: new Date(s.startedAt),
       bailed: s.bailed,
-      isPR: weight === maxWeight,
+      isPR: !set2Failed && weight === maxWeight,
+      set2Failed,
+      sessionId: s.id,
     };
   });
 }

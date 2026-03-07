@@ -17,6 +17,7 @@ export default function App() {
   const [view, setView] = useState<AppView>("home");
   const [editRecord, setEditRecord] = useState<SessionRecord | null>(null);
   const [gymEditRecord, setGymEditRecord] = useState<SessionRecord | null>(null);
+  const [editReturnView, setEditReturnView] = useState<AppView>("history");
 
   useWakeLock(isActive);
 
@@ -34,6 +35,7 @@ export default function App() {
             setView("gym-edit");
           } else {
             setEditRecord(record);
+            setEditReturnView("history");
             setView("edit");
           }
         }}
@@ -53,9 +55,9 @@ export default function App() {
   if (view === "edit" && editRecord) {
     return (
       <ImportScreen
-        onBack={() => setView("history")}
-        onSaved={() => { setEditRecord(null); setView("history"); }}
-        onDeleted={() => { setEditRecord(null); setView("history"); }}
+        onBack={() => setView(editReturnView)}
+        onSaved={() => { setEditRecord(null); setView(editReturnView); }}
+        onDeleted={() => { setEditRecord(null); setView(editReturnView); }}
         initialRecord={editRecord}
       />
     );
@@ -82,7 +84,16 @@ export default function App() {
   }
 
   if (view === "progress") {
-    return <ProgressScreen onBack={() => setView("home")} />;
+    return (
+      <ProgressScreen
+        onBack={() => setView("home")}
+        onEditSession={(record) => {
+          setEditRecord(record);
+          setEditReturnView("progress");
+          setView("edit");
+        }}
+      />
+    );
   }
 
   return (

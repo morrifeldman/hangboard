@@ -50,6 +50,11 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       ? initialRecord.holds.map((h) => h.set2?.weight ?? h.set1.weight)
       : HOLDS.map((h) => h.defaultSet1Weight + 10)
   );
+  const [weights3, setWeights3] = useState<number[]>(() =>
+    initialRecord
+      ? initialRecord.holds.map((h) => h.set3?.weight ?? h.set1.weight)
+      : defaultWeights(HOLDS)
+  );
   const [set2Offset, setSet2Offset] = useState(() => {
     if (!initialRecord) return 10;
     if (initialRecord.workoutType === "max-hang") return 10;
@@ -63,18 +68,18 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         .map((h) => [h.holdId, h.notes!])
     )
   );
-  const [setNotesState, setSetNotesState] = useState<Record<string, { set1: string; set2: string }>>(() =>
+  const [setNotesState, setSetNotesState] = useState<Record<string, { set1: string; set2: string; set3?: string }>>(() =>
     Object.fromEntries(
       (initialRecord?.holds ?? [])
-        .filter((h) => h.set1.notes || h.set2?.notes)
-        .map((h) => [h.holdId, { set1: h.set1.notes ?? "", set2: h.set2?.notes ?? "" }])
+        .filter((h) => h.set1.notes || h.set2?.notes || h.set3?.notes)
+        .map((h) => [h.holdId, { set1: h.set1.notes ?? "", set2: h.set2?.notes ?? "", set3: h.set3?.notes ?? "" }])
     )
   );
   // Which hold note fields are currently open (auto-open holds that already have any notes)
   const [expandedNoteHolds, setExpandedNoteHolds] = useState<Set<string>>(
     () => new Set(
       (initialRecord?.holds ?? [])
-        .filter((h) => h.notes || h.set1.notes || h.set2?.notes)
+        .filter((h) => h.notes || h.set1.notes || h.set2?.notes || h.set3?.notes)
         .map((h) => h.holdId)
     )
   );
@@ -114,6 +119,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     setWeights2(newHolds.map((h) =>
       type === "repeaters" ? h.defaultSet1Weight + set2Offset : h.defaultSet2Weight
     ));
+    setWeights3(defaultWeights(newHolds));
   };
 
   const updateWeight = (index: number, raw: string) => {
@@ -134,6 +140,15 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     });
   };
 
+  const updateWeight3 = (index: number, raw: string) => {
+    const value = parseFloat(raw);
+    setWeights3((prev) => {
+      const next = [...prev];
+      next[index] = isNaN(value) ? 0 : value;
+      return next;
+    });
+  };
+
   const buildHoldRecords = (): SessionHoldRecord[] =>
     holds.map((hold, i) => {
       const numSets = hold.numSets ?? 2;
@@ -142,8 +157,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       const origHold = origHoldMap.get(hold.id);
       const set1Completed = !editing || (origHold?.set1.completed ?? true);
       const set2Completed = !editing || (origHold?.set2?.completed ?? true);
+      const set3Completed = !editing || (origHold?.set3?.completed ?? true);
       const w = hold.isRestOnly || hold.skipProgression ? 0 : (weights[i] ?? 0);
       const w2 = hold.isRestOnly || hold.skipProgression ? 0 : (weights2[i] ?? 0);
+      const w3 = hold.isRestOnly || hold.skipProgression ? 0 : (weights3[i] ?? 0);
       const sn = setNotesState[hold.id];
       const set1: SessionSetRecord = {
         weight: w, reps: reps1, completed: set1Completed,
@@ -152,11 +169,15 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       const set2: SessionSetRecord | null = numSets >= 2
         ? { weight: w2, reps: reps2, completed: set2Completed, ...(sn?.set2 ? { notes: sn.set2 } : {}) }
         : null;
+      const set3: SessionSetRecord | null | undefined = numSets >= 3
+        ? { weight: w3, reps: reps1, completed: set3Completed, ...(sn?.set3 ? { notes: sn.set3 } : {}) }
+        : undefined;
       return {
         holdId: hold.id,
         holdName: hold.name,
         set1,
         set2,
+        ...(set3 !== undefined ? { set3 } : {}),
         ...(holdNotesState[hold.id] ? { notes: holdNotesState[hold.id] } : {}),
       };
     });
@@ -294,18 +315,20 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           <div className="px-4 py-2 border-b border-gray-700 flex items-center justify-between">
             <span className="text-gray-500 text-xs uppercase tracking-wide">Hold</span>
             <span className="text-gray-500 text-xs uppercase tracking-wide text-right">
-              {workoutType === "repeaters" ? "Set 1 / Set 2" : "Weight"}
+              {workoutType === "repeaters" ? "Set 1 / Set 2" : "Set 1 / Set 2 / Set 3"}
             </span>
           </div>
           {holds.map((hold, i) => {
             const w = weights[i] ?? 0;
             const w2 = weights2[i] ?? 0;
+            const w3 = weights3[i] ?? 0;
             const sn = setNotesState[hold.id];
-            const hasNote = !!holdNotesState[hold.id] || !!sn?.set1 || !!sn?.set2;
+            const hasNote = !!holdNotesState[hold.id] || !!sn?.set1 || !!sn?.set2 || !!sn?.set3;
             const noteOpen = expandedNoteHolds.has(hold.id);
             const numSets = hold.numSets ?? 2;
             const isCompleted = !editing || (origHoldMap.get(hold.id)?.set1.completed ?? true);
             const set2Completed = !editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true);
+            const set3Completed = !editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true);
             return (
               <div
                 key={hold.id}
@@ -337,10 +360,44 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                   {/* Weight display */}
                   {!isCompleted ? (
                     <span className="text-gray-600 text-sm font-mono">
-                      {hold.isRestOnly || hold.skipProgression ? "BW" : numSets >= 2 ? `${w} → ${w2}` : String(w)}
+                      {hold.isRestOnly || hold.skipProgression ? "BW" : numSets >= 3 ? `${w} → ${w2} → ${w3}` : numSets >= 2 ? `${w} → ${w2}` : String(w)}
                     </span>
                   ) : hold.isRestOnly || hold.skipProgression ? (
                     <span className="text-gray-500 text-xs font-mono">BW</span>
+                  ) : numSets >= 3 ? (
+                    <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={w}
+                        onChange={(e) => updateWeight(i, e.target.value)}
+                        className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                      />
+                      <span className="text-gray-600 text-xs px-1">→</span>
+                      {set2Completed ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={w2}
+                          onChange={(e) => updateWeight2(i, e.target.value)}
+                          className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                        />
+                      ) : (
+                        <span className="w-16 text-gray-500 text-right px-2 py-1 text-sm font-mono line-through inline-block">{w2}</span>
+                      )}
+                      <span className="text-gray-600 text-xs px-1">→</span>
+                      {set3Completed ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={w3}
+                          onChange={(e) => updateWeight3(i, e.target.value)}
+                          className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                        />
+                      ) : (
+                        <span className="w-16 text-gray-500 text-right px-2 py-1 text-sm font-mono line-through inline-block">{w3}</span>
+                      )}
+                    </div>
                   ) : numSets >= 2 ? (
                     <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
                       <input
@@ -415,6 +472,22 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           }))
                         }
                         placeholder="Set 2 note…"
+                        rows={1}
+                        className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                                   placeholder-gray-600 resize-none border border-gray-700
+                                   focus:outline-none focus:border-indigo-500/50"
+                      />
+                    )}
+                    {numSets >= 3 && (
+                      <textarea
+                        value={setNotesState[hold.id]?.set3 ?? ""}
+                        onChange={(e) =>
+                          setSetNotesState((prev) => ({
+                            ...prev,
+                            [hold.id]: { ...prev[hold.id], set3: e.target.value },
+                          }))
+                        }
+                        placeholder="Set 3 note…"
                         rows={1}
                         className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
                                    placeholder-gray-600 resize-none border border-gray-700

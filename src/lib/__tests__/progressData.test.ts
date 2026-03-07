@@ -107,6 +107,36 @@ describe("buildTrend", () => {
     expect(result[2].isPR).toBe(false);
   });
 
+  it("does not mark a set2-failed session as PR even if its weight is highest", () => {
+    const sessions = [
+      makeSession({
+        id: "2", workoutType: "repeaters", startedAt: ts("2024-01-10"),
+        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 0, reps: 7, completed: true }, set2: { weight: 0, reps: 6, completed: true } }],
+      }),
+      makeSession({
+        id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05"),
+        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 5, reps: 7, completed: true }, set2: { weight: 5, reps: 6, completed: false } }],
+      }),
+    ];
+    // newest-first
+    const result = buildTrend(sessions, "jug", "repeaters");
+    // Jan5 (weight=5, set2Failed) then Jan10 (weight=0, success)
+    expect(result[0].set2Failed).toBe(true);
+    expect(result[0].isPR).toBe(false); // set2 failed — not a PR
+    expect(result[1].set2Failed).toBe(false);
+    expect(result[1].isPR).toBe(true); // highest fully-completed weight
+  });
+
+  it("sets set2Failed=false when set2 is null (single-set hold)", () => {
+    const s = makeSession({
+      id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10"),
+      holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
+    });
+    const result = buildTrend([s], "jug", "repeaters");
+    expect(result[0].set2Failed).toBe(false);
+    expect(result[0].isPR).toBe(true);
+  });
+
   it("limits to 20 most recent sessions", () => {
     const sessions = Array.from({ length: 25 }, (_, i) =>
       makeSession({

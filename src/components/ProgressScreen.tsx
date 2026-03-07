@@ -22,11 +22,11 @@ import { formatWeight } from "../lib/format";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Props = { onBack: () => void };
+type Props = { onBack: () => void; onEditSession: (record: SessionRecord) => void };
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
 
-type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean };
+type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean; set2Failed: boolean; sessionId: string };
 
 function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -35,6 +35,8 @@ function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
     label: `${MONTHS[p.date.getMonth()]} ${p.date.getDate()}`,
     bailed: p.bailed,
     isPR: p.isPR,
+    set2Failed: p.set2Failed,
+    sessionId: p.sessionId,
   }));
 }
 
@@ -42,17 +44,29 @@ type DotProps = {
   cx?: number;
   cy?: number;
   payload?: ChartPoint;
+  onClick?: (sessionId: string) => void;
 };
 
-function CustomDot({ cx, cy, payload }: DotProps) {
+function CustomDot({ cx, cy, payload, onClick }: DotProps) {
   if (cx == null || cy == null || payload == null) return null;
   const r = payload.isPR ? 5 : 3;
-  const fill = payload.bailed ? "transparent" : (payload.isPR ? "#22c55e" : "#6366f1");
-  const stroke = payload.bailed ? "#6b7280" : (payload.isPR ? "#22c55e" : "#6366f1");
+  const color = payload.set2Failed
+    ? "#f59e0b"
+    : payload.bailed
+    ? "#6b7280"
+    : payload.isPR
+    ? "#22c55e"
+    : "#6366f1";
+  const fill = payload.bailed && !payload.set2Failed ? "transparent" : color;
 
   return (
-    <g>
-      <circle cx={cx} cy={cy} r={r} fill={fill} stroke={stroke} strokeWidth={1.5} />
+    <g
+      style={{ cursor: "pointer" }}
+      onClick={() => onClick?.(payload.sessionId)}
+    >
+      {/* large invisible tap target for mobile */}
+      <circle cx={cx} cy={cy} r={14} fill="transparent" />
+      <circle cx={cx} cy={cy} r={r} fill={fill} stroke={color} strokeWidth={1.5} />
       {payload.isPR && (
         <text x={cx} y={cy - 9} textAnchor="middle" fill="#22c55e" fontSize={8} fontWeight="bold">
           PR
@@ -75,7 +89,7 @@ function colorFor(t: CalendarDay["workoutType"]): string {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ProgressScreen({ onBack }: Props) {
+export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
@@ -261,6 +275,14 @@ export function ProgressScreen({ onBack }: Props) {
                   <LineChart
                     data={chartPoints}
                     margin={{ top: 20, right: 8, bottom: 0, left: 32 }}
+                    style={{ cursor: "pointer" }}
+                    onClick={(data) => {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const id = (data as any)?.activePayload?.[0]?.payload?.sessionId as string | undefined;
+                      if (!id) return;
+                      const record = sessions.find((s) => s.id === id);
+                      if (record) onEditSession(record);
+                    }}
                   >
                     <XAxis
                       dataKey="label"
@@ -292,8 +314,16 @@ export function ProgressScreen({ onBack }: Props) {
                       dataKey="weight"
                       stroke={lineColor}
                       strokeWidth={2}
-                      dot={(props) => <CustomDot {...props} />}
-                      activeDot={{ r: 5 }}
+                      dot={(props) => (
+                        <CustomDot
+                          {...props}
+                          onClick={(sessionId) => {
+                            const record = sessions.find((s) => s.id === sessionId);
+                            if (record) onEditSession(record);
+                          }}
+                        />
+                      )}
+                      activeDot={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>

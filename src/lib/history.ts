@@ -29,6 +29,7 @@ export type SessionHoldRecord = {
   holdName: string;
   set1: SessionSetRecord;
   set2: SessionSetRecord | null; // null when hold.numSets === 1
+  set3?: SessionSetRecord | null; // max-hang 3rd set
   notes?: string;
 };
 

@@ -9,19 +9,26 @@ import { resolve } from "node:path";
 // ─── Hold name → ID mapping ────────────────────────────────────────────────────
 // Keys sorted longest-first so "mr shallow" matches before "mr"
 const HOLD_ID: Record<string, string> = {
-  "large edge":  "large-edge",
-  "mr shallow":  "mr-shallow",
-  "med edge":    "small-edge",
-  "small edge":  "small-edge",   // injury alias
-  "small crimp": "small-crimp",
-  "imr shallow": "imr-shallow",
-  "imr deep":    "imr-deep",
-  "wide pinch":  "wide-pinch",
-  "sloper":      "sloper",
-  "med pinch":   "med-pinch",
-  "mr deep":     "mr-deep",
-  "mrp":         "mrp",
-  "jug":         "jug",
+  // Repeaters / Beginner holds
+  "large edge":     "large-edge",
+  "mr shallow":     "mr-shallow",
+  "med edge":       "small-edge",
+  "small edge":     "small-edge",   // injury alias
+  "small crimp":    "small-crimp",
+  "imr shallow":    "imr-shallow",
+  "imr deep":       "imr-deep",
+  "wide pinch":     "wide-pinch",
+  "sloper":         "sloper",
+  "med pinch":      "med-pinch",
+  "mr deep":        "mr-deep",
+  "mrp deep":       "mrp",
+  "mrp":            "mrp",
+  "jug":            "jug",
+  // Max-hang holds
+  "3 finger drag":  "b-open",
+  "half crimp":     "b-hc",
+  "chisel":         "b-chisel",
+  "open":           "b-open",
 };
 
 const HOLD_DISPLAY: Record<string, string> = {
@@ -37,6 +44,9 @@ const HOLD_DISPLAY: Record<string, string> = {
   "mr-deep":     "MR Deep",
   "mrp":         "MRP",
   "jug":         "Jug",
+  "b-chisel":    "Chisel",
+  "b-hc":        "Half Crimp",
+  "b-open":      "Open",
 };
 
 const HOLD_KEYS_BY_LENGTH = Object.keys(HOLD_ID).sort((a, b) => b.length - a.length);
@@ -59,6 +69,7 @@ interface HoldRecord {
   holdName: string;
   set1: SetRecord;
   set2: SetRecord | null;
+  set3?: SetRecord | null;
   notes?: string;
 }
 
@@ -111,7 +122,8 @@ function parseHoldLine(
   line: string,
   holdKey: string,
   offset: number | null,
-  isBeginner: boolean
+  isBeginner: boolean,
+  isMaxHang: boolean = false,
 ): HoldRecord {
   const rest = line.slice(holdKey.length).trim();
 
@@ -125,8 +137,8 @@ function parseHoldLine(
   }
 
   const setTokens = splitSets(setsPart);
-  const reps1 = isBeginner ? 1 : 7;
-  const reps2 = isBeginner ? 1 : 6;
+  const reps = isMaxHang ? 1 : isBeginner ? 1 : 7;
+  const reps2 = isMaxHang ? 1 : isBeginner ? 1 : 6;
   const holdId = HOLD_ID[holdKey];
   const holdName = HOLD_DISPLAY[holdId];
 
@@ -135,12 +147,12 @@ function parseHoldLine(
 
   if (!s1) {
     // No weight at all — record as incomplete placeholder
-    return { holdId, holdName, set1: { weight: 0, reps: reps1, completed: false }, set2: null, notes: holdNote };
+    return { holdId, holdName, set1: { weight: 0, reps, completed: false }, set2: null, notes: holdNote };
   }
 
   const set1: SetRecord = {
     weight: s1.weight,
-    reps: reps1,
+    reps,
     completed: isCompleted(s1.note),
     ...(s1.note ? { notes: s1.note } : {}),
   };
@@ -154,12 +166,23 @@ function parseHoldLine(
       completed: isCompleted(s2.note),
       ...(s2.note ? { notes: s2.note } : {}),
     };
-  } else if (offset !== null && !isBeginner) {
+  } else if (offset !== null && !isBeginner && !isMaxHang) {
     // Infer set2 weight from session offset
     set2 = { weight: s1.weight + offset, reps: reps2, completed: true };
   }
 
-  return { holdId, holdName, set1, set2, ...(holdNote ? { notes: holdNote } : {}) };
+  let set3: SetRecord | null | undefined;
+  if (isMaxHang && setTokens[2]?.trim()) {
+    const s3 = parseSet(setTokens[2]);
+    set3 = {
+      weight: s3.weight,
+      reps: 1,
+      completed: isCompleted(s3.note),
+      ...(s3.note ? { notes: s3.note } : {}),
+    };
+  }
+
+  return { holdId, holdName, set1, set2, ...(set3 !== undefined ? { set3 } : {}), ...(holdNote ? { notes: holdNote } : {}) };
 }
 
 // ─── Parser ────────────────────────────────────────────────────────────────────
@@ -182,11 +205,21 @@ function parse(text: string): SessionRecord[] {
 
     let workoutType = "repeaters";
     let isBeginner = false;
+    let isMaxHang = false;
     let embeddedOffset: number | null = null;
+    let hbId: string | undefined;
 
     if (wtLine.toLowerCase().startsWith("beginner")) {
       workoutType = "beginner";
       isBeginner = true;
+    } else if (/^max.?hang/i.test(wtLine)) {
+      workoutType = "max-hang";
+      isMaxHang = true;
+    } else if (/^HB\w*/i.test(wtLine)) {
+      // Old HB-only header (no explicit workout type) — treat as beginner
+      workoutType = "beginner";
+      isBeginner = true;
+      hbId = wtLine;
     } else {
       // Intermediate — check for embedded offset (old format: "Intermediate Offset 5 with IMR Deep")
       const offsetMatch = wtLine.match(/offset\s+(\d+\.?\d*)/i);
@@ -194,7 +227,6 @@ function parse(text: string): SessionRecord[] {
     }
 
     let offset: number | null = embeddedOffset;
-    let hbId: string | undefined;
     const sessionNotes: string[] = [];
     let bailed = false;
     const holds: HoldRecord[] = [];
@@ -221,10 +253,14 @@ function parse(text: string): SessionRecord[] {
 
       const holdKey = matchHoldName(l);
       if (holdKey) {
-        try {
-          holds.push(parseHoldLine(l, holdKey, offset, isBeginner));
-        } catch (e) {
-          console.warn(`  Skipping line (parse error): "${l}": ${e}`);
+        // Skip warm-up holds for max-hang imports (they have no tracked weight)
+        const holdId = HOLD_ID[holdKey];
+        if (!isMaxHang || !holdId.startsWith("b-big") && holdId !== "b-jug" && holdId !== "b-pullup" && holdId !== "b-small-hc-wu") {
+          try {
+            holds.push(parseHoldLine(l, holdKey, offset, isBeginner, isMaxHang));
+          } catch (e) {
+            console.warn(`  Skipping line (parse error): "${l}": ${e}`);
+          }
         }
         i++; continue;
       }
