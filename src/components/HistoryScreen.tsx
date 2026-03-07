@@ -12,12 +12,13 @@ type Props = {
 const GYM_LABELS: Record<string, string> = {
   "arc":              "ARC",
   "cir":              "CIR",
-  "power-endurance":  "Power Endurance",
-  "4x4":              "4×4",
+  "pe-route":         "PE Route Intervals",
+  "lbc":              "LBC",
   "performance":      "Performance",
-  "boulder-ladder":   "Boulder Ladder",
+  "wbl":              "WBL",
   "hard-bouldering":  "Hard Bouldering",
   "limit-bouldering": "Limit Bouldering",
+  "injury":           "Injury",
 };
 
 function workoutLabel(record: SessionRecord): string {
@@ -31,6 +32,8 @@ function gymSummary(data: GymData): string {
   switch (data.type) {
     case "arc": {
       const parts: string[] = [`${data.climbMin} min`];
+      if (data.routes) parts.push(`${data.routes} routes`);
+      if (data.downclimb === "Yes") parts.push("downclimb");
       if (data.maxGrade) parts.push(`Max ${data.maxGrade}`);
       return parts.join(" · ");
     }
@@ -40,17 +43,23 @@ function gymSummary(data: GymData): string {
       parts.push(`~${data.avgRestSec}s rest`);
       return parts.join(" · ");
     }
-    case "power-endurance":
-      return `${data.climbSec}s on / ${data.restSec}s off · ${data.reps} reps`;
-    case "4x4":
-      return `${data.completed4x4s} 4×4s · ${data.climbSec}s on / ${data.restSec}s off`;
+    case "pe-route":
+      return `${data.climbSec}s on · ${data.dutyCycle} rest · ${data.reps} reps`;
+    case "lbc":
+      return `${data.sets} sets · ${data.climbSec}s on · ${data.dutyCycle} rest`;
     case "performance":
-      return `${data.grade} · ${data.tries} tries · ${data.sends} sends`;
-    case "boulder-ladder":
+      return `${data.grade} · ${data.tries} tries · ${data.success === "Yes" ? "sent" : "no send"}`;
+    case "wbl":
       return `Top ${data.topV} · ${data.durationMin} min`;
     case "hard-bouldering":
     case "limit-bouldering":
       return `${data.level} · ${data.durationMin} min`;
+    case "injury": {
+      const parts: string[] = [];
+      if (data.bodyPart) parts.push(data.bodyPart);
+      if (data.severity) parts.push(data.severity);
+      return parts.join(" · ") || "—";
+    }
   }
 }
 
@@ -134,8 +143,8 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
 
 const ALL_VALID_TYPES = new Set([
   "repeaters", "max-hang", "beginner",
-  "arc", "cir", "power-endurance", "4x4",
-  "performance", "boulder-ladder", "hard-bouldering", "limit-bouldering",
+  "arc", "cir", "pe-route", "lbc", "wbl",
+  "performance", "hard-bouldering", "limit-bouldering", "injury",
 ]);
 
 export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) {

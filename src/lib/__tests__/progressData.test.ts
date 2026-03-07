@@ -120,20 +120,55 @@ describe("buildTrend", () => {
     ];
     // newest-first
     const result = buildTrend(sessions, "jug", "repeaters");
-    // Jan5 (weight=5, set2Failed) then Jan10 (weight=0, success)
-    expect(result[0].set2Failed).toBe(true);
+    // Jan5 (weight=5, setFailed) then Jan10 (weight=0, success)
+    expect(result[0].setFailed).toBe(true);
     expect(result[0].isPR).toBe(false); // set2 failed — not a PR
-    expect(result[1].set2Failed).toBe(false);
+    expect(result[1].setFailed).toBe(false);
     expect(result[1].isPR).toBe(true); // highest fully-completed weight
   });
 
-  it("sets set2Failed=false when set2 is null (single-set hold)", () => {
+  it("sets setFailed=false when set2 is null (single-set hold)", () => {
     const s = makeSession({
       id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10"),
       holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
     });
     const result = buildTrend([s], "jug", "repeaters");
-    expect(result[0].set2Failed).toBe(false);
+    expect(result[0].setFailed).toBe(false);
+    expect(result[0].isPR).toBe(true);
+  });
+
+  it("marks setFailed when set3 fails (max-hang)", () => {
+    const sessions = [
+      makeSession({
+        id: "1", workoutType: "max-hang", startedAt: ts("2024-01-05"),
+        holds: [{
+          holdId: "jug", holdName: "Jug",
+          set1: { weight: 10, reps: 1, completed: true },
+          set2: { weight: 10, reps: 1, completed: true },
+          set3: { weight: 10, reps: 1, completed: false },
+        }],
+      }),
+    ];
+    const result = buildTrend(sessions, "jug", "max-hang");
+    expect(result).toHaveLength(1);
+    expect(result[0].setFailed).toBe(true);
+    expect(result[0].isPR).toBe(false);
+  });
+
+  it("uses max weight across all sets", () => {
+    const sessions = [
+      makeSession({
+        id: "1", workoutType: "max-hang", startedAt: ts("2024-01-05"),
+        holds: [{
+          holdId: "jug", holdName: "Jug",
+          set1: { weight: 5, reps: 1, completed: true },
+          set2: { weight: 10, reps: 1, completed: true },
+          set3: { weight: 15, reps: 1, completed: true },
+        }],
+      }),
+    ];
+    const result = buildTrend(sessions, "jug", "max-hang");
+    expect(result[0].weight).toBe(15);
     expect(result[0].isPR).toBe(true);
   });
 

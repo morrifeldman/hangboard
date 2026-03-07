@@ -17,6 +17,7 @@ interface WorkoutStore {
   weights: StoredWeights;
   weightsB: StoredWeights;
   selectedWorkout: WorkoutId;
+  gymDefaults: Record<string, Record<string, string>>;
 
   // Session (not persisted)
   phase: WorkoutPhase;
@@ -45,6 +46,7 @@ interface WorkoutStore {
   setSessionOverride: (holdId: string, setNum: number, delta: number) => void;
   adjustNextWeight: (holdId: string, setNum: number, delta: number) => void;
   resetWeights: () => void;
+  setGymDefaults: (workoutType: string, fields: Record<string, string>) => void;
 }
 
 function defaultWeightsA(): StoredWeights {
@@ -71,6 +73,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       weights: defaultWeightsA(),
       weightsB: defaultWeightsB(),
       selectedWorkout: "repeaters",
+      gymDefaults: {},
 
       phase: "idle",
       holdIndex: 0,
@@ -189,6 +192,10 @@ export const useWorkoutStore = create<WorkoutStore>()(
           set({ weights: defaultWeightsA() });
         }
       },
+
+      setGymDefaults: (workoutType, fields) => {
+        set({ gymDefaults: { ...get().gymDefaults, [workoutType]: fields } });
+      },
     }),
     {
       name: "hangboard-weights",
@@ -196,6 +203,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
         weights: s.weights,
         weightsB: s.weightsB,
         selectedWorkout: s.selectedWorkout === "test" ? "repeaters" : s.selectedWorkout,
+        gymDefaults: s.gymDefaults,
       }),
     }
   )

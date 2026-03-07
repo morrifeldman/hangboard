@@ -26,7 +26,7 @@ type Props = { onBack: () => void; onEditSession: (record: SessionRecord) => voi
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
 
-type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean; set2Failed: boolean; isBeginner: boolean; sessionId: string };
+type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean; setFailed: boolean; isBeginner: boolean; sessionId: string };
 
 function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -35,7 +35,7 @@ function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
     label: `${MONTHS[p.date.getMonth()]} ${p.date.getDate()}`,
     bailed: p.bailed,
     isPR: p.isPR,
-    set2Failed: p.set2Failed,
+    setFailed: p.setFailed,
     isBeginner: p.isBeginner,
     sessionId: p.sessionId,
   }));
@@ -53,14 +53,14 @@ function CustomDot({ cx, cy, payload, onClick }: DotProps) {
   const r = payload.isBeginner ? 3 : payload.isPR ? 5 : 3;
   const color = payload.isBeginner
     ? "#6b7280" // muted gray for beginner — de-emphasized
-    : payload.set2Failed
+    : payload.setFailed
     ? "#f59e0b"
     : payload.bailed
     ? "#6b7280"
     : payload.isPR
     ? "#22c55e"
     : "#6366f1";
-  const fill = (payload.bailed && !payload.set2Failed) || payload.isBeginner ? "transparent" : color;
+  const fill = (payload.bailed && !payload.setFailed) || payload.isBeginner ? "transparent" : color;
 
   return (
     <g

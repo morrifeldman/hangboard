@@ -7,7 +7,7 @@ export type TrendPoint = {
   date: Date;
   bailed: boolean;
   isPR: boolean;
-  set2Failed: boolean; // set2 existed but was not completed
+  setFailed: boolean; // any non-set1 set existed but was not completed
   isBeginner: boolean;
   sessionId: string;
 };
@@ -41,25 +41,39 @@ export function buildTrend(
 
   if (sliced.length === 0) return [];
 
-  // Find max weight to mark PR — only count sessions where set2 was null or completed
+  // Find max weight to mark PR — only count sessions where all sets completed
   let maxWeight = -Infinity;
   for (const s of sliced) {
     const hr = s.holds.find((h) => h.holdId === holdId);
-    if (hr && (hr.set2 === null || hr.set2.completed)) {
-      maxWeight = Math.max(maxWeight, hr.set1.weight);
+    if (hr
+      && (hr.set2 === null || hr.set2 === undefined || hr.set2.completed)
+      && (hr.set3 === null || hr.set3 === undefined || hr.set3.completed)
+    ) {
+      const w = Math.max(
+        hr.set1.weight,
+        hr.set2?.weight ?? -Infinity,
+        hr.set3?.weight ?? -Infinity,
+      );
+      maxWeight = Math.max(maxWeight, w);
     }
   }
 
   return sliced.map((s) => {
     const hr = s.holds.find((h) => h.holdId === holdId)!;
-    const weight = hr.set1.weight;
-    const set2Failed = hr.set2 !== null && !hr.set2.completed;
+    const weight = Math.max(
+      hr.set1.weight,
+      hr.set2?.weight ?? -Infinity,
+      hr.set3?.weight ?? -Infinity,
+    );
+    const setFailed =
+      (hr.set2 != null && !hr.set2.completed) ||
+      (hr.set3 != null && !hr.set3.completed);
     return {
       weight,
       date: new Date(s.startedAt),
       bailed: s.bailed,
-      isPR: !set2Failed && weight === maxWeight,
-      set2Failed,
+      isPR: !setFailed && weight === maxWeight,
+      setFailed,
       isBeginner: s.workoutType === "beginner",
       sessionId: s.id,
     };

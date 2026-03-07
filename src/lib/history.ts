@@ -4,18 +4,19 @@ import type { HoldDefinition } from "../data/holds";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type GymWorkoutType =
-  | "arc" | "cir" | "power-endurance" | "4x4"
-  | "performance" | "boulder-ladder" | "hard-bouldering" | "limit-bouldering";
+  | "arc" | "cir" | "pe-route" | "lbc" | "wbl"
+  | "performance" | "hard-bouldering" | "limit-bouldering" | "injury";
 
 export type GymData =
-  | { type: "arc";              climbMin: number; wallMin?: number; maxGrade?: string }
+  | { type: "arc";              climbMin: number; routes?: number; downclimb?: string; wallMin?: number; maxGrade?: string }
   | { type: "cir";              repeats: number; climbRating?: string; avgRestSec: number }
-  | { type: "power-endurance";  climbSec: number; restSec: number; reps: number }
-  | { type: "4x4";              climbSec: number; restSec: number; completed4x4s: number }
-  | { type: "performance";      grade: string; tries: number; sends: number }
-  | { type: "boulder-ladder";   topV: string; durationMin: number }
+  | { type: "pe-route";         climbSec: number; dutyCycle: string; reps: number }
+  | { type: "lbc";              climbSec: number; dutyCycle: string; sets: number }
+  | { type: "performance";      grade: string; tries: number; success?: string }
+  | { type: "wbl";              topV: string; durationMin: number }
   | { type: "hard-bouldering";  level: string; durationMin: number }
-  | { type: "limit-bouldering"; level: string; durationMin: number };
+  | { type: "limit-bouldering"; level: string; durationMin: number }
+  | { type: "injury";           bodyPart?: string; severity?: string };
 
 export type SessionSetRecord = {
   weight: number;

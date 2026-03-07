@@ -4,6 +4,7 @@ import type { SessionRecord, GymData, GymWorkoutType } from "../lib/history";
 import { GYM_WORKOUTS } from "../data/gymWorkouts";
 import type { GymWorkoutDef } from "../data/gymWorkouts";
 import { V_GRADES, YDS_GRADES } from "../lib/gradeUtils";
+import { useWorkoutStore } from "../store/useWorkoutStore";
 
 type Props = {
   onBack: () => void;
@@ -54,6 +55,8 @@ function isFormValid(def: GymWorkoutDef, fields: Record<string, string>): boolea
 
 export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
+  const gymDefaults = useWorkoutStore((s) => s.gymDefaults);
+  const setGymDefaults = useWorkoutStore((s) => s.setGymDefaults);
 
   const initialWorkoutType: GymWorkoutType =
     initialRecord?.gymData?.type ?? "arc";
@@ -63,7 +66,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   );
   const [workoutType, setWorkoutType] = useState<GymWorkoutType>(initialWorkoutType);
   const [fields, setFields] = useState<Record<string, string>>(() =>
-    initialRecord?.gymData ? gymDataToFields(initialRecord.gymData) : {}
+    initialRecord?.gymData ? gymDataToFields(initialRecord.gymData) : (gymDefaults[initialWorkoutType] ?? {})
   );
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -75,7 +78,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const handleWorkoutTypeChange = (t: GymWorkoutType) => {
     if (editing) return;
     setWorkoutType(t);
-    setFields({});
+    setFields(gymDefaults[t] ?? {});
   };
 
   const setField = (key: string, value: string) =>
@@ -111,6 +114,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         };
         await addSession(record);
       }
+      setGymDefaults(workoutType, fields);
       onSaved();
     } catch (err) {
       console.error(err);
@@ -163,7 +167,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         {/* Workout type pill picker */}
         <div>
           <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Workout Type</p>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {GYM_WORKOUTS.map((w) => (
               <button
                 key={w.id}
@@ -206,6 +210,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                         <input
                           type="text"
                           list={listId}
+                          autoComplete="off"
                           value={fields[fd.key] ?? ""}
                           onChange={(e) => setField(fd.key, e.target.value)}
                           placeholder={fd.type === "grade-v" ? "V?" : "5.?"}
@@ -215,10 +220,28 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           {grades.map((g) => <option key={g} value={g} />)}
                         </datalist>
                       </>
+                    ) : fd.type === "text" ? (
+                      <input
+                        type="text"
+                        autoComplete="off"
+                        value={fields[fd.key] ?? ""}
+                        onChange={(e) => setField(fd.key, e.target.value)}
+                        className="w-32 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                      />
+                    ) : fd.type === "select" ? (
+                      <select
+                        value={fields[fd.key] ?? ""}
+                        onChange={(e) => setField(fd.key, e.target.value)}
+                        className="bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                      >
+                        <option value="">—</option>
+                        {fd.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
                     ) : (
                       <input
                         type="number"
-                        step={fd.type === "number" ? "1" : "any"}
+                        step="1"
+                        autoComplete="off"
                         value={fields[fd.key] ?? ""}
                         onChange={(e) => setField(fd.key, e.target.value)}
                         placeholder="0"
