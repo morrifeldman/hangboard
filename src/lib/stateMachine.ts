@@ -33,7 +33,6 @@ export function advancePhase(
     case 'hanging':
       if (!isLastRep) return { ...s, phase: 'resting' };
       if (!isLastSet) return { ...s, phase: 'break' };
-      if (isLastHold) return { ...s, phase: 'done' };
       return { ...s, phase: 'break' };
     case 'resting':
       return { ...s, phase: 'hanging', repIndex: s.repIndex + 1 };

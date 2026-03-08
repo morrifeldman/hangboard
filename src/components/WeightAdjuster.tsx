@@ -10,7 +10,7 @@ interface WeightAdjusterProps {
 
 export function WeightAdjuster({ value, onDelta, label, disabled = false, formatValue = formatWeight }: WeightAdjusterProps) {
   const btnClass =
-    "min-h-[48px] min-w-[48px] px-3 rounded-lg bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm disabled:opacity-40 select-none";
+    "min-h-[40px] min-w-[40px] px-3 rounded-lg bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm disabled:opacity-40 select-none";
 
   return (
     <div className="flex flex-col items-center gap-2">

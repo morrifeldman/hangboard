@@ -49,18 +49,18 @@ export const HOLDS_B: HoldDefinition[] = [
     id: "b-chisel",
     name: "Chisel",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1, setIncrement: 5,
   },
   {
     id: "b-hc",
     name: "Half Crimp",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1, setIncrement: 5,
   },
   {
     id: "b-open",
     name: "Open",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1, setIncrement: 5,
   },
 ];

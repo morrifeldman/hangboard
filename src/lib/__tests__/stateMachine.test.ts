@@ -66,10 +66,10 @@ describe('advancePhase — workout A (numSets=2 default)', () => {
     expect(next.phase).toBe('break');
   });
 
-  it('hanging last rep set2, last hold → done', () => {
+  it('hanging last rep set2, last hold → break (for feedback)', () => {
     const s = state({ repIndex: SET2 - 1, setNumber: 2, holdIndex: lastHoldIndex });
     const next = advancePhase(s, HOLDS, SET1, SET2);
-    expect(next.phase).toBe('done');
+    expect(next.phase).toBe('break');
   });
 
   it('resting → hanging, increments repIndex', () => {

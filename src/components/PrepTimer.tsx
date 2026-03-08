@@ -14,6 +14,9 @@ export function PrepTimer() {
   const paused = useWorkoutStore((s) => s.paused);
   const currentHold = useWorkoutStore((s) => s.currentHold);
 
+  const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
+  const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
+
   const hold = currentHold();
   const weight = effectiveWeight(hold.id, setNumber);
   const audio = useAudio();
@@ -39,13 +42,15 @@ export function PrepTimer() {
   if (hold.isRestOnly) return null;
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-3">
       <p className="text-white font-bold text-xl" data-testid="hold-name">{hold.name}</p>
       <TimerRing
         remaining={remaining}
         duration={prepDuration}
         label="GET READY"
         color="stroke-orange-400"
+        onClick={paused ? resumeWorkout : pauseWorkout}
+        paused={paused}
       />
       <p className="text-gray-300 text-lg font-semibold tabular-nums">
         {formatWeight(weight)}

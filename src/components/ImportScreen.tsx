@@ -84,6 +84,19 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     )
   );
 
+  const toggleCompletion = (holdId: string, setKey: "set1" | "set2" | "set3") => {
+    setCompletionOverrides((prev) => {
+      const current = prev[holdId] ?? {};
+      const origHold = origHoldMap.get(holdId);
+      const origVal =
+        setKey === "set1" ? (origHold?.set1.completed ?? true)
+        : setKey === "set2" ? (origHold?.set2?.completed ?? true)
+        : (origHold?.set3?.completed ?? true);
+      const currentVal = current[setKey] ?? origVal;
+      return { ...prev, [holdId]: { ...current, [setKey]: !currentVal } };
+    });
+  };
+
   const toggleNote = (holdId: string) =>
     setExpandedNoteHolds((prev) => {
       const next = new Set(prev);
@@ -95,6 +108,11 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   // Map of holdId → original record hold for edit mode (completion status, original weights)
   const origHoldMap = new Map((initialRecord?.holds ?? []).map((h) => [h.holdId, h]));
+
+  // Togglable completion status per set (holdId → { set1, set2, set3 })
+  const [completionOverrides, setCompletionOverrides] = useState<
+    Record<string, { set1?: boolean; set2?: boolean; set3?: boolean }>
+  >({});
 
   // In edit mode use the actual holds from the record (preserves non-standard holds like Small Crimp)
   const allDefs = [...HOLDS, ...HOLDS_B];
@@ -155,9 +173,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       const reps1 = hold.repsPerSet ?? hold.set1Reps;
       const reps2 = hold.repsPerSet ?? hold.set2Reps;
       const origHold = origHoldMap.get(hold.id);
-      const set1Completed = !editing || (origHold?.set1.completed ?? true);
-      const set2Completed = !editing || (origHold?.set2?.completed ?? true);
-      const set3Completed = !editing || (origHold?.set3?.completed ?? true);
+      const co = completionOverrides[hold.id];
+      const set1Completed = co?.set1 ?? (!editing || (origHold?.set1.completed ?? true));
+      const set2Completed = co?.set2 ?? (!editing || (origHold?.set2?.completed ?? true));
+      const set3Completed = co?.set3 ?? (!editing || (origHold?.set3?.completed ?? true));
       const w = hold.isRestOnly || hold.skipProgression ? 0 : (weights[i] ?? 0);
       const w2 = hold.isRestOnly || hold.skipProgression ? 0 : (weights2[i] ?? 0);
       const w3 = hold.isRestOnly || hold.skipProgression ? 0 : (weights3[i] ?? 0);
@@ -326,9 +345,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             const hasNote = !!holdNotesState[hold.id] || !!sn?.set1 || !!sn?.set2 || !!sn?.set3;
             const noteOpen = expandedNoteHolds.has(hold.id);
             const numSets = hold.numSets ?? 2;
-            const isCompleted = !editing || (origHoldMap.get(hold.id)?.set1.completed ?? true);
-            const set2Completed = !editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true);
-            const set3Completed = !editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true);
+            const co = completionOverrides[hold.id];
+            const isCompleted = co?.set1 ?? (!editing || (origHoldMap.get(hold.id)?.set1.completed ?? true));
+            const set2Completed = co?.set2 ?? (!editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true));
+            const set3Completed = co?.set3 ?? (!editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true));
             return (
               <div
                 key={hold.id}
@@ -336,7 +356,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               >
                 <div className="flex items-center gap-3">
                   {/* Hold name */}
-                  {editing && isCompleted ? (
+                  {editing ? (
                     <button
                       onClick={() => toggleNote(hold.id)}
                       className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
@@ -358,21 +378,25 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                     </span>
                   )}
                   {/* Weight display */}
-                  {!isCompleted ? (
-                    <span className="text-gray-600 text-sm font-mono">
-                      {hold.isRestOnly || hold.skipProgression ? "BW" : numSets >= 3 ? `${w} → ${w2} → ${w3}` : numSets >= 2 ? `${w} → ${w2}` : String(w)}
-                    </span>
-                  ) : hold.isRestOnly || hold.skipProgression ? (
+                  {hold.isRestOnly || hold.skipProgression ? (
                     <span className="text-gray-500 text-xs font-mono">BW</span>
                   ) : numSets >= 3 ? (
                     <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={w}
-                        onChange={(e) => updateWeight(i, e.target.value)}
-                        className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                      />
+                      {isCompleted ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={w}
+                          onChange={(e) => updateWeight(i, e.target.value)}
+                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                          className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                          className="w-16 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
+                        >{w}</span>
+                      )}
                       <span className="text-gray-600 text-xs px-1">→</span>
                       {set2Completed ? (
                         <input
@@ -380,10 +404,14 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w2}
                           onChange={(e) => updateWeight2(i, e.target.value)}
+                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
                           className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
-                        <span className="w-16 text-gray-500 text-right px-2 py-1 text-sm font-mono line-through inline-block">{w2}</span>
+                        <span
+                          onClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
+                          className="w-16 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
+                        >{w2}</span>
                       )}
                       <span className="text-gray-600 text-xs px-1">→</span>
                       {set3Completed ? (
@@ -392,21 +420,33 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w3}
                           onChange={(e) => updateWeight3(i, e.target.value)}
+                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set3") : undefined}
                           className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
-                        <span className="w-16 text-gray-500 text-right px-2 py-1 text-sm font-mono line-through inline-block">{w3}</span>
+                        <span
+                          onClick={editing ? () => toggleCompletion(hold.id, "set3") : undefined}
+                          className="w-16 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
+                        >{w3}</span>
                       )}
                     </div>
                   ) : numSets >= 2 ? (
                     <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={w}
-                        onChange={(e) => updateWeight(i, e.target.value)}
-                        className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                      />
+                      {isCompleted ? (
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={w}
+                          onChange={(e) => updateWeight(i, e.target.value)}
+                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                          className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
+                        />
+                      ) : (
+                        <span
+                          onClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                          className="w-20 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
+                        >{w}</span>
+                      )}
                       <span className="text-gray-600 text-xs px-1">→</span>
                       {set2Completed ? (
                         <input
@@ -414,26 +454,36 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w2}
                           onChange={(e) => updateWeight2(i, e.target.value)}
+                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
                           className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
-                        <span className="w-20 text-gray-500 text-right px-2 py-1 text-sm font-mono line-through inline-block">
-                          {w2}
-                        </span>
+                        <span
+                          onClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
+                          className="w-20 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
+                        >{w2}</span>
                       )}
                     </div>
                   ) : (
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={w}
-                      onChange={(e) => updateWeight(i, e.target.value)}
-                      className="w-20 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-400"
-                    />
+                    isCompleted ? (
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={w}
+                        onChange={(e) => updateWeight(i, e.target.value)}
+                        onDoubleClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                        className="w-20 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-400"
+                      />
+                    ) : (
+                      <span
+                        onClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                        className="w-20 text-red-400/70 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 line-through inline-block cursor-pointer"
+                      >{w}</span>
+                    )
                   )}
                 </div>
                 {/* Note fields — slide open when toggled (completed holds only) */}
-                {editing && isCompleted && noteOpen && (
+                {editing && noteOpen && (
                   <div className="mt-2 flex flex-col gap-1.5">
                     <textarea
                       // eslint-disable-next-line jsx-a11y/no-autofocus

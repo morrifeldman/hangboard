@@ -89,7 +89,8 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     if (!gymData) return;
     setSaving(true);
     try {
-      const newTs = new Date(`${dateValue}T12:00:00`).getTime();
+      const now = new Date();
+      const newTs = new Date(`${dateValue}T${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`).getTime();
       if (editing && initialRecord) {
         const duration = initialRecord.completedAt - initialRecord.startedAt;
         const updated: SessionRecord = {
@@ -194,7 +195,6 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             {def.fieldDefs.map((fd, i) => {
               const isGrade = fd.type === "grade-v" || fd.type === "grade-yds";
               const grades = fd.type === "grade-v" ? V_GRADES : YDS_GRADES;
-              const listId = `grades-${fd.key}`;
               return (
                 <div
                   key={fd.key}
@@ -206,20 +206,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                   </label>
                   <div className="flex items-center gap-1.5">
                     {isGrade ? (
-                      <>
-                        <input
-                          type="text"
-                          list={listId}
-                          autoComplete="off"
-                          value={fields[fd.key] ?? ""}
-                          onChange={(e) => setField(fd.key, e.target.value)}
-                          placeholder={fd.type === "grade-v" ? "V?" : "5.?"}
-                          className="w-24 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                        />
-                        <datalist id={listId}>
-                          {grades.map((g) => <option key={g} value={g} />)}
-                        </datalist>
-                      </>
+                      <select
+                        value={fields[fd.key] ?? ""}
+                        onChange={(e) => setField(fd.key, e.target.value)}
+                        className="w-24 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                      >
+                        <option value="">{fd.type === "grade-v" ? "V?" : "5.?"}</option>
+                        {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                      </select>
                     ) : fd.type === "text" ? (
                       <input
                         type="text"

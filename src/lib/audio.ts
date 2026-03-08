@@ -24,7 +24,7 @@ async function beep(freq: number, durationMs: number): Promise<void> {
   osc.type = "sine";
 
   const now = context.currentTime;
-  gain.gain.setValueAtTime(0.3, now);
+  gain.gain.setValueAtTime(0.6, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + durationMs / 1000);
 
   osc.start(now);

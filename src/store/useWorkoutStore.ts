@@ -93,16 +93,23 @@ export const useWorkoutStore = create<WorkoutStore>()(
         const overrideVal = override?.[key] ?? null;
         if (overrideVal !== null) return overrideVal;
 
+        const holds = holdsFor(get().selectedWorkout);
+        const hold = holds.find((h) => h.id === holdId);
         const storedMap = get().selectedWorkout === "max-hang" ? get().weightsB : get().weights;
         const stored = storedMap[holdId];
+        let base: number;
         if (!stored) {
-          const holds = holdsFor(get().selectedWorkout);
-          const hold = holds.find((h) => h.id === holdId);
-          return key === "set1"
+          base = key === "set1"
             ? (hold?.defaultSet1Weight ?? 0)
             : (hold?.defaultSet2Weight ?? 0);
+        } else {
+          base = stored[key];
         }
-        return stored[key];
+        // Apply per-set increment (e.g. max hang: set1=base, set2=base+5, set3=base+10)
+        if (hold?.setIncrement && setNum > 1) {
+          base = (stored?.set1 ?? hold.defaultSet1Weight) + (setNum - 1) * hold.setIncrement;
+        }
+        return base;
       },
 
       setSelectedWorkout: (id) => {

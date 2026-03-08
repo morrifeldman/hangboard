@@ -14,6 +14,9 @@ export function HangTimer() {
   const paused = useWorkoutStore((s) => s.paused);
   const currentHold = useWorkoutStore((s) => s.currentHold);
 
+  const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
+  const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
+
   const audio = useAudio();
   const firedStartRef = useRef(false);
 
@@ -63,13 +66,15 @@ export function HangTimer() {
   const label = isHanging ? "HANG" : "REST";
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-3">
       <p className="text-white font-bold text-xl">{hold.name}</p>
       <TimerRing
         remaining={remaining}
         duration={duration}
         label={label}
         color={color}
+        onClick={paused ? resumeWorkout : pauseWorkout}
+        paused={paused}
       />
       <div className="flex gap-2" data-testid="rep-counter">
         {Array.from({ length: totalReps }, (_, i) => {
