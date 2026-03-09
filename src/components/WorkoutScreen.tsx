@@ -28,8 +28,6 @@ export function WorkoutScreen() {
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sessionNotes, setSessionNotes] = useState("");
-  const sessionNotesRef = useRef("");
-  const [doneCountdown, setDoneCountdown] = useState(10);
 
   // Track fullscreen state
   useEffect(() => {
@@ -78,28 +76,10 @@ export function WorkoutScreen() {
     }
   };
 
-  // Done screen: show notes textarea + 10s countdown
+  // Done screen: reset notes state
   useEffect(() => {
     if (phase !== "done") return;
-
     setSessionNotes("");
-    sessionNotesRef.current = "";
-    setDoneCountdown(10);
-
-    const interval = setInterval(() => {
-      if (sessionNotesRef.current !== "") return; // paused while typing
-      setDoneCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          saveSession(false, "");
-          advancePhase();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -150,10 +130,7 @@ export function WorkoutScreen() {
             </div>
             <textarea
               value={sessionNotes}
-              onChange={(e) => {
-                setSessionNotes(e.target.value);
-                sessionNotesRef.current = e.target.value;
-              }}
+              onChange={(e) => setSessionNotes(e.target.value)}
               placeholder="Any notes? (optional)"
               rows={3}
               className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
@@ -165,7 +142,7 @@ export function WorkoutScreen() {
               }}
               className="w-full py-3 rounded-xl font-semibold bg-green-600 text-white text-base"
             >
-              {sessionNotes === "" ? `Close (${doneCountdown}s)` : "Close"}
+              Save
             </button>
           </div>
         );

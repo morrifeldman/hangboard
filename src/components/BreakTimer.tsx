@@ -36,18 +36,19 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const hold = holds[holdIndex];
   const nextHold = holds[holdIndex + 1];
   const numSets = hold.numSets ?? 2;
-  const breakDuration = hold.breakSecs ?? BREAK_SECS;
-
-  const { remaining } = useTimer({
-    duration: breakDuration,
-    running: !paused,
-    onExpire: advancePhase,
-  });
-
   // Between sets of the same hold (not the last set yet)
   const betweenSets = setNumber < numSets;
   // After the last set — between this hold and the next
   const betweenHolds = !betweenSets;
+  // No timer needed after the very last hold
+  const isLastHold = betweenHolds && !nextHold;
+  const breakDuration = isLastHold ? 0 : (hold.breakSecs ?? BREAK_SECS);
+
+  const { remaining } = useTimer({
+    duration: breakDuration,
+    running: !paused && !isLastHold,
+    onExpire: advancePhase,
+  });
 
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
   const stored = storedMap[hold.id] ?? { set1: hold.defaultSet1Weight, set2: hold.defaultSet2Weight };
@@ -83,34 +84,36 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         )}
       </div>
 
-      {/* Compact bar timer */}
-      <div
-        className={`flex flex-col items-center gap-1 w-full ${paused ? "" : "cursor-pointer"}`}
-        onClick={paused ? resumeWorkout : pauseWorkout}
-      >
-        {paused ? (
-          <div className="flex flex-col items-center">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="white" className="opacity-80">
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
-            </svg>
-            <span className="text-sm font-medium text-gray-400">PAUSED</span>
+      {/* Compact bar timer — hidden on last hold */}
+      {!isLastHold && (
+        <div
+          className={`flex flex-col items-center gap-1 w-full ${paused ? "" : "cursor-pointer"}`}
+          onClick={paused ? resumeWorkout : pauseWorkout}
+        >
+          {paused ? (
+            <div className="flex flex-col items-center">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="white" className="opacity-80">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+              <span className="text-sm font-medium text-gray-400">PAUSED</span>
+            </div>
+          ) : (
+            <>
+              <span className="text-5xl font-bold tabular-nums text-white">
+                {Math.ceil(remaining)}
+              </span>
+              <span className="text-sm font-medium text-gray-400">{barLabel}</span>
+            </>
+          )}
+          <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+            <div
+              className="bg-blue-400 h-1.5 rounded-full transition-all duration-100"
+              style={{ width: `${progress * 100}%` }}
+            />
           </div>
-        ) : (
-          <>
-            <span className="text-5xl font-bold tabular-nums text-white">
-              {Math.ceil(remaining)}
-            </span>
-            <span className="text-sm font-medium text-gray-400">{barLabel}</span>
-          </>
-        )}
-        <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-          <div
-            className="bg-blue-400 h-1.5 rounded-full transition-all duration-100"
-            style={{ width: `${progress * 100}%` }}
-          />
         </div>
-      </div>
+      )}
 
       {/* Set 2 weight adjuster — only for classic 2-set holds */}
       {betweenSets && numSets === 2 && !hold.skipProgression && (
@@ -199,7 +202,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
           className="min-h-[44px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-white font-bold text-lg"
           data-testid="skip-break-btn"
         >
-          Skip break
+          {betweenHolds && !nextHold ? "Done" : "Skip break"}
         </button>
         {betweenSets && (
           <button
@@ -210,7 +213,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
             Skip Set {setNumber + 1}
           </button>
         )}
-        {betweenHolds && !hold.isRestOnly && (
+        {betweenHolds && nextHold && !hold.isRestOnly && (
           <button
             onClick={skipNextHold}
             className="min-h-[44px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-gray-300 font-semibold text-base"
