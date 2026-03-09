@@ -51,7 +51,7 @@ interface WorkoutStore {
 
 function defaultWeightsA(): StoredWeights {
   return Object.fromEntries(
-    HOLDS.map((h) => [h.id, { set1: h.defaultSet1Weight, set2: h.defaultSet2Weight }])
+    [...HOLDS, ...HOLDS_TEST].map((h) => [h.id, { set1: h.defaultSet1Weight, set2: h.defaultSet2Weight }])
   );
 }
 
@@ -173,8 +173,11 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
       adjustNextWeight: (holdId, setNum, delta) => {
         const key = setNum <= 1 ? "set1" : "set2";
+        const holds = holdsFor(get().selectedWorkout);
+        const hold = holds.find((h) => h.id === holdId);
+        const fallback = { set1: hold?.defaultSet1Weight ?? 0, set2: hold?.defaultSet2Weight ?? 0 };
         if (get().selectedWorkout === "max-hang") {
-          const stored = get().weightsB[holdId] ?? { set1: 0, set2: 0 };
+          const stored = get().weightsB[holdId] ?? fallback;
           set({
             weightsB: {
               ...get().weightsB,
@@ -182,7 +185,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
             },
           });
         } else {
-          const stored = get().weights[holdId] ?? { set1: 0, set2: 0 };
+          const stored = get().weights[holdId] ?? fallback;
           set({
             weights: {
               ...get().weights,
@@ -215,3 +218,8 @@ export const useWorkoutStore = create<WorkoutStore>()(
     }
   )
 );
+
+// Expose store on window in dev/test mode for easy state manipulation from console
+if (import.meta.env.DEV || new URLSearchParams(window.location.search).has("test")) {
+  (window as unknown as Record<string, unknown>).__store = useWorkoutStore;
+}
