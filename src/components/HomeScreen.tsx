@@ -12,6 +12,18 @@ import type { TrendPoint } from "../lib/progressData";
 
 type EditKey = { holdId: string; set: 1 | 2 } | null;
 
+/** Scroll the expanded card into view, centering it in the scroll area */
+function scrollCardIntoViewRef(el: HTMLDivElement | null) {
+  if (el) {
+    const card = el.closest<HTMLElement>("[data-testid^='hold-row-']");
+    if (card) {
+      requestAnimationFrame(() => {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }
+}
+
 // ─── SparkLine ────────────────────────────────────────────────────────────────
 
 function SparkLine({ points }: { points: TrendPoint[] }) {
@@ -196,7 +208,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
           return (
             <div
               key={hold.id}
-              className="bg-gray-800 rounded-xl overflow-hidden"
+              className="bg-gray-800 rounded-xl overflow-hidden shrink-0"
               data-testid={`hold-row-${hold.id}`}
             >
               {/* Row header */}
@@ -238,7 +250,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
 
               {/* Inline editor — S1 moves both sets together */}
               {editingS1 && (
-                <div className="border-t border-gray-700 px-4 py-4">
+                <div ref={scrollCardIntoViewRef} className="border-t border-gray-700 px-4 py-4">
                   <WeightAdjuster
                     value={stored.set1}
                     onDelta={(d) => {
@@ -252,7 +264,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
 
               {/* Inline editor — S2 offset only */}
               {editingS2 && isMultiSet && (
-                <div className="border-t border-gray-700 px-4 py-4">
+                <div ref={scrollCardIntoViewRef} className="border-t border-gray-700 px-4 py-4">
                   <WeightAdjuster
                     value={stored.set2 - stored.set1}
                     onDelta={(d) => adjustNextWeight(hold.id, 2, d)}
@@ -264,23 +276,22 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
             </div>
           );
         })}
+        <div className="shrink-0 px-0 py-6 flex flex-col gap-3">
+          <button
+            onClick={handleStart}
+            className="min-h-[64px] w-full rounded-2xl bg-green-600 active:bg-green-500 text-white font-bold text-2xl"
+            data-testid="start-workout-btn"
+          >
+            Start Workout
+          </button>
+          <button
+            onClick={onLogGym}
+            className="w-full py-2.5 rounded-xl text-orange-400 text-sm font-semibold active:text-orange-300 transition-colors"
+          >
+            Log Gym Session
+          </button>
+        </div>
       </main>
-
-      <div className="px-4 py-6 flex flex-col gap-3">
-        <button
-          onClick={handleStart}
-          className="min-h-[64px] w-full rounded-2xl bg-green-600 active:bg-green-500 text-white font-bold text-2xl"
-          data-testid="start-workout-btn"
-        >
-          Start Workout
-        </button>
-        <button
-          onClick={onLogGym}
-          className="w-full py-2.5 rounded-xl text-orange-400 text-sm font-semibold active:text-orange-300 transition-colors"
-        >
-          Log Gym Session
-        </button>
-      </div>
     </div>
   );
 }
