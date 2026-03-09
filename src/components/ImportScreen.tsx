@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import type { HoldDefinition } from "../data/holds";
@@ -105,6 +105,12 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Prevent mobile keyboard from opening on mount by blurring any auto-focused input
+  useEffect(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
 
   // Map of holdId → original record hold for edit mode (completion status, original weights)
   const origHoldMap = new Map((initialRecord?.holds ?? []).map((h) => [h.holdId, h]));
