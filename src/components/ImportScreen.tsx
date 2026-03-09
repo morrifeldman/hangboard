@@ -5,19 +5,32 @@ import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 
-/** Returns long-press event handlers for an element. Not a hook — safe to call anywhere. */
-function longPressHandlers(onLongPress: (() => void) | undefined, ms = 400) {
-  if (!onLongPress) return {};
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let fired = false;
-  const clear = () => { if (timer) clearTimeout(timer); timer = null; };
-  return {
-    onTouchStart: () => { fired = false; clear(); timer = setTimeout(() => { fired = true; navigator.vibrate?.(30); onLongPress(); }, ms); },
-    onTouchEnd: clear,
-    onTouchCancel: clear,
-    onContextMenu: (e: React.MouseEvent | React.TouchEvent) => { if (fired) e.preventDefault(); },
-    onDoubleClick: onLongPress, // desktop fallback
-  };
+/** Small tap target to toggle set completion. */
+function SetDot({ completed, onClick }: { completed: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-5 h-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
+        completed
+          ? "border-green-500/60 bg-green-500/20"
+          : "border-red-400/60 bg-red-400/20"
+      }`}
+      aria-label={completed ? "Mark as failed" : "Mark as completed"}
+    >
+      {completed ? (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      )}
+    </button>
+  );
 }
 
 type Props = {
@@ -401,105 +414,45 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                   {hold.isRestOnly || hold.skipProgression ? (
                     <span className="text-gray-500 text-xs font-mono">BW</span>
                   ) : numSets >= 3 ? (
-                    <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
-                      {isCompleted ? (
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={w}
-                          onChange={(e) => updateWeight(i, e.target.value)}
-                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set1") : undefined)}
-                          className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                        />
-                      ) : (
-                        <span
-                          onClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
-                          className="w-16 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
-                        >{w}</span>
-                      )}
-                      <span className="text-gray-600 text-xs px-1">→</span>
-                      {set2Completed ? (
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={w2}
-                          onChange={(e) => updateWeight2(i, e.target.value)}
-                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set2") : undefined)}
-                          className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                        />
-                      ) : (
-                        <span
-                          onClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
-                          className="w-16 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
-                        >{w2}</span>
-                      )}
-                      <span className="text-gray-600 text-xs px-1">→</span>
-                      {set3Completed ? (
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={w3}
-                          onChange={(e) => updateWeight3(i, e.target.value)}
-                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set3") : undefined)}
-                          className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                        />
-                      ) : (
-                        <span
-                          onClick={editing ? () => toggleCompletion(hold.id, "set3") : undefined}
-                          className="w-16 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
-                        >{w3}</span>
-                      )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
+                      <input type="number" step="0.5" value={w}
+                        onChange={(e) => updateWeight(i, e.target.value)}
+                        className={`w-14 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
+                      />
+                      {editing && <SetDot completed={set2Completed} onClick={() => toggleCompletion(hold.id, "set2")} />}
+                      <input type="number" step="0.5" value={w2}
+                        onChange={(e) => updateWeight2(i, e.target.value)}
+                        className={`w-14 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set2Completed ? "text-white" : "text-red-400/70 line-through"}`}
+                      />
+                      {editing && <SetDot completed={set3Completed} onClick={() => toggleCompletion(hold.id, "set3")} />}
+                      <input type="number" step="0.5" value={w3}
+                        onChange={(e) => updateWeight3(i, e.target.value)}
+                        className={`w-14 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set3Completed ? "text-white" : "text-red-400/70 line-through"}`}
+                      />
                     </div>
                   ) : numSets >= 2 ? (
-                    <div className="flex items-center rounded border border-gray-600 overflow-hidden flex-shrink-0">
-                      {isCompleted ? (
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={w}
-                          onChange={(e) => updateWeight(i, e.target.value)}
-                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set1") : undefined)}
-                          className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                        />
-                      ) : (
-                        <span
-                          onClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
-                          className="w-20 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
-                        >{w}</span>
-                      )}
-                      <span className="text-gray-600 text-xs px-1">→</span>
-                      {set2Completed ? (
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={w2}
-                          onChange={(e) => updateWeight2(i, e.target.value)}
-                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set2") : undefined)}
-                          className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
-                        />
-                      ) : (
-                        <span
-                          onClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
-                          className="w-20 text-red-400/70 text-right px-2 py-1 text-sm font-mono line-through inline-block cursor-pointer"
-                        >{w2}</span>
-                      )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
+                      <input type="number" step="0.5" value={w}
+                        onChange={(e) => updateWeight(i, e.target.value)}
+                        className={`w-16 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
+                      />
+                      <span className="text-gray-600 text-xs">→</span>
+                      {editing && <SetDot completed={set2Completed} onClick={() => toggleCompletion(hold.id, "set2")} />}
+                      <input type="number" step="0.5" value={w2}
+                        onChange={(e) => updateWeight2(i, e.target.value)}
+                        className={`w-16 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set2Completed ? "text-white" : "text-red-400/70 line-through"}`}
+                      />
                     </div>
                   ) : (
-                    isCompleted ? (
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={w}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
+                      <input type="number" step="0.5" value={w}
                         onChange={(e) => updateWeight(i, e.target.value)}
-                        {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set1") : undefined)}
-                        className="w-20 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-400"
+                        className={`w-20 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
                       />
-                    ) : (
-                      <span
-                        onClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
-                        className="w-20 text-red-400/70 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 line-through inline-block cursor-pointer"
-                      >{w}</span>
-                    )
+                    </div>
                   )}
                 </div>
                 {/* Note fields — slide open when toggled (completed holds only) */}
