@@ -5,6 +5,20 @@ import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 
+/** Returns long-press event handlers for an element. Not a hook — safe to call anywhere. */
+function longPressHandlers(onLongPress: (() => void) | undefined, ms = 400) {
+  if (!onLongPress) return {};
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let fired = false;
+  const clear = () => { if (timer) clearTimeout(timer); timer = null; };
+  return {
+    onTouchStart: () => { fired = false; clear(); timer = setTimeout(() => { fired = true; navigator.vibrate?.(30); onLongPress(); }, ms); },
+    onTouchEnd: clear,
+    onTouchCancel: clear,
+    onContextMenu: (e: React.MouseEvent | React.TouchEvent) => { if (fired) e.preventDefault(); },
+    onDoubleClick: onLongPress, // desktop fallback
+  };
+}
 
 type Props = {
   onBack: () => void;
@@ -394,7 +408,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w}
                           onChange={(e) => updateWeight(i, e.target.value)}
-                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set1") : undefined)}
                           className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
@@ -410,7 +424,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w2}
                           onChange={(e) => updateWeight2(i, e.target.value)}
-                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
+                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set2") : undefined)}
                           className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
@@ -426,7 +440,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w3}
                           onChange={(e) => updateWeight3(i, e.target.value)}
-                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set3") : undefined}
+                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set3") : undefined)}
                           className="w-16 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
@@ -444,7 +458,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w}
                           onChange={(e) => updateWeight(i, e.target.value)}
-                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set1") : undefined)}
                           className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
@@ -460,7 +474,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                           step="0.5"
                           value={w2}
                           onChange={(e) => updateWeight2(i, e.target.value)}
-                          onDoubleClick={editing ? () => toggleCompletion(hold.id, "set2") : undefined}
+                          {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set2") : undefined)}
                           className="w-20 bg-gray-700 text-white text-right px-2 py-1 text-sm font-mono focus:outline-none"
                         />
                       ) : (
@@ -477,7 +491,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                         step="0.5"
                         value={w}
                         onChange={(e) => updateWeight(i, e.target.value)}
-                        onDoubleClick={editing ? () => toggleCompletion(hold.id, "set1") : undefined}
+                        {...longPressHandlers(editing ? () => toggleCompletion(hold.id, "set1") : undefined)}
                         className="w-20 bg-gray-700 text-white text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-400"
                       />
                     ) : (
