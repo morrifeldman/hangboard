@@ -200,7 +200,10 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
             set1: hold.defaultSet1Weight,
             set2: hold.defaultSet2Weight,
           };
-          const isMultiSet = (hold.numSets ?? 2) === 2 && !hold.isRestOnly && !hold.skipProgression;
+          const nSets = hold.numSets ?? 2;
+          const isMultiSet = nSets >= 2 && !hold.isRestOnly && !hold.skipProgression;
+          const is3Set = nSets >= 3 && !hold.isRestOnly && !hold.skipProgression;
+          const inc = hold.setIncrement ?? 0;
           const editingS1 = editing?.holdId === hold.id && editing.set === 1;
           const editingS2 = editing?.holdId === hold.id && editing.set === 2;
           const sparkPoints = buildTrend(sessions, hold.id, selectedWorkout === "max-hang" ? "max-hang" : "repeaters");
@@ -230,9 +233,11 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
                         }`}
                         data-testid={`weight-${hold.id}-set1`}
                       >
-                        {formatWeight(stored.set1)}
+                        {is3Set
+                          ? `${formatWeight(stored.set1)} → ${formatWeight(stored.set1 + inc)} → ${formatWeight(stored.set1 + inc * 2)}`
+                          : formatWeight(stored.set1)}
                       </button>
-                      {isMultiSet && (
+                      {isMultiSet && !is3Set && (
                         <button
                           onClick={() => toggleEdit(hold.id, 2)}
                           className={`py-0.5 px-2 text-sm tabular-nums transition-colors ${
@@ -257,7 +262,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
                       adjustNextWeight(hold.id, 1, d);
                       adjustNextWeight(hold.id, 2, d);
                     }}
-                    label={isMultiSet ? "Base weight (Set 2 moves with Set 1)" : "Weight"}
+                    label={is3Set ? `Base weight (+${inc} lb per set)` : isMultiSet ? "Base weight (Set 2 moves with Set 1)" : "Weight"}
                   />
                 </div>
               )}
