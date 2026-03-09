@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import type { HoldDefinition } from "../data/holds";
@@ -146,6 +146,31 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const [completionOverrides, setCompletionOverrides] = useState<
     Record<string, { set1?: boolean; set2?: boolean; set3?: boolean }>
   >({});
+
+  // In edit mode, detect whether anything has changed from the initial record
+  const hasChanges = useMemo(() => {
+    if (!editing || !initialRecord) return true; // new record — always saveable
+    if (dateValue !== localDateString(initialRecord.startedAt)) return true;
+    if (sessionNotes !== (initialRecord.notes ?? "")) return true;
+    for (const [holdId, co] of Object.entries(completionOverrides)) {
+      const h = initialRecord.holds.find((x) => x.holdId === holdId);
+      if (co.set1 !== undefined && co.set1 !== (h?.set1.completed ?? true)) return true;
+      if (co.set2 !== undefined && co.set2 !== (h?.set2?.completed ?? true)) return true;
+      if (co.set3 !== undefined && co.set3 !== (h?.set3?.completed ?? true)) return true;
+    }
+    for (let i = 0; i < initialRecord.holds.length; i++) {
+      const h = initialRecord.holds[i];
+      if ((weights[i] ?? 0) !== h.set1.weight) return true;
+      if ((weights2[i] ?? 0) !== (h.set2?.weight ?? h.set1.weight)) return true;
+      if ((weights3[i] ?? 0) !== (h.set3?.weight ?? h.set1.weight)) return true;
+      if ((holdNotesState[h.holdId] ?? "") !== (h.notes ?? "")) return true;
+      const sn = setNotesState[h.holdId];
+      if ((sn?.set1 ?? "") !== (h.set1.notes ?? "")) return true;
+      if ((sn?.set2 ?? "") !== (h.set2?.notes ?? "")) return true;
+      if ((sn?.set3 ?? "") !== (h.set3?.notes ?? "")) return true;
+    }
+    return false;
+  }, [editing, initialRecord, dateValue, sessionNotes, weights, weights2, weights3, completionOverrides, holdNotesState, setNotesState]);
 
   // In edit mode use the actual holds from the record (preserves non-standard holds like Small Crimp)
   const allDefs = [...HOLDS, ...HOLDS_B];
@@ -436,13 +461,13 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                       {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
                       <input type="number" step="0.5" value={w}
                         onChange={(e) => updateWeight(i, e.target.value)}
-                        className={`w-16 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
+                        className={`w-[4.5rem] bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
                       />
                       <span className="text-gray-600 text-xs">→</span>
                       {editing && <SetDot completed={set2Completed} onClick={() => toggleCompletion(hold.id, "set2")} />}
                       <input type="number" step="0.5" value={w2}
                         onChange={(e) => updateWeight2(i, e.target.value)}
-                        className={`w-16 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set2Completed ? "text-white" : "text-red-400/70 line-through"}`}
+                        className={`w-[4.5rem] bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set2Completed ? "text-white" : "text-red-400/70 line-through"}`}
                       />
                     </div>
                   ) : (
@@ -537,13 +562,21 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
         />
 
-        <button
-          onClick={handleSave}
-          disabled={saving || !dateValue}
-          className="w-full py-3 rounded-xl font-semibold bg-indigo-600 text-white text-base disabled:opacity-50"
-        >
-          {saving ? "Saving…" : editing ? "Save Changes" : "Save Workout"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={onBack}
+            className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-gray-400 text-base"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !dateValue || !hasChanges}
+            className="flex-1 py-3 rounded-xl font-semibold bg-indigo-600 text-white text-base disabled:opacity-50"
+          >
+            {saving ? "Saving…" : editing ? "Save Changes" : "Save Workout"}
+          </button>
+        </div>
 
         {editing && (
           <button
