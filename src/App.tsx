@@ -7,9 +7,10 @@ import { HistoryScreen } from "./components/HistoryScreen";
 import { ImportScreen } from "./components/ImportScreen";
 import { GymLogScreen } from "./components/GymLogScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
+import { PyramidScreen } from "./components/PyramidScreen";
 import type { SessionRecord } from "./lib/history";
 
-type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress";
+type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid";
 
 export default function App() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -83,6 +84,10 @@ export default function App() {
     );
   }
 
+  if (view === "pyramid") {
+    return <PyramidScreen onBack={() => setView("home")} />;
+  }
+
   if (view === "progress") {
     return (
       <ProgressScreen
@@ -101,6 +106,7 @@ export default function App() {
       onShowHistory={() => setView("history")}
       onShowProgress={() => setView("progress")}
       onLogGym={() => setView("gym-log")}
+      onShowPyramid={() => setView("pyramid")}
     />
   );
 }

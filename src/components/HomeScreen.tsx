@@ -80,9 +80,10 @@ type HomeScreenProps = {
   onShowHistory: () => void;
   onShowProgress: () => void;
   onLogGym: () => void;
+  onShowPyramid: () => void;
 };
 
-export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScreenProps) {
+export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyramid }: HomeScreenProps) {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const weights = useWorkoutStore((s) => s.weights);
   const weightsB = useWorkoutStore((s) => s.weightsB);
@@ -130,6 +131,26 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym }: HomeScre
       <header className="bg-gray-800 px-4 py-4 flex items-center justify-between">
         <h1 className="text-white font-bold text-2xl">Hangboard</h1>
         <div className="flex items-center gap-1">
+          <button
+            onClick={onShowPyramid}
+            aria-label="View climbing pyramid"
+            className="text-gray-400 hover:text-white transition-colors p-1"
+          >
+            {/* Mountain/pyramid icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
+            </svg>
+          </button>
           <button
             onClick={onShowProgress}
             aria-label="View progress"

@@ -49,17 +49,23 @@ export type SessionRecord = {
 // ─── IndexedDB setup ─────────────────────────────────────────────────────────
 
 const DB_NAME = "hangboard-history";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "sessions";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
-function getDB(): Promise<IDBPDatabase> {
+export function getDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        const store = db.createObjectStore(STORE, { keyPath: "id" });
-        store.createIndex("by-start", "startedAt");
+        if (!db.objectStoreNames.contains(STORE)) {
+          const store = db.createObjectStore(STORE, { keyPath: "id" });
+          store.createIndex("by-start", "startedAt");
+        }
+        if (!db.objectStoreNames.contains("climbs")) {
+          const climbStore = db.createObjectStore("climbs", { keyPath: "id" });
+          climbStore.createIndex("by-date", "date");
+        }
       },
     });
   }
