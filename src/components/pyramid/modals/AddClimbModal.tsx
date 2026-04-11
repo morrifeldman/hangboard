@@ -110,12 +110,12 @@ export function AddClimbModal({ isOpen, onClose, newClimb, setNewClimb, onAddCli
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Attempts</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Climbs</label>
                 <input
                   type="number"
                   min="1"
-                  value={newClimb.attempts}
-                  onChange={(e) => setNewClimb({ ...newClimb, attempts: parseInt(e.target.value) || 1 })}
+                  value={newClimb.climbs}
+                  onChange={(e) => setNewClimb({ ...newClimb, climbs: parseInt(e.target.value) || 1 })}
                   className={INPUT}
                 />
               </div>

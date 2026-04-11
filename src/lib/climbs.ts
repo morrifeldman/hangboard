@@ -11,7 +11,7 @@ export type ClimbRecord = {
   type: ClimbType;
   setting: ClimbSetting;
   style: ClimbStyle;
-  attempts: number;
+  climbs: number;
   date: string; // YYYY-MM-DD
   notes: string;
 };

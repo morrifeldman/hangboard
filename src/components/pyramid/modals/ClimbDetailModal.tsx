@@ -52,13 +52,13 @@ export function ClimbDetailModal({ climb, onClose, onEdit, onDelete }: Props) {
                 <p className="text-gray-200">{new Date(climb.date).toLocaleDateString()}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Attempts</label>
+                <label className="text-sm font-medium text-gray-500">Climbs</label>
                 <p className="text-gray-200">
                   {climb.style === "attempt"
-                    ? `Failed after ${climb.attempts} attempt${climb.attempts > 1 ? "s" : ""}`
-                    : climb.attempts === 1 && (climb.style === "onsight" || climb.style === "flash")
-                      ? `${climb.style === "onsight" ? "Onsight" : "Flash"} (1st try)`
-                      : `${climb.attempts} attempt${climb.attempts > 1 ? "s" : ""}`}
+                    ? `${climb.climbs} failed`
+                    : climb.climbs === 1
+                      ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Sent"}`
+                      : `${climb.climbs - 1} failed, 1 sent`}
                 </p>
               </div>
             </div>

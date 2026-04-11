@@ -23,7 +23,7 @@ const INITIAL_CLIMB: NewClimbData = {
   type: "sport",
   setting: "outdoor",
   style: "redpoint",
-  attempts: 1,
+  climbs: 1,
   date: new Date().toISOString().split("T")[0],
   notes: "",
 };

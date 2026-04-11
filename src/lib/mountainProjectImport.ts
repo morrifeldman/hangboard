@@ -12,18 +12,18 @@ const KEYWORDS = "attempt|tries?|try|go|burn";
 /** Extract attempt count from Mountain Project notes field. */
 export function extractAttempts(notes: string | undefined): number {
   if (!notes) return 1;
-  // "3rd try", "2nd go", "5th attempt" — ordinal means N-1 failures before the send
+  // "3rd try", "2nd go", "5th attempt" — ordinal = total attempts
   const ord = notes.match(/(\d+)(?:st|nd|rd|th)\s+(?:try|go|attempt|burn)/i);
-  if (ord) return parseInt(ord[1], 10) - 1 || 1;
+  if (ord) return parseInt(ord[1], 10);
   // "3 attempts", "2 tries", "1 burn" — with optional punctuation between number and keyword
   const m = notes.match(new RegExp(`(\\d+)\\s*\\S?\\s*(?:${KEYWORDS})`, "i"));
   if (m) return parseInt(m[1], 10);
   // "10 or so attempts"
   const m2 = notes.match(new RegExp(`(\\d+)\\s*or\\s*so\\s*(?:${KEYWORDS})`, "i"));
   if (m2) return parseInt(m2[1], 10);
-  // Word numbers: "second attempt", "first go", "third try"
+  // Word ordinals: "second attempt", "first go", "third try"
   const wordOrd = notes.match(new RegExp(`(first|second|third|fourth|fifth)\\s+(?:${KEYWORDS})`, "i"));
-  if (wordOrd) return (WORD_NUMBERS[wordOrd[1].toLowerCase()] ?? 1) - 1 || 1;
+  if (wordOrd) return WORD_NUMBERS[wordOrd[1].toLowerCase()] ?? 1;
   const wordNum = notes.match(new RegExp(`(one|two|three|four|five|six|seven|eight|nine|ten)\\s+(?:${KEYWORDS})`, "i"));
   if (wordNum) return WORD_NUMBERS[wordNum[1].toLowerCase()] ?? 1;
   return 1;
@@ -98,10 +98,22 @@ export async function importMountainProjectCSV(file: File): Promise<ClimbRecord[
         type: row["Route Type"] === "Boulder" ? "boulder" : "sport",
         setting: isIndoor(row.Location) ? "indoor" : "outdoor",
         style: convertStyle(row["Lead Style"]),
-        attempts: extractAttempts(row.Notes),
+        climbs: extractAttempts(row.Notes),
         date: row.Date || new Date().toISOString().split("T")[0],
         notes: row.Notes || "",
       });
+    }
+  }
+
+  // A redpoint with climbs=1 and no other ticks for that route implies at least one prior failure
+  const routeTickCount: Record<string, number> = {};
+  for (const c of climbs) {
+    const key = `${c.route}-${c.location}`;
+    routeTickCount[key] = (routeTickCount[key] ?? 0) + 1;
+  }
+  for (const c of climbs) {
+    if (c.style === "redpoint" && c.climbs === 1 && routeTickCount[`${c.route}-${c.location}`] === 1) {
+      c.climbs = 2;
     }
   }
 

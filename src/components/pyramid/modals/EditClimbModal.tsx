@@ -117,13 +117,13 @@ export function EditClimbModal({ climb, onClose, onSave, setEditingClimb }: Prop
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Attempts</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Climbs</label>
                 <input
                   type="number"
                   min="1"
-                  value={climb.attempts}
+                  value={climb.climbs}
                   onChange={(e) =>
-                    setEditingClimb({ ...climb, attempts: parseInt(e.target.value) || 1 })
+                    setEditingClimb({ ...climb, climbs: parseInt(e.target.value) || 1 })
                   }
                   className={INPUT}
                 />

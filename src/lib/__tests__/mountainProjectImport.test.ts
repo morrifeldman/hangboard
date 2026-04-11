@@ -15,23 +15,23 @@ describe("extractAttempts", () => {
   it("extracts '2 try' (singular try)", () => {
     expect(extractAttempts("2 try")).toBe(2);
   });
-  it("extracts ordinal '3rd try' as N-1", () => {
-    expect(extractAttempts("3rd try")).toBe(2);
+  it("extracts ordinal '3rd try'", () => {
+    expect(extractAttempts("3rd try")).toBe(3);
   });
-  it("extracts ordinal '2nd go' as N-1", () => {
-    expect(extractAttempts("2nd go")).toBe(1);
+  it("extracts ordinal '2nd go'", () => {
+    expect(extractAttempts("2nd go")).toBe(2);
   });
-  it("extracts ordinal '1st try' as 1", () => {
+  it("extracts ordinal '1st try'", () => {
     expect(extractAttempts("1st try")).toBe(1);
   });
   it("extracts 'or so' pattern", () => {
     expect(extractAttempts("10 or so attempts")).toBe(10);
   });
-  it("extracts word number 'Second attempt'", () => {
-    expect(extractAttempts("Second attempt")).toBe(1);
+  it("extracts word ordinal 'Second attempt'", () => {
+    expect(extractAttempts("Second attempt")).toBe(2);
   });
   it("extracts word ordinal 'third try'", () => {
-    expect(extractAttempts("third try")).toBe(2);
+    expect(extractAttempts("third try")).toBe(3);
   });
   it("extracts 'one burn'", () => {
     expect(extractAttempts("One burn")).toBe(1);
@@ -83,7 +83,7 @@ describe("importMountainProjectCSV", () => {
     expect(climbs[0].type).toBe("sport");
     expect(climbs[0].setting).toBe("outdoor");
     expect(climbs[0].style).toBe("redpoint");
-    expect(climbs[0].attempts).toBe(3);
+    expect(climbs[0].climbs).toBe(3);
 
     expect(climbs[1].route).toBe("The Egg");
     expect(climbs[1].grade).toBe("V5");

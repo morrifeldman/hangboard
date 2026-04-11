@@ -12,7 +12,7 @@ export function deduplicateForTimeline(climbs: ClimbRecord[]): ClimbRecord[] {
 
     const existing = byDate[dateKey][climbKey];
     if (existing) {
-      existing.attempts += climb.attempts;
+      existing.climbs += climb.climbs;
       if (climb.notes && climb.notes !== existing.notes) {
         existing.notes = existing.notes ? `${existing.notes}; ${climb.notes}` : climb.notes;
       }
@@ -42,7 +42,7 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): ClimbRecord[] {
     const existing = byRoute[routeKey];
 
     if (existing) {
-      existing.attempts += climb.attempts;
+      existing.climbs += climb.climbs;
       if (climb.notes && climb.notes !== existing.notes) {
         existing.notes = existing.notes ? `${existing.notes}; ${climb.notes}` : climb.notes;
       }
@@ -60,10 +60,5 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): ClimbRecord[] {
     }
   }
 
-  return Object.values(byRoute).map((climb) => {
-    if (climb.style === "redpoint" && climb.attempts < 2) {
-      return { ...climb, attempts: 2 };
-    }
-    return climb;
-  });
+  return Object.values(byRoute);
 }

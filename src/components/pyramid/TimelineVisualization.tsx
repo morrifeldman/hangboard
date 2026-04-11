@@ -124,11 +124,14 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
                         title={`${climb.route} - ${climb.grade} (${climb.style})`}
                         onClick={() => onClimbClick(climb)}
                       >
-                        {climb.attempts > 1 && (
-                          <span className="absolute inset-0 flex items-center justify-center text-xs text-white font-semibold">
-                            {climb.attempts}
-                          </span>
-                        )}
+                        {(() => {
+                          const failures = climb.style === "attempt" ? climb.climbs : climb.climbs - 1;
+                          return failures > 0 ? (
+                            <span className="absolute inset-0 flex items-center justify-center text-xs text-white font-semibold">
+                              {failures}
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                     );
                   })}
