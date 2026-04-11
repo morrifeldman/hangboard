@@ -12,6 +12,18 @@ describe("extractAttempts", () => {
   it("extracts '5 tries'", () => {
     expect(extractAttempts("5 tries over two days")).toBe(5);
   });
+  it("extracts '2 try' (singular try)", () => {
+    expect(extractAttempts("2 try")).toBe(2);
+  });
+  it("extracts ordinal '3rd try' as N-1", () => {
+    expect(extractAttempts("3rd try")).toBe(2);
+  });
+  it("extracts ordinal '2nd go' as N-1", () => {
+    expect(extractAttempts("2nd go")).toBe(1);
+  });
+  it("extracts ordinal '1st try' as 1", () => {
+    expect(extractAttempts("1st try")).toBe(1);
+  });
   it("extracts 'or so' pattern", () => {
     expect(extractAttempts("10 or so attempts")).toBe(10);
   });

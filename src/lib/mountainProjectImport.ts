@@ -5,9 +5,12 @@ import type { ClimbStyle } from "../constants/climbGrades";
 /** Extract attempt count from Mountain Project notes field. */
 export function extractAttempts(notes: string | undefined): number {
   if (!notes) return 1;
-  const m = notes.match(/(\d+)\s*(attempt|tries?|go)/i);
+  // "3rd try", "2nd go", "5th attempt" — ordinal means N-1 failures before the send
+  const ord = notes.match(/(\d+)(?:st|nd|rd|th)\s+(?:try|go|attempt)/i);
+  if (ord) return parseInt(ord[1], 10) - 1 || 1;
+  const m = notes.match(/(\d+)\s*(?:attempt|tries?|try|go)/i);
   if (m) return parseInt(m[1], 10);
-  const m2 = notes.match(/(\d+)\s*or\s*so\s*(attempt|tries?)/i);
+  const m2 = notes.match(/(\d+)\s*or\s*so\s*(?:attempt|tries?|try)/i);
   if (m2) return parseInt(m2[1], 10);
   return 1;
 }
