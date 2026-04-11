@@ -2,16 +2,30 @@ import { normalizeGrade } from "./climbGradeUtils";
 import type { ClimbRecord } from "./climbs";
 import type { ClimbStyle } from "../constants/climbGrades";
 
+const WORD_NUMBERS: Record<string, number> = {
+  one: 1, first: 1, two: 2, second: 2, three: 3, third: 3,
+  four: 4, fourth: 4, five: 5, fifth: 5, six: 6, seventh: 7,
+  eight: 8, nine: 9, ten: 10,
+};
+const KEYWORDS = "attempt|tries?|try|go|burn";
+
 /** Extract attempt count from Mountain Project notes field. */
 export function extractAttempts(notes: string | undefined): number {
   if (!notes) return 1;
   // "3rd try", "2nd go", "5th attempt" — ordinal means N-1 failures before the send
-  const ord = notes.match(/(\d+)(?:st|nd|rd|th)\s+(?:try|go|attempt)/i);
+  const ord = notes.match(/(\d+)(?:st|nd|rd|th)\s+(?:try|go|attempt|burn)/i);
   if (ord) return parseInt(ord[1], 10) - 1 || 1;
-  const m = notes.match(/(\d+)\s*(?:attempt|tries?|try|go)/i);
+  // "3 attempts", "2 tries", "1 burn" — with optional punctuation between number and keyword
+  const m = notes.match(new RegExp(`(\\d+)\\s*\\S?\\s*(?:${KEYWORDS})`, "i"));
   if (m) return parseInt(m[1], 10);
-  const m2 = notes.match(/(\d+)\s*or\s*so\s*(?:attempt|tries?|try)/i);
+  // "10 or so attempts"
+  const m2 = notes.match(new RegExp(`(\\d+)\\s*or\\s*so\\s*(?:${KEYWORDS})`, "i"));
   if (m2) return parseInt(m2[1], 10);
+  // Word numbers: "second attempt", "first go", "third try"
+  const wordOrd = notes.match(new RegExp(`(first|second|third|fourth|fifth)\\s+(?:${KEYWORDS})`, "i"));
+  if (wordOrd) return (WORD_NUMBERS[wordOrd[1].toLowerCase()] ?? 1) - 1 || 1;
+  const wordNum = notes.match(new RegExp(`(one|two|three|four|five|six|seven|eight|nine|ten)\\s+(?:${KEYWORDS})`, "i"));
+  if (wordNum) return WORD_NUMBERS[wordNum[1].toLowerCase()] ?? 1;
   return 1;
 }
 

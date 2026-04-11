@@ -27,6 +27,18 @@ describe("extractAttempts", () => {
   it("extracts 'or so' pattern", () => {
     expect(extractAttempts("10 or so attempts")).toBe(10);
   });
+  it("extracts word number 'Second attempt'", () => {
+    expect(extractAttempts("Second attempt")).toBe(1);
+  });
+  it("extracts word ordinal 'third try'", () => {
+    expect(extractAttempts("third try")).toBe(2);
+  });
+  it("extracts 'one burn'", () => {
+    expect(extractAttempts("One burn")).toBe(1);
+  });
+  it("handles punctuation between number and keyword", () => {
+    expect(extractAttempts("Several 3? attempts the previous weekend")).toBe(3);
+  });
 });
 
 describe("convertStyle", () => {
