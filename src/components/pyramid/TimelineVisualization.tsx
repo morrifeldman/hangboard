@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { SPORT_GRADES, BOULDER_GRADES } from "../../constants/climbGrades";
 import { deduplicateForTimeline } from "../../lib/deduplication";
 import { getStyleColor } from "../../lib/climbUtils";
@@ -62,6 +63,14 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
   const timelineHeight = 200;
   const gradeHeight = timelineHeight / relevantGrades.length;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [sortedDates]);
+
   return (
     <div className="mb-6">
       <h2 className="text-xl font-bold text-center mb-4 text-white">Timeline</h2>
@@ -85,7 +94,7 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
         </div>
 
         {/* Scrollable timeline */}
-        <div className="overflow-x-auto ml-16">
+        <div ref={scrollRef} className="overflow-x-auto ml-16">
           <div className="flex space-x-2" style={{ minWidth: `${sortedDates.length * 60}px` }}>
             {sortedDates.map((date) => (
               <div key={date} className="flex-shrink-0 w-14">
