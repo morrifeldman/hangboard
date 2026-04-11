@@ -90,7 +90,7 @@ export function PyramidVisualization({
                         >
                           {(() => {
                             const failures = climb.style === "attempt" ? climb.climbs : climb.climbs - 1;
-                            return failures > 0 ? failures : "";
+                            return failures > 1 ? failures : "";
                           })()}
                         </div>
                       ))}

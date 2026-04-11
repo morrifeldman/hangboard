@@ -126,7 +126,7 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
                       >
                         {(() => {
                           const failures = climb.style === "attempt" ? climb.climbs : climb.climbs - 1;
-                          return failures > 0 ? (
+                          return failures > 1 ? (
                             <span className="absolute inset-0 flex items-center justify-center text-xs text-white font-semibold">
                               {failures}
                             </span>

@@ -42,7 +42,16 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): ClimbRecord[] {
     const existing = byRoute[routeKey];
 
     if (existing) {
-      existing.climbs += climb.climbs;
+      const isSend = (s: string) => s === "onsight" || s === "flash" || s === "redpoint";
+      const existingIsSend = isSend(existing.style);
+      const newIsSend = isSend(climb.style);
+
+      if (existingIsSend && newIsSend) {
+        // Re-send — skip, keep the best ascent as-is
+      } else {
+        existing.climbs += climb.climbs;
+      }
+
       if (climb.notes && climb.notes !== existing.notes) {
         existing.notes = existing.notes ? `${existing.notes}; ${climb.notes}` : climb.notes;
       }
