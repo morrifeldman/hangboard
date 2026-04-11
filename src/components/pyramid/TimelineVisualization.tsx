@@ -119,8 +119,8 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
                     return (
                       <div
                         key={`${climb.id}-${ci}`}
-                        className={`absolute w-6 h-6 rounded ${getStyleColor(climb.style)} border border-gray-900 shadow-sm cursor-pointer hover:scale-110 transition-transform`}
-                        style={{ top: `${gi * gradeHeight + 2}px`, left: `${ci * 8}px` }}
+                        className={`absolute z-10 w-6 h-6 rounded ${getStyleColor(climb.style)} border border-gray-900 shadow-sm cursor-pointer hover:scale-110 transition-transform`}
+                        style={{ top: `${(gi + 1) * gradeHeight - 12}px`, left: `${ci * 8}px` }}
                         title={`${climb.route} - ${climb.grade} (${climb.style})`}
                         onClick={() => onClimbClick(climb)}
                       >
