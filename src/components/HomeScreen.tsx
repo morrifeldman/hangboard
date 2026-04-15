@@ -3,6 +3,7 @@ import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { WorkoutId } from "../store/useWorkoutStore";
 import type { HoldDefinition } from "../data/holds";
 import { formatWeight, formatOffset } from "../lib/format";
+import { HANG_SECS, REST_SECS, BREAK_SECS, SET1_REPS, SET2_REPS } from "../data/workout";
 import { initAudio } from "../lib/audio";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { getSessions } from "../lib/history";
@@ -74,6 +75,22 @@ function repLabel(hold: HoldDefinition): string {
   const { set1Reps, set2Reps } = hold;
   if (set1Reps === set2Reps) return `${set1Reps} reps × ${numSets} sets`;
   return `${set1Reps} / ${set2Reps} reps`;
+}
+
+function fmtSecs(s: number): string {
+  return s >= 60 && s % 60 === 0 ? `${s / 60}m` : `${s}s`;
+}
+
+function timingLabel(hold: HoldDefinition): string {
+  const hang = hold.hangSecs ?? HANG_SECS;
+  const rest = hold.restSecs ?? REST_SECS;
+  const brk = hold.breakSecs ?? BREAK_SECS;
+  const reps = hold.repsPerSet ?? hold.set1Reps;
+  if (hold.isRestOnly) return `${fmtSecs(brk)} break`;
+  const parts: string[] = [`${fmtSecs(hang)} hang`];
+  if (reps > 1) parts.push(`${fmtSecs(rest)} rest`);
+  parts.push(`${fmtSecs(brk)} break`);
+  return parts.join(" · ");
 }
 
 type HomeScreenProps = {
@@ -216,6 +233,11 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
       </div>
 
       <main className="flex-1 flex flex-col px-4 py-4 gap-2 overflow-y-auto">
+        {selectedWorkout === "repeaters" && (
+          <p className="text-gray-600 text-xs px-1">
+            {SET1_REPS}/{SET2_REPS} reps · {fmtSecs(HANG_SECS)} hang · {fmtSecs(REST_SECS)} rest · {fmtSecs(BREAK_SECS)} break
+          </p>
+        )}
         {holds.map((hold) => {
           const stored = storedMap[hold.id] ?? {
             set1: hold.defaultSet1Weight,
@@ -239,7 +261,12 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
               <div className="px-4 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-white font-medium">{hold.name}</p>
-                  <p className="text-gray-500 text-xs">{repLabel(hold)}</p>
+                  {selectedWorkout !== "repeaters" && (
+                    <p className="text-gray-500 text-xs">{repLabel(hold)}</p>
+                  )}
+                  {selectedWorkout !== "repeaters" && timingLabel(hold) && (
+                    <p className="text-gray-600 text-xs">{timingLabel(hold)}</p>
+                  )}
                 </div>
                 {hold.isRestOnly ? (
                   <span className="py-0.5 px-2 text-sm tabular-nums font-semibold text-gray-200">BW</span>
