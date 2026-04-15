@@ -38,8 +38,8 @@ export const HOLDS_B: HoldDefinition[] = [
     skipProgression: true,
   },
   {
-    id: "b-small-hc-wu",
-    name: "Small Edge — Half Crimp",
+    id: "b-small-chisel-wu",
+    name: "Small Edge — Chisel",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 120, numSets: 1, repsPerSet: 1,
     skipProgression: true,
