@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { PREP_SECS } from "../data/workout";
 
@@ -22,11 +21,6 @@ export function PrepTimer() {
   const audio = useAudio();
   const prepDuration = hold.prepSecs ?? PREP_SECS;
 
-  // Pull-up items skip the hang phase entirely — jump straight to the rest timer
-  useEffect(() => {
-    if (hold.isRestOnly) advancePhase();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hold.id]);
 
   const { remaining } = useTimer({
     duration: prepDuration,

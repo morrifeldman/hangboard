@@ -6,7 +6,7 @@ export const HOLDS_B: HoldDefinition[] = [
     id: "b-jug",
     name: "Jug",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 60, numSets: 2, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 30, numSets: 1, repsPerSet: 3, restSecs: 30,
     skipProgression: true,
   },
   {
@@ -20,21 +20,21 @@ export const HOLDS_B: HoldDefinition[] = [
     id: "b-big-chisel",
     name: "Big Edge — Chisel",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 60, numSets: 1, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 45, numSets: 1, repsPerSet: 2, restSecs: 45,
     skipProgression: true,
   },
   {
     id: "b-big-hc",
     name: "Big Edge — Half Crimp",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 60, numSets: 1, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 45, numSets: 1, repsPerSet: 2, restSecs: 45,
     skipProgression: true,
   },
   {
     id: "b-big-open",
     name: "Big Edge — Open",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
-    hangSecs: 10, breakSecs: 60, numSets: 1, repsPerSet: 1,
+    hangSecs: 10, breakSecs: 45, numSets: 1, repsPerSet: 2, restSecs: 45,
     skipProgression: true,
   },
   {

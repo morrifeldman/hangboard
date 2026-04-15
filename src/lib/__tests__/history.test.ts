@@ -19,7 +19,7 @@ const HOLDS = [
   hold({ id: 'slop', name: 'Sloper', defaultSet1Weight: -10, defaultSet2Weight: -5 }),
 ];
 
-function weights(holdId: string, setNum: 1 | 2): number {
+function weights(holdId: string, setNum: number): number {
   const h = HOLDS.find((h) => h.id === holdId)!;
   return setNum === 1 ? h.defaultSet1Weight : h.defaultSet2Weight;
 }

@@ -23,8 +23,8 @@ export function WorkoutScreen() {
   const [confirming, setConfirming] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
   const [holdNotes, setHoldNotes] = useState<Record<string, string>>({});
-  const [setNotesLive, setSetNotesLive] = useState<Record<string, { set1: string; set2: string }>>({});
-  const [failedSets, setFailedSets] = useState<Record<string, { set1?: boolean; set2?: boolean }>>({});
+  const [setNotesLive, setSetNotesLive] = useState<Record<string, { set1?: string; set2?: string; set3?: string }>>({});
+  const [failedSets, setFailedSets] = useState<Record<string, { set1?: boolean; set2?: boolean; set3?: boolean }>>({});
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sessionNotes, setSessionNotes] = useState("");
@@ -96,8 +96,7 @@ export function WorkoutScreen() {
         return <HangTimer />;
       case "break": {
         const hid = currentHoldDef?.id ?? "";
-        const betweenSets = setNumber < numSets;
-        const setKey = betweenSets ? "set1" : "set2";
+        const setKey = `set${setNumber}` as "set1" | "set2" | "set3";
         return (
           <BreakTimer
             setNoteValue={setNotesLive[hid]?.[setKey] ?? ""}

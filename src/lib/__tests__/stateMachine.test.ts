@@ -180,10 +180,10 @@ describe('advancePhase — numSets=1, repsPerSet=1', () => {
 // ── workout B smoke test (full HOLDS_B array) ─────────────────────────────
 
 describe('advancePhase — HOLDS_B smoke tests', () => {
-  it('first jug hang completes → break', () => {
+  it('first jug hang completes → resting (3 reps)', () => {
     const s = state({ setNumber: 1, repIndex: 0, holdIndex: 0 });
     const next = advancePhase(s, HOLDS_B, 1, 1);
-    expect(next.phase).toBe('break');
+    expect(next.phase).toBe('resting');
   });
 
   it('isRestOnly (Pull-ups) prep → break (skips hang)', () => {

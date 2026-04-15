@@ -59,12 +59,6 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   // For isRestOnly holds the label becomes the exercise name
   const barLabel = hold.isRestOnly ? hold.name.toUpperCase() : "BREAK";
 
-  // Set 2 weight adjuster: only for 2-set holds (workout A style)
-  const set2Weight = effectiveWeight(hold.id, 2);
-  const handleSet2Delta = (delta: number) => {
-    adjustNextWeight(hold.id, 2, delta);
-    setSessionOverride(hold.id, 2, delta);
-  };
 
   const progress = breakDuration > 0 ? Math.max(0, Math.min(1, remaining / breakDuration)) : 0;
   const hasNotes = setNoteValue !== "" || holdNoteValue !== "";
@@ -115,13 +109,16 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         </div>
       )}
 
-      {/* Set 2 weight adjuster — only for classic 2-set holds */}
-      {betweenSets && numSets === 2 && !hold.skipProgression && (
+      {/* Next set weight adjuster — between sets of the same hold */}
+      {betweenSets && !hold.skipProgression && (
         <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">
-          <p className="text-gray-400 text-sm text-center">Set 2</p>
+          <p className="text-gray-400 text-sm text-center">Set {setNumber + 1}</p>
           <WeightAdjuster
-            value={set2Weight}
-            onDelta={handleSet2Delta}
+            value={effectiveWeight(hold.id, setNumber + 1)}
+            onDelta={(delta) => {
+              adjustNextWeight(hold.id, setNumber + 1, delta);
+              setSessionOverride(hold.id, setNumber + 1, delta);
+            }}
           />
         </div>
       )}
@@ -169,7 +166,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
           <textarea
             value={setNoteValue}
             onChange={(e) => onSetNoteChange(e.target.value)}
-            placeholder={betweenSets ? `Set 1 note… (optional)` : `Set 2 note… (optional)`}
+            placeholder={`Set ${setNumber} note… (optional)`}
             rows={1}
             className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm
                        placeholder-gray-600 resize-none border border-gray-700

@@ -114,11 +114,11 @@ type BuildArgs = {
   holdIndex: number;
   setNumber: number;
   holds: readonly HoldDefinition[];
-  effectiveWeight: (holdId: string, setNum: 1 | 2) => number;
+  effectiveWeight: (holdId: string, setNum: number) => number;
   notes?: string;
   holdNotes?: Record<string, string>;
-  setNotes?: Record<string, { set1?: string; set2?: string }>;
-  failedSets?: Record<string, { set1?: boolean; set2?: boolean }>;
+  setNotes?: Record<string, { set1?: string; set2?: string; set3?: string }>;
+  failedSets?: Record<string, { set1?: boolean; set2?: boolean; set3?: boolean }>;
 };
 
 export function buildSessionRecord({
@@ -142,27 +142,29 @@ export function buildSessionRecord({
 
     let set1Completed: boolean;
     let set2Completed: boolean;
+    let set3Completed: boolean;
 
     if (!bailed) {
-      // Workout fully completed — all sets done
       set1Completed = true;
       set2Completed = true;
+      set3Completed = true;
     } else if (i < holdIndex) {
-      // Holds entirely before the bail point
       set1Completed = true;
       set2Completed = true;
+      set3Completed = true;
     } else if (i === holdIndex) {
-      // The hold being worked when bailed
-      set1Completed = setNumber >= 2; // started set 2 → set 1 is done
-      set2Completed = false; // bail means set 2 never finished
+      set1Completed = setNumber >= 2;
+      set2Completed = setNumber >= 3;
+      set3Completed = false;
     } else {
-      // Holds after the bail point — never started
       set1Completed = false;
       set2Completed = false;
+      set3Completed = false;
     }
 
     if (failedSets?.[hold.id]?.set1) set1Completed = false;
     if (failedSets?.[hold.id]?.set2) set2Completed = false;
+    if (failedSets?.[hold.id]?.set3) set3Completed = false;
 
     const set1: SessionSetRecord = {
       weight: effectiveWeight(hold.id, 1),
@@ -181,11 +183,22 @@ export function buildSessionRecord({
           }
         : null;
 
+    const set3: SessionSetRecord | null =
+      numSets >= 3
+        ? {
+            weight: effectiveWeight(hold.id, 3),
+            reps: reps2,
+            completed: set3Completed,
+            ...(setNotes?.[hold.id]?.set3 ? { notes: setNotes[hold.id].set3 } : {}),
+          }
+        : null;
+
     return {
       holdId: hold.id,
       holdName: hold.name,
       set1,
       set2,
+      ...(set3 !== null ? { set3 } : {}),
       ...(holdNotes?.[hold.id] ? { notes: holdNotes[hold.id] } : {}),
     };
   });
