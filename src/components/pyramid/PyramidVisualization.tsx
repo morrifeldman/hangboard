@@ -85,7 +85,18 @@ export function PyramidVisualization({
                         <div
                           key={idx}
                           className={`w-6 h-6 rounded ${getStyleColor(climb.style)} flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform`}
-                          title={`${climb.route} - ${climb.style}${climb.climbs > 1 ? ` (${climb.climbs - (climb.style === "attempt" ? 0 : 1)} failures)` : ""}`}
+                          title={(() => {
+                            const base = `${climb.route} - ${climb.style}`;
+                            if (climb.style === "redpoint" && climb.climbs > 2) {
+                              const n = climb.climbs - 1;
+                              return `${base} after ${n} attempts`;
+                            }
+                            if (climb.style === "attempt") {
+                              const n = climb.climbs;
+                              return `${climb.route} — ${n} attempt${n !== 1 ? "s" : ""}`;
+                            }
+                            return base;
+                          })()}
                           onClick={() => onClimbClick(climb)}
                         >
                           {(() => {

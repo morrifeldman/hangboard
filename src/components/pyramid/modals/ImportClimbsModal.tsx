@@ -98,7 +98,7 @@ export function ImportClimbsModal({ isOpen, onClose, onImportComplete }: Props) 
                   <ol className="text-sm text-green-400 space-y-0.5">
                     <li>1. Mountain Project &rarr; Profile &rarr; Ticks</li>
                     <li>2. Make ticks public</li>
-                    <li>3. Copy tick export URL</li>
+                    <li>3. Copy "Export CSV" URL</li>
                     <li>4. Paste below</li>
                   </ol>
                 </div>

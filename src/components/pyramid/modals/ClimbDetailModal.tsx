@@ -55,10 +55,10 @@ export function ClimbDetailModal({ climb, onClose, onEdit, onDelete }: Props) {
                 <label className="text-sm font-medium text-gray-500">Climbs</label>
                 <p className="text-gray-200">
                   {climb.style === "attempt"
-                    ? `${climb.climbs} failed`
+                    ? `${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}`
                     : climb.climbs === 1
-                      ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Sent"}`
-                      : `${climb.climbs - 1} failed, 1 sent`}
+                      ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Send"}`
+                      : `Sent after ${climb.climbs - 1} attempt${climb.climbs - 1 !== 1 ? "s" : ""}`}
                 </p>
               </div>
             </div>

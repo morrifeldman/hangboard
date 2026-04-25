@@ -15,6 +15,7 @@ export type TrendPoint = {
 export type CalendarDay = {
   date: Date;
   workoutType: "repeaters" | "max-hang" | "both" | "gym" | "gym+hangboard" | null;
+  outdoor: boolean;
 };
 
 // ─── buildTrend ───────────────────────────────────────────────────────────────
@@ -87,7 +88,10 @@ export function buildTrend(
  * the current week.  Outer index = week (0 = oldest), inner index = day (0 =
  * Monday, 6 = Sunday).
  */
-export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
+export function buildCalendar(
+  sessions: SessionRecord[],
+  climbDates?: Set<string>,
+): CalendarDay[][] {
   // Build a lookup keyed by ISO date string "YYYY-MM-DD"
   // "beginner" sessions are mapped to "repeaters" for calendar coloring (green)
   // gym sessions are tracked separately
@@ -134,7 +138,7 @@ export function buildCalendar(sessions: SessionRecord[]): CalendarDay[][] {
         else if (hasGym) workoutType = "gym";
         else workoutType = hasA && hasB ? "both" : hasA ? "repeaters" : "max-hang";
       }
-      week.push({ date: new Date(date), workoutType });
+      week.push({ date: new Date(date), workoutType, outdoor: climbDates?.has(key) ?? false });
     }
     weeks.push(week);
   }

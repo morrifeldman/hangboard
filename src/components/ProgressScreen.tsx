@@ -10,6 +10,8 @@ import {
 } from "recharts";
 import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
+import { getClimbs } from "../lib/climbs";
+import type { ClimbRecord } from "../lib/climbs";
 import {
   buildTrend,
   buildCalendar,
@@ -102,13 +104,14 @@ function colorFor(t: CalendarDay["workoutType"]): string {
 
 export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
   const [holdIndex, setHoldIndex] = useState(0);
 
   useEffect(() => {
-    getSessions()
-      .then(setSessions)
+    Promise.all([getSessions(), getClimbs()])
+      .then(([s, c]) => { setSessions(s); setClimbs(c); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -148,7 +151,11 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   );
   const chartPoints = useMemo(() => toChartPoints(trend), [trend]);
 
-  const calendarWeeks = useMemo(() => buildCalendar(sessions), [sessions]);
+  const climbDateSet = useMemo(
+    () => new Set(climbs.map((c) => c.date)),
+    [climbs],
+  );
+  const calendarWeeks = useMemo(() => buildCalendar(sessions, climbDateSet), [sessions, climbDateSet]);
   const monthLabels = useMemo(() => calendarMonthLabels(calendarWeeks), [calendarWeeks]);
   const isTrendingUp =
     chartPoints.length >= 2 &&
@@ -188,9 +195,9 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
 
 
-          {/* ── Consistency calendar ── */}
+          {/* ── Overview calendar ── */}
           <section>
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Consistency</p>
+            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Overview</p>
             <div className="bg-gray-800 rounded-xl px-4 py-3">
               {/* Month labels */}
               <div className="flex gap-1 mb-1 ml-5">
@@ -204,7 +211,7 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
               {/* Grid: day-of-week labels + week columns */}
               <div className="flex gap-1">
                 <div className="flex flex-col gap-1 mr-1 mt-0.5">
-                  {["M", "", "W", "", "F", "", "S"].map((d, i) => (
+                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
                     <div key={i} className="text-gray-600 text-[9px] h-3 flex items-center w-3 justify-center">
                       {d}
                     </div>
@@ -215,9 +222,21 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                     {week.map((day, di) => (
                       <div
                         key={di}
-                        className={`w-3 h-3 rounded-sm ${colorFor(day.workoutType)}`}
-                        title={day.workoutType ? `${day.date.toLocaleDateString()}: ${day.workoutType}` : undefined}
-                      />
+                        className={`w-3 h-3 rounded-sm relative ${
+                          day.outdoor && !day.workoutType
+                            ? "bg-teal-600"
+                            : colorFor(day.workoutType)
+                        }`}
+                        title={
+                          day.workoutType || day.outdoor
+                            ? `${day.date.toLocaleDateString()}: ${[day.workoutType, day.outdoor ? "outdoor" : ""].filter(Boolean).join(" + ")}`
+                            : undefined
+                        }
+                      >
+                        {day.outdoor && day.workoutType && (
+                          <div className="absolute bottom-0 right-0 w-1 h-1 rounded-full bg-teal-400" />
+                        )}
+                      </div>
                     ))}
                   </div>
                 ))}
@@ -230,6 +249,7 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                 <LegendItem color="bg-purple-500" label="Both" />
                 <LegendItem color="bg-orange-500" label="Gym" />
                 <LegendItem color="bg-amber-400" label="Gym + Board" />
+                <LegendItem color="bg-teal-600" label="Outdoor" />
               </div>
             </div>
           </section>
