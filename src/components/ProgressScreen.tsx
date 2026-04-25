@@ -547,7 +547,27 @@ function gymDataSummary(data: NonNullable<SessionRecord["gymData"]>): string {
   if (data.type === "pe-route") {
     return `${data.reps} reps · ${data.climbSec}s on · ${data.dutyCycle} duty`;
   }
-  return data.type.toUpperCase();
+  if (data.type === "lbc") {
+    return `${data.sets} sets · ${data.climbSec}s on · ${data.dutyCycle} duty`;
+  }
+  if (data.type === "wbl") {
+    return `top ${data.topV} · ${data.durationMin} min`;
+  }
+  if (data.type === "hard-bouldering" || data.type === "limit-bouldering") {
+    return `${data.level} · ${data.durationMin} min`;
+  }
+  if (data.type === "performance") {
+    const parts = [`${data.grade} · ${data.tries} tries`];
+    if (data.success === "Yes") parts.push("sent");
+    return parts.join(" · ");
+  }
+  if (data.type === "injury") {
+    const parts: string[] = [];
+    if (data.bodyPart) parts.push(data.bodyPart);
+    if (data.severity) parts.push(data.severity);
+    return parts.length > 0 ? parts.join(" · ") : "Logged";
+  }
+  return "";
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
