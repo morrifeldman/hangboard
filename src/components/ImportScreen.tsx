@@ -49,6 +49,15 @@ function localDateString(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function localTimeString(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function nowTimeString(): string {
+  return localTimeString(Date.now());
+}
+
 function defaultWeights(holds: readonly HoldDefinition[]): number[] {
   return holds.map((h) => h.defaultSet1Weight);
 }
@@ -67,6 +76,9 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   const [dateValue, setDateValue] = useState(() =>
     initialRecord ? localDateString(initialRecord.startedAt) : todayString()
+  );
+  const [timeValue, setTimeValue] = useState(() =>
+    initialRecord ? localTimeString(initialRecord.startedAt) : nowTimeString()
   );
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">(initialType);
   const [weights, setWeights] = useState<number[]>(() =>
@@ -151,6 +163,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const hasChanges = useMemo(() => {
     if (!editing || !initialRecord) return true; // new record — always saveable
     if (dateValue !== localDateString(initialRecord.startedAt)) return true;
+    if (timeValue !== localTimeString(initialRecord.startedAt)) return true;
     if (sessionNotes !== (initialRecord.notes ?? "")) return true;
     for (const [holdId, co] of Object.entries(completionOverrides)) {
       const h = initialRecord.holds.find((x) => x.holdId === holdId);
@@ -170,7 +183,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       if ((sn?.set3 ?? "") !== (h.set3?.notes ?? "")) return true;
     }
     return false;
-  }, [editing, initialRecord, dateValue, sessionNotes, weights, weights2, weights3, completionOverrides, holdNotesState, setNotesState]);
+  }, [editing, initialRecord, dateValue, timeValue, sessionNotes, weights, weights2, weights3, completionOverrides, holdNotesState, setNotesState]);
 
   // In edit mode use the actual holds from the record (preserves non-standard holds like Small Crimp)
   const allDefs = [...HOLDS, ...HOLDS_B];
@@ -262,7 +275,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const handleSave = async () => {
     setSaving(true);
     try {
-      const newTs = new Date(`${dateValue}T12:00:00`).getTime();
+      const newTs = new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
       const holdRecords = buildHoldRecords();
 
       if (editing && initialRecord) {
@@ -328,7 +341,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
       {/* Top controls — always visible */}
       <div className="px-4 pt-4 flex flex-col gap-4 shrink-0">
-        {/* Date */}
+        {/* Date + Time */}
         <div className="flex items-center gap-3">
           <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
           <input
@@ -336,6 +349,12 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             value={dateValue}
             onChange={(e) => setDateValue(e.target.value)}
             className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+          />
+          <input
+            type="time"
+            value={timeValue}
+            onChange={(e) => setTimeValue(e.target.value)}
+            className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
           />
         </div>
 

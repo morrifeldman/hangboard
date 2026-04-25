@@ -22,6 +22,11 @@ function localDateString(ts: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function localTimeString(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 // Extract field values from existing gymData into a flat string map for editing
 function gymDataToFields(gymData: GymData): Record<string, string> {
   const fields: Record<string, string> = {};
@@ -64,6 +69,9 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const [dateValue, setDateValue] = useState(() =>
     initialRecord ? localDateString(initialRecord.startedAt) : todayString()
   );
+  const [timeValue, setTimeValue] = useState(() =>
+    initialRecord ? localTimeString(initialRecord.startedAt) : localTimeString(Date.now())
+  );
   const [workoutType, setWorkoutType] = useState<GymWorkoutType>(initialWorkoutType);
   const [fields, setFields] = useState<Record<string, string>>(() =>
     initialRecord?.gymData ? gymDataToFields(initialRecord.gymData) : (gymDefaults[initialWorkoutType] ?? {})
@@ -89,8 +97,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     if (!gymData) return;
     setSaving(true);
     try {
-      const now = new Date();
-      const newTs = new Date(`${dateValue}T${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`).getTime();
+      const newTs = new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
       if (editing && initialRecord) {
         const duration = initialRecord.completedAt - initialRecord.startedAt;
         const updated: SessionRecord = {
@@ -154,7 +161,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
-        {/* Date */}
+        {/* Date + Time */}
         <div className="flex items-center gap-3">
           <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
           <input
@@ -162,6 +169,12 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             value={dateValue}
             onChange={(e) => setDateValue(e.target.value)}
             className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+          />
+          <input
+            type="time"
+            value={timeValue}
+            onChange={(e) => setTimeValue(e.target.value)}
+            className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
           />
         </div>
 
