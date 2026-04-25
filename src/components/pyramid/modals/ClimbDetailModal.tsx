@@ -1,15 +1,27 @@
 import { getStyleColor } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
 
+const STYLE_COLORS: Record<string, string> = {
+  onsight: "bg-green-500/20 text-green-400",
+  flash:   "bg-blue-500/20 text-blue-400",
+  redpoint:"bg-red-500/20 text-red-400",
+  attempt: "bg-gray-700 text-gray-500",
+};
+
 type Props = {
   climb: ClimbRecord | null;
+  allClimbs: ClimbRecord[];
   onClose: () => void;
   onEdit: (c: ClimbRecord) => void;
   onDelete: (id: string) => void;
 };
 
-export function ClimbDetailModal({ climb, onClose, onEdit, onDelete }: Props) {
+export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }: Props) {
   if (!climb) return null;
+
+  const routeHistory = allClimbs
+    .filter((c) => c.route === climb.route)
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
@@ -70,6 +82,33 @@ export function ClimbDetailModal({ climb, onClose, onEdit, onDelete }: Props) {
               </div>
             )}
           </div>
+
+          {routeHistory.length > 1 && (
+            <div className="mt-4 border-t border-gray-700 pt-4">
+              <p className="text-sm font-medium text-gray-500 mb-2">Sessions ({routeHistory.length})</p>
+              <div className="flex flex-col gap-2">
+                {routeHistory.map((c) => {
+                  const falls = c.style === "redpoint" ? c.climbs - 1 : 0;
+                  const styleLabel =
+                    c.style === "attempt"   ? (c.climbs > 1 ? `${c.climbs} attempts` : "attempt") :
+                    c.style === "redpoint"  ? (falls > 0 ? `${falls} attempt${falls !== 1 ? "s" : ""} · send` : "redpoint") :
+                    c.style;
+                  return (
+                    <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === climb.id ? "bg-gray-700/60" : ""}`}>
+                      <span className="text-gray-300 text-xs flex-1">
+                        {new Date(`${c.date}T12:00:00`).toLocaleDateString("en-US", {
+                          month: "short", day: "numeric", year: "numeric",
+                        })}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STYLE_COLORS[c.style] ?? STYLE_COLORS.attempt}`}>
+                        {styleLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 flex justify-between">
             <button

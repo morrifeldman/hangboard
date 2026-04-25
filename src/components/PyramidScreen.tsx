@@ -147,6 +147,7 @@ export function PyramidScreen({ onBack }: Props) {
 
       <ClimbDetailModal
         climb={selectedClimb}
+        allClimbs={climbs}
         onClose={() => setSelectedClimb(null)}
         onEdit={(c) => {
           setEditingClimb({ ...c });

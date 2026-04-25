@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { RouteHistoryModal } from "./RouteHistoryModal";
 import {
   LineChart,
   Line,
@@ -109,6 +110,7 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
   const [holdIndex, setHoldIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs()])
@@ -410,7 +412,11 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                 <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Climbing</p>
                 <div className="flex flex-col gap-2.5">
                   {dayClimbs.map((climb) => (
-                    <div key={climb.id} className="flex items-start justify-between gap-2">
+                    <button
+                      key={climb.id}
+                      className="flex items-start justify-between gap-2 text-left w-full hover:bg-gray-800 rounded-lg px-2 py-1 -mx-2 transition-colors"
+                      onClick={() => setSelectedRoute(climb.route)}
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-white text-sm font-medium">{climb.route}</span>
@@ -426,7 +432,7 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                       <span className="text-gray-500 text-xs text-right shrink-0 mt-0.5">
                         {shortLocation(climb.location)}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -489,6 +495,14 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
             <div className="h-8" />
           </div>
         </>
+      )}
+
+      {selectedRoute && (
+        <RouteHistoryModal
+          routeName={selectedRoute}
+          allClimbs={climbs}
+          onClose={() => setSelectedRoute(null)}
+        />
       )}
     </div>
   );

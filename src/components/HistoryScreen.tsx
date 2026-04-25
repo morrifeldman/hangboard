@@ -5,6 +5,7 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { shortLocation } from "../lib/format";
+import { RouteHistoryModal } from "./RouteHistoryModal";
 
 type Props = {
   onBack: () => void;
@@ -136,7 +137,7 @@ const STYLE_COLORS: Record<string, string> = {
 
 // ─── ClimbDayCard ─────────────────────────────────────────────────────────────
 
-function ClimbDayCard({ climbs }: { climbs: ClimbRecord[] }) {
+function ClimbDayCard({ climbs, onRouteClick }: { climbs: ClimbRecord[]; onRouteClick: (routeName: string) => void }) {
   const ts = new Date(`${climbs[0].date}T12:00:00`).getTime();
   const hasOutdoor = climbs.some((c) => c.setting === "outdoor");
   const locations = [...new Set(
@@ -190,7 +191,11 @@ function ClimbDayCard({ climbs }: { climbs: ClimbRecord[] }) {
               c.style === "redpoint"  ? (falls > 0 ? `${falls} attempt${falls !== 1 ? "s" : ""} · send` : "redpoint") :
               c.style;
             return (
-              <div key={c.id} className="flex flex-col gap-0.5">
+              <button
+                key={c.id}
+                className="flex flex-col gap-0.5 text-left w-full hover:bg-gray-700/50 rounded px-1 -mx-1 py-0.5 transition-colors"
+                onClick={() => onRouteClick(c.route)}
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-gray-300 text-xs flex-1 truncate">{c.route}</span>
                   <span className="text-gray-500 text-xs font-mono">{c.grade}</span>
@@ -201,7 +206,7 @@ function ClimbDayCard({ climbs }: { climbs: ClimbRecord[] }) {
                 {c.notes && (
                   <p className="text-gray-500 text-xs italic pl-0.5">"{c.notes}"</p>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -274,6 +279,7 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) 
   const [loading, setLoading] = useState(true);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -421,10 +427,18 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) 
           item.kind === "session" ? (
             <SessionCard key={item.record.id} record={item.record} onEdit={onEdit} />
           ) : (
-            <ClimbDayCard key={item.date} climbs={item.climbs} />
+            <ClimbDayCard key={item.date} climbs={item.climbs} onRouteClick={setSelectedRoute} />
           )
         )}
       </main>
+
+      {selectedRoute && (
+        <RouteHistoryModal
+          routeName={selectedRoute}
+          allClimbs={climbs}
+          onClose={() => setSelectedRoute(null)}
+        />
+      )}
     </div>
   );
 }
