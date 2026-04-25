@@ -4,6 +4,7 @@ import type { SessionRecord, GymData } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
+import { shortLocation } from "../lib/format";
 
 type Props = {
   onBack: () => void;
@@ -140,7 +141,7 @@ function ClimbDayCard({ climbs }: { climbs: ClimbRecord[] }) {
   const hasOutdoor = climbs.some((c) => c.setting === "outdoor");
   const locations = [...new Set(
     climbs
-      .map((c) => (c.location.split(">").pop()?.trim() ?? c.location).replace(/^\(\d+\)\s*/, ""))
+      .map((c) => shortLocation(c.location))
       .filter(Boolean)
   )];
   const summary = climbDaySummary(climbs);

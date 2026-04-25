@@ -20,7 +20,7 @@ import {
 import type { TrendPoint, CalendarDay } from "../lib/progressData";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
-import { formatWeight } from "../lib/format";
+import { formatWeight, shortLocation } from "../lib/format";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,6 +108,7 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [loading, setLoading] = useState(true);
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
   const [holdIndex, setHoldIndex] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs()])
@@ -166,6 +167,11 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const hasSessions = sessions.length > 0;
   const workoutLabel = workoutType === "repeaters" ? "Repeaters" : "Max Hang";
 
+  const dayClimbs = selectedDate ? climbs.filter((c) => c.date === selectedDate) : [];
+  const daySessions = selectedDate
+    ? sessions.filter((s) => new Date(s.startedAt).toISOString().slice(0, 10) === selectedDate)
+    : [];
+
   return (
     <div className="h-dvh bg-gray-900 flex flex-col overflow-hidden">
       {/* Header */}
@@ -219,25 +225,29 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                 </div>
                 {calendarWeeks.map((week, wi) => (
                   <div key={wi} className="flex flex-col gap-1">
-                    {week.map((day, di) => (
-                      <div
-                        key={di}
-                        className={`w-3 h-3 rounded-sm relative ${
-                          day.outdoor && !day.workoutType
-                            ? "bg-teal-600"
-                            : colorFor(day.workoutType)
-                        }`}
-                        title={
-                          day.workoutType || day.outdoor
-                            ? `${day.date.toLocaleDateString()}: ${[day.workoutType, day.outdoor ? "outdoor" : ""].filter(Boolean).join(" + ")}`
-                            : undefined
-                        }
-                      >
-                        {day.outdoor && day.workoutType && (
-                          <div className="absolute bottom-0 right-0 w-1 h-1 rounded-full bg-teal-400" />
-                        )}
-                      </div>
-                    ))}
+                    {week.map((day, di) => {
+                      const active = !!(day.workoutType || day.outdoor);
+                      return (
+                        <div
+                          key={di}
+                          className={`w-3 h-3 rounded-sm relative ${
+                            day.outdoor && !day.workoutType
+                              ? "bg-teal-600"
+                              : colorFor(day.workoutType)
+                          } ${active ? "cursor-pointer" : ""}`}
+                          onClick={active ? () => setSelectedDate(day.date.toISOString().slice(0, 10)) : undefined}
+                          title={
+                            active
+                              ? `${day.date.toLocaleDateString()}: ${[day.workoutType, day.outdoor ? "outdoor" : ""].filter(Boolean).join(" + ")}`
+                              : undefined
+                          }
+                        >
+                          {day.outdoor && day.workoutType && (
+                            <div className="absolute bottom-0 right-0 w-1 h-1 rounded-full bg-teal-400" />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
@@ -366,12 +376,165 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
           <div className="h-4" />
         </div>
       )}
+
+      {/* ── Day detail modal ── */}
+      {selectedDate && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 z-50"
+            onClick={() => setSelectedDate(null)}
+          />
+          <div className="fixed bottom-0 left-0 right-0 bg-gray-900 rounded-t-2xl z-50 max-h-[80vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800 sticky top-0 bg-gray-900">
+              <h2 className="text-white font-semibold">
+                {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
+                  weekday: "short", month: "short", day: "numeric", year: "numeric",
+                })}
+              </h2>
+              <button
+                onClick={() => setSelectedDate(null)}
+                aria-label="Close"
+                className="text-gray-400 hover:text-white p-1 -mr-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Climbs section */}
+            {dayClimbs.length > 0 && (
+              <div className="px-4 py-3">
+                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Climbing</p>
+                <div className="flex flex-col gap-2.5">
+                  {dayClimbs.map((climb) => (
+                    <div key={climb.id} className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-white text-sm font-medium">{climb.route}</span>
+                          <span className="text-gray-400 text-sm font-mono">{climb.grade}</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded ${climbStyleBadge(climb.style)}`}>
+                            {climb.style}
+                          </span>
+                        </div>
+                        {climb.notes && (
+                          <p className="text-gray-500 text-xs italic mt-0.5">{climb.notes}</p>
+                        )}
+                      </div>
+                      <span className="text-gray-500 text-xs text-right shrink-0 mt-0.5">
+                        {shortLocation(climb.location)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Workout sections */}
+            {daySessions.map((session) => (
+              <div key={session.id} className="px-4 py-3 border-t border-gray-800">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs uppercase tracking-wider text-gray-500">
+                    {sessionTypeLabel(session.workoutType)}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {session.bailed && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Bailed</span>
+                    )}
+                    <span className="text-gray-500 text-xs">
+                      {new Date(session.startedAt).toLocaleTimeString("en-US", {
+                        hour: "numeric", minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {session.holds.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {session.holds.map((hold) => (
+                      <div key={hold.holdId} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-200">{hold.holdName}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">
+                            S1 <span className={hold.set1.completed ? "text-gray-300" : "text-gray-500 line-through"}>{formatWeight(hold.set1.weight)}</span>
+                          </span>
+                          {hold.set2 && (
+                            <span className="text-xs text-gray-500">
+                              S2 <span className={hold.set2.completed ? "text-gray-300" : "text-gray-500 line-through"}>{formatWeight(hold.set2.weight)}</span>
+                            </span>
+                          )}
+                          {hold.set3 && (
+                            <span className="text-xs text-gray-500">
+                              S3 <span className={hold.set3.completed ? "text-gray-300" : "text-gray-500 line-through"}>{formatWeight(hold.set3.weight)}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {session.gymData && (
+                  <p className="text-sm text-gray-400 mt-1">{gymDataSummary(session.gymData)}</p>
+                )}
+
+                {session.notes && (
+                  <p className="text-gray-500 text-xs italic mt-2">{session.notes}</p>
+                )}
+              </div>
+            ))}
+
+            <div className="h-8" />
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+function climbStyleBadge(style: ClimbRecord["style"]): string {
+  if (style === "onsight") return "bg-green-500/20 text-green-400";
+  if (style === "flash") return "bg-blue-500/20 text-blue-400";
+  if (style === "redpoint") return "bg-red-500/20 text-red-400";
+  return "bg-gray-700 text-gray-400";
+}
+
+
+function sessionTypeLabel(type: SessionRecord["workoutType"]): string {
+  if (type === "repeaters") return "Repeaters";
+  if (type === "max-hang") return "Max Hang";
+  if (type === "beginner") return "Beginner";
+  if (type === "arc") return "ARC";
+  if (type === "cir") return "CIR";
+  if (type === "pe-route") return "PE Route";
+  if (type === "lbc") return "LBC";
+  if (type === "wbl") return "WBL";
+  if (type === "performance") return "Performance";
+  if (type === "hard-bouldering") return "Hard Bouldering";
+  if (type === "limit-bouldering") return "Limit Bouldering";
+  if (type === "injury") return "Injury";
+  return type;
+}
+
+function gymDataSummary(data: NonNullable<SessionRecord["gymData"]>): string {
+  if (data.type === "arc") {
+    const parts = [`${data.climbMin} min`];
+    if (data.routes) parts.push(`${data.routes} routes`);
+    if (data.maxGrade) parts.push(`max ${data.maxGrade}`);
+    return parts.join(" · ");
+  }
+  if (data.type === "cir") {
+    return `${data.repeats} repeats · ${data.avgRestSec}s rest avg`;
+  }
+  if (data.type === "pe-route") {
+    return `${data.reps} reps · ${data.climbSec}s on · ${data.dutyCycle} duty`;
+  }
+  return data.type.toUpperCase();
+}
 
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (
