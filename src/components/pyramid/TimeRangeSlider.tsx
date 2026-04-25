@@ -12,13 +12,17 @@ export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
 
   const dateInfo = getDateRangeInfo(climbs, timeRange);
 
-  const handleMouseDown = (isStart: boolean) => (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleDragStart = (isStart: boolean) => (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const slider = e.currentTarget.parentElement!;
+    const slider = (e.currentTarget as HTMLDivElement).parentElement!;
     const rect = slider.getBoundingClientRect();
 
-    const handleMouseMove = (ev: MouseEvent) => {
-      const percent = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100));
+    const getPercent = (clientX: number) =>
+      Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+
+    const handleMove = (ev: MouseEvent | TouchEvent) => {
+      const clientX = "touches" in ev ? ev.touches[0].clientX : ev.clientX;
+      const percent = getPercent(clientX);
       if (isStart && percent <= timeRange[1]) {
         setTimeRange([Math.round(percent), timeRange[1]]);
       } else if (!isStart && percent >= timeRange[0]) {
@@ -26,13 +30,17 @@ export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
       }
     };
 
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+    const handleEnd = () => {
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleMove);
+      document.removeEventListener("touchend", handleEnd);
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleMove, { passive: false });
+    document.addEventListener("touchend", handleEnd);
   };
 
   return (
@@ -56,12 +64,14 @@ export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
         <div
           className="absolute top-1 w-4 h-4 bg-green-500 rounded-full cursor-pointer border-2 border-gray-900 shadow-md hover:scale-110 transition-transform"
           style={{ left: `calc(${timeRange[0]}% - 8px)` }}
-          onMouseDown={handleMouseDown(true)}
+          onMouseDown={handleDragStart(true)}
+          onTouchStart={handleDragStart(true)}
         />
         <div
           className="absolute top-1 w-4 h-4 bg-green-500 rounded-full cursor-pointer border-2 border-gray-900 shadow-md hover:scale-110 transition-transform"
           style={{ left: `calc(${timeRange[1]}% - 8px)` }}
-          onMouseDown={handleMouseDown(false)}
+          onMouseDown={handleDragStart(false)}
+          onTouchStart={handleDragStart(false)}
         />
       </div>
 

@@ -40,6 +40,7 @@ export function PyramidScreen({ onBack }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
   const [newClimb, setNewClimb] = useState<NewClimbData>(INITIAL_CLIMB);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const mpUrl = localStorage.getItem("mountainProjectUrl") || "";
 
@@ -84,6 +85,7 @@ export function PyramidScreen({ onBack }: Props) {
 
   const handleRefresh = async () => {
     if (!mpUrl) return;
+    setIsRefreshing(true);
     try {
       const apiUrl = `/api/fetch-mp-csv?url=${encodeURIComponent(mpUrl)}`;
       const response = await fetch(apiUrl);
@@ -96,6 +98,8 @@ export function PyramidScreen({ onBack }: Props) {
       await reload();
     } catch (err) {
       console.error("Refresh failed:", err);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -106,6 +110,7 @@ export function PyramidScreen({ onBack }: Props) {
         onImport={() => setShowImportForm(true)}
         onRefresh={handleRefresh}
         canRefresh={!!mpUrl}
+        isRefreshing={isRefreshing}
         onBack={onBack}
       />
 

@@ -5,10 +5,11 @@ type Props = {
   onImport: () => void;
   onRefresh: () => void;
   canRefresh: boolean;
+  isRefreshing: boolean;
   onBack: () => void;
 };
 
-export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, onBack }: Props) {
+export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isRefreshing, onBack }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
@@ -29,10 +30,11 @@ export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, onB
           {canRefresh && (
             <button
               onClick={onRefresh}
-              className="bg-orange-600 text-white px-3 py-1.5 rounded-xl flex items-center gap-1 text-sm hover:bg-orange-700 transition-colors"
+              disabled={isRefreshing}
+              className="bg-orange-600 text-white px-3 py-1.5 rounded-xl flex items-center gap-1 text-sm hover:bg-orange-700 transition-colors disabled:opacity-70"
               title="Refresh from Mountain Project"
             >
-              <RefreshCw size={16} />
+              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
             </button>
           )}
           <button
