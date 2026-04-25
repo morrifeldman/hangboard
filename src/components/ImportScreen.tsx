@@ -197,7 +197,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           set1Reps: h.set1.reps,
           set2Reps: h.set2?.reps ?? h.set1.reps,
         };
-        return { ...def, numSets: h.set2 !== null ? 2 : 1 };
+        return { ...def, numSets: h.set3 !== undefined ? 3 : h.set2 !== null ? 2 : 1 };
       })
     : workoutType === "repeaters" ? HOLDS : HOLDS_B;
 

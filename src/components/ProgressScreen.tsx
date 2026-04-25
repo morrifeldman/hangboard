@@ -171,7 +171,11 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
 
   const dayClimbs = selectedDate ? climbs.filter((c) => c.date === selectedDate) : [];
   const daySessions = selectedDate
-    ? sessions.filter((s) => new Date(s.startedAt).toISOString().slice(0, 10) === selectedDate)
+    ? sessions.filter((s) => {
+        const d = new Date(s.startedAt);
+        const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return local === selectedDate;
+      })
     : [];
 
   return (
