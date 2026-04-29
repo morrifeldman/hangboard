@@ -10,7 +10,11 @@ export type { WorkoutPhase };
 export type WorkoutId = "repeaters" | "max-hang" | "test";
 
 type StoredWeights = Record<string, { set1: number; set2: number }>;
-type Overrides = Record<string, { set1: number | null; set2: number | null }>;
+type Overrides = Record<string, { set1: number | null; set2: number | null; set3?: number | null }>;
+
+function overrideKeyFor(setNum: number): "set1" | "set2" | "set3" {
+  return setNum <= 1 ? "set1" : setNum === 2 ? "set2" : "set3";
+}
 
 interface WorkoutStore {
   // Persisted
@@ -88,9 +92,12 @@ export const useWorkoutStore = create<WorkoutStore>()(
       currentHold: () => holdsFor(get().selectedWorkout)[get().holdIndex],
 
       effectiveWeight: (holdId, setNum) => {
-        const key = setNum <= 1 ? "set1" : "set2";
+        // Overrides use per-set keys so set2 and set3 can be adjusted independently.
+        // Stored weights only have set1/set2; set3 is always derived via setIncrement.
+        const overrideKey = overrideKeyFor(setNum);
+        const storedKey = setNum <= 1 ? "set1" : "set2";
         const override = get().overrides[holdId];
-        const overrideVal = override?.[key] ?? null;
+        const overrideVal = override?.[overrideKey] ?? null;
         if (overrideVal !== null) return overrideVal;
 
         const holds = holdsFor(get().selectedWorkout);
@@ -99,11 +106,11 @@ export const useWorkoutStore = create<WorkoutStore>()(
         const stored = storedMap[holdId];
         let base: number;
         if (!stored) {
-          base = key === "set1"
+          base = storedKey === "set1"
             ? (hold?.defaultSet1Weight ?? 0)
             : (hold?.defaultSet2Weight ?? 0);
         } else {
-          base = stored[key];
+          base = stored[storedKey];
         }
         // Apply per-set increment (e.g. max hang: set1=base, set2=base+5, set3=base+10)
         if (hold?.setIncrement && setNum > 1) {
@@ -160,7 +167,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       },
 
       setSessionOverride: (holdId, setNum, delta) => {
-        const key = setNum <= 1 ? "set1" : "set2";
+        const key = overrideKeyFor(setNum);
         const current = get().overrides[holdId] ?? { set1: null, set2: null };
         const base = get().effectiveWeight(holdId, setNum);
         set({

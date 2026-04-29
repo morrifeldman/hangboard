@@ -79,5 +79,6 @@ export function skipNextSet(s: SessionState, holds: readonly HoldDefinition[]): 
 export function skipNextHold(s: SessionState, holds: readonly HoldDefinition[]): SessionState {
   const nextHoldIndex = s.holdIndex + 1;
   if (nextHoldIndex >= holds.length - 1) return { ...s, phase: 'done' };
-  return { ...s, holdIndex: nextHoldIndex, setNumber: 2, phase: 'break' };
+  const nextNumSets = holds[nextHoldIndex]?.numSets ?? 2;
+  return { ...s, holdIndex: nextHoldIndex, setNumber: nextNumSets, phase: 'break' };
 }

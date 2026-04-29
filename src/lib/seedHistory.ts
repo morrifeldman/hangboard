@@ -48,11 +48,13 @@ function maxHang(
   const holds: SessionHoldRecord[] = HOLDS_B.map((hold) => {
     const w = hold.isRestOnly || hold.skipProgression ? 0 : hold.defaultSet1Weight + delta;
     const numSets = hold.numSets ?? 2;
+    const inc = hold.setIncrement ?? 0;
     return {
       holdId: hold.id,
       holdName: hold.name,
       set1: { weight: w, reps: hold.repsPerSet ?? hold.set1Reps, completed: true },
-      set2: numSets >= 2 ? { weight: w, reps: hold.repsPerSet ?? hold.set2Reps, completed: true } : null,
+      set2: numSets >= 2 ? { weight: w + inc, reps: hold.repsPerSet ?? hold.set2Reps, completed: true } : null,
+      ...(numSets >= 3 ? { set3: { weight: w + 2 * inc, reps: hold.repsPerSet ?? hold.set2Reps, completed: true } } : {}),
     };
   });
 

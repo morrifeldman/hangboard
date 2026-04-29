@@ -446,9 +446,12 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
             {daySessions.map((session) => (
               <div key={session.id} className="px-4 py-3 border-t border-gray-800">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs uppercase tracking-wider text-gray-500">
+                  <button
+                    className="text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 transition-colors text-left"
+                    onClick={() => onEditSession(session)}
+                  >
                     {sessionTypeLabel(session.workoutType)}
-                  </p>
+                  </button>
                   <div className="flex items-center gap-2">
                     {session.bailed && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Bailed</span>

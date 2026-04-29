@@ -264,12 +264,24 @@ describe('skipNextSet', () => {
 // ── skipNextHold ──────────────────────────────────────────────────────────
 
 describe('skipNextHold', () => {
-  it('not penultimate hold → break, holdIndex+1, setNumber=2', () => {
+  it('not penultimate hold → break, holdIndex+1, setNumber=numSets of next hold', () => {
     const s = state({ holdIndex: 0 });
     const next = skipNextHold(s, HOLDS);
     expect(next.phase).toBe('break');
     expect(next.holdIndex).toBe(1);
-    expect(next.setNumber).toBe(2);
+    expect(next.setNumber).toBe(HOLDS[1].numSets ?? 2);
+  });
+
+  it('3-set next hold → setNumber=3 so break handler skips past it', () => {
+    const holds = [hold(), hold({ numSets: 3 }), hold()];
+    const s = state({ holdIndex: 0 });
+    const next = skipNextHold(s, holds);
+    expect(next.holdIndex).toBe(1);
+    expect(next.setNumber).toBe(3);
+    // break handler with setNumber=3, numSets=3 → isLastSet=true → advances to hold 2
+    const after = advancePhase(next, holds, SET1, SET2);
+    expect(after.holdIndex).toBe(2);
+    expect(after.setNumber).toBe(1);
   });
 
   it('penultimate hold (nextHold = last) → done', () => {
