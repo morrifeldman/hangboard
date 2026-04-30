@@ -1,43 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { extractAttempts, convertStyle, isIndoor, importMountainProjectCSV } from "../mountainProjectImport";
+import { parsePitches, convertStyle, isIndoor, importMountainProjectCSV } from "../mountainProjectImport";
 
-describe("extractAttempts", () => {
-  it("returns 1 for empty/undefined notes", () => {
-    expect(extractAttempts(undefined)).toBe(1);
-    expect(extractAttempts("")).toBe(1);
+describe("parsePitches", () => {
+  it("returns 1 for empty/undefined", () => {
+    expect(parsePitches(undefined)).toBe(1);
+    expect(parsePitches("")).toBe(1);
   });
-  it("extracts '3 attempts'", () => {
-    expect(extractAttempts("Took 3 attempts to send")).toBe(3);
+  it("parses positive integers", () => {
+    expect(parsePitches("1")).toBe(1);
+    expect(parsePitches("3")).toBe(3);
+    expect(parsePitches("12")).toBe(12);
   });
-  it("extracts '5 tries'", () => {
-    expect(extractAttempts("5 tries over two days")).toBe(5);
+  it("returns 1 for non-numeric", () => {
+    expect(parsePitches("abc")).toBe(1);
   });
-  it("extracts '2 try' (singular try)", () => {
-    expect(extractAttempts("2 try")).toBe(2);
-  });
-  it("extracts ordinal '3rd try'", () => {
-    expect(extractAttempts("3rd try")).toBe(3);
-  });
-  it("extracts ordinal '2nd go'", () => {
-    expect(extractAttempts("2nd go")).toBe(2);
-  });
-  it("extracts ordinal '1st try'", () => {
-    expect(extractAttempts("1st try")).toBe(1);
-  });
-  it("extracts 'or so' pattern", () => {
-    expect(extractAttempts("10 or so attempts")).toBe(10);
-  });
-  it("extracts word ordinal 'Second attempt'", () => {
-    expect(extractAttempts("Second attempt")).toBe(2);
-  });
-  it("extracts word ordinal 'third try'", () => {
-    expect(extractAttempts("third try")).toBe(3);
-  });
-  it("extracts 'one burn'", () => {
-    expect(extractAttempts("One burn")).toBe(1);
-  });
-  it("handles punctuation between number and keyword", () => {
-    expect(extractAttempts("Several 3? attempts the previous weekend")).toBe(3);
+  it("returns 1 for zero or negative", () => {
+    expect(parsePitches("0")).toBe(1);
+    expect(parsePitches("-2")).toBe(1);
   });
 });
 
@@ -67,9 +46,9 @@ describe("isIndoor", () => {
 
 describe("importMountainProjectCSV", () => {
   const csvContent = [
-    "Date,Route,Rating,Notes,Location,Route Type,Lead Style",
-    '2024-03-15,Power Surge,5.12a,"3 attempts, great route",Red River Gorge,Sport,Redpoint',
-    "2024-03-16,The Egg,V5,,Planet Rock Gym,Boulder,",
+    "Date,Route,Rating,Notes,Pitches,Location,Route Type,Lead Style",
+    '2024-03-15,Power Surge,5.12a,"3 attempts, great route",3,Red River Gorge,Sport,Redpoint',
+    "2024-03-16,The Egg,V5,,1,Planet Rock Gym,Boulder,",
     "",
   ].join("\n");
 
@@ -90,10 +69,23 @@ describe("importMountainProjectCSV", () => {
     expect(climbs[1].type).toBe("boulder");
     expect(climbs[1].setting).toBe("indoor");
     expect(climbs[1].style).toBe("attempt"); // no lead style → attempt
+    expect(climbs[1].climbs).toBe(1);
+  });
+
+  it("defaults missing Pitches to 1", async () => {
+    const csv = [
+      "Date,Route,Rating,Notes,Pitches,Location,Route Type,Lead Style",
+      "2024-03-15,No Pitches,5.10a,,,Red River Gorge,Sport,Onsight",
+      "",
+    ].join("\n");
+    const file = new File([csv], "t.csv", { type: "text/csv" });
+    const climbs = await importMountainProjectCSV(file);
+    expect(climbs).toHaveLength(1);
+    expect(climbs[0].climbs).toBe(1);
   });
 
   it("skips rows with no grade", async () => {
-    const csv = "Date,Route,Rating,Notes,Location,Route Type,Lead Style\n2024-01-01,Test,,,,Sport,\n";
+    const csv = "Date,Route,Rating,Notes,Pitches,Location,Route Type,Lead Style\n2024-01-01,Test,,,1,,Sport,\n";
     const file = new File([csv], "t.csv", { type: "text/csv" });
     const climbs = await importMountainProjectCSV(file);
     expect(climbs).toHaveLength(0);
