@@ -99,6 +99,7 @@ export function WorkoutScreen() {
         const setKey = `set${setNumber}` as "set1" | "set2" | "set3";
         return (
           <BreakTimer
+            key={`break-${holdIndex}-${setNumber}`}
             setNoteValue={setNotesLive[hid]?.[setKey] ?? ""}
             onSetNoteChange={(v) =>
               setSetNotesLive((prev) => ({
