@@ -33,11 +33,27 @@ const lastHoldIndex = HOLDS.length - 1;
 // ── Workout A (existing 2-set repeater holds) ─────────────────────────────
 
 describe('advancePhase — workout A (numSets=2 default)', () => {
-  it('prep → hanging, resets repIndex to 0', () => {
-    const s = state({ phase: 'prep', repIndex: 99 });
+  it('prep → hanging, preserves repIndex', () => {
+    const s = state({ phase: 'prep', repIndex: 0 });
     const next = advancePhase(s, HOLDS, SET1, SET2);
     expect(next.phase).toBe('hanging');
     expect(next.repIndex).toBe(0);
+  });
+
+  it('prepBetweenReps: resting → prep with incremented repIndex', () => {
+    const preppedHolds = [hold({ prepBetweenReps: true, repsPerSet: 3 }), hold()];
+    const s = state({ phase: 'resting', repIndex: 0 });
+    const next = advancePhase(s, preppedHolds, SET1, SET2);
+    expect(next.phase).toBe('prep');
+    expect(next.repIndex).toBe(1);
+  });
+
+  it('prepBetweenReps: mid-set prep → hanging, repIndex unchanged', () => {
+    const preppedHolds = [hold({ prepBetweenReps: true, repsPerSet: 3 }), hold()];
+    const s = state({ phase: 'prep', repIndex: 1 });
+    const next = advancePhase(s, preppedHolds, SET1, SET2);
+    expect(next.phase).toBe('hanging');
+    expect(next.repIndex).toBe(1);
   });
 
   it('prep with isRestOnly hold → break (skips hang entirely)', () => {

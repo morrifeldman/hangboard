@@ -29,28 +29,20 @@ export function advancePhase(
   switch (s.phase) {
     case 'prep':
       if (hold.isRestOnly) return { ...s, phase: 'break' };
-      return { ...s, phase: 'hanging', repIndex: 0 };
+      return { ...s, phase: 'hanging' };
     case 'hanging':
       if (!isLastRep) return { ...s, phase: 'resting' };
       if (!isLastSet) return { ...s, phase: 'break' };
       return { ...s, phase: 'break' };
     case 'resting':
+      if (hold.prepBetweenReps) return { ...s, phase: 'prep', repIndex: s.repIndex + 1 };
       return { ...s, phase: 'hanging', repIndex: s.repIndex + 1 };
     case 'break':
       if (!isLastSet) {
-        const nextSet = { ...s, phase: 'prep' as const, setNumber: s.setNumber + 1, repIndex: 0 };
-        // isRestOnly holds skip prep entirely — go straight to break
-        if (hold.isRestOnly) return { ...nextSet, phase: 'break' };
-        return nextSet;
+        return { ...s, phase: 'prep' as const, setNumber: s.setNumber + 1, repIndex: 0 };
       }
       if (isLastHold) return { ...s, phase: 'done' };
-      {
-        const nextHold = holds[s.holdIndex + 1];
-        const nextState = { ...s, phase: 'prep' as const, holdIndex: s.holdIndex + 1, setNumber: 1, repIndex: 0 };
-        // isRestOnly holds skip prep entirely — go straight to break
-        if (nextHold?.isRestOnly) return { ...nextState, phase: 'break' };
-        return nextState;
-      }
+      return { ...s, phase: 'prep' as const, holdIndex: s.holdIndex + 1, setNumber: 1, repIndex: 0 };
     case 'done':
       return { ...s, phase: 'idle' };
     default:

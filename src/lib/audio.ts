@@ -38,6 +38,10 @@ export function initAudio(): void {
 }
 
 export const Audio = {
+  prepStart: async () => {
+    await beep(523, 80);
+    setTimeout(() => beep(659, 100), 120);
+  },
   hangStart:   () => beep(880, 120),
   hangEnd:     () => beep(440, 200),
   countdownTick: () => beep(660, 60),

@@ -16,6 +16,8 @@ export interface HoldDefinition {
   repsPerSet?: number;
   // Skip the hang phase entirely — show rest timer only (e.g. pull-ups)
   isRestOnly?: boolean;
+  // Show a prep countdown between reps (after rest, before next hang)
+  prepBetweenReps?: boolean;
   // Per-set weight increment (e.g. 5 → set1=base, set2=base+5, set3=base+10)
   setIncrement?: number;
 }

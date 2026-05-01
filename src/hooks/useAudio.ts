@@ -3,6 +3,9 @@ import { Haptics } from "../lib/haptics";
 
 export function useAudio() {
   return {
+    prepStart: () => {
+      Audio.prepStart();
+    },
     hangStart: () => {
       Audio.hangStart();
       Haptics.hangStart();

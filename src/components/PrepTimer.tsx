@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { PREP_SECS } from "../data/workout";
 
@@ -21,10 +22,12 @@ export function PrepTimer() {
   const audio = useAudio();
   const prepDuration = hold.prepSecs ?? PREP_SECS;
 
+  useEffect(() => { audio.prepStart(); }, []);
+
 
   const { remaining } = useTimer({
     duration: prepDuration,
-    running: !paused && !hold.isRestOnly,
+    running: !paused,
     onTick: (r) => {
       if (r <= 3.05 && r > 0.05 && Math.ceil(r) !== Math.ceil(r + 0.1)) {
         audio.countdownTick();
@@ -32,8 +35,6 @@ export function PrepTimer() {
     },
     onExpire: advancePhase,
   });
-
-  if (hold.isRestOnly) return null;
 
   return (
     <div className="flex flex-col items-center gap-3">

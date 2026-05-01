@@ -7,7 +7,7 @@ export const HOLDS_B: HoldDefinition[] = [
     name: "Jug",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 30, numSets: 1, repsPerSet: 3, restSecs: 30,
-    skipProgression: true,
+    skipProgression: true, prepBetweenReps: true,
   },
   {
     id: "b-pullup",
