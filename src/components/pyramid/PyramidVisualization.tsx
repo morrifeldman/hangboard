@@ -99,10 +99,7 @@ export function PyramidVisualization({
                           })()}
                           onClick={() => onClimbClick(climb)}
                         >
-                          {(() => {
-                            const failures = climb.style === "attempt" ? climb.climbs : climb.climbs - 1;
-                            return failures > 1 ? failures : "";
-                          })()}
+                          {climb.climbs > (climb.style === "redpoint" ? 2 : 1) ? climb.climbs : ""}
                         </div>
                       ))}
                     </div>
