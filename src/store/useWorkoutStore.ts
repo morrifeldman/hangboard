@@ -9,7 +9,7 @@ export type { WorkoutPhase };
 
 export type WorkoutId = "repeaters" | "max-hang" | "test";
 
-type StoredWeights = Record<string, { set1: number; set2: number }>;
+export type StoredWeights = Record<string, { set1: number; set2: number }>;
 type Overrides = Record<string, { set1: number | null; set2: number | null; set3?: number | null }>;
 
 function overrideKeyFor(setNum: number): "set1" | "set2" | "set3" {
@@ -227,6 +227,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
 );
 
 // Expose store on window in dev/test mode for easy state manipulation from console
-if (import.meta.env.DEV || new URLSearchParams(window.location.search).has("test")) {
+if (typeof window !== "undefined" &&
+    (import.meta.env.DEV || new URLSearchParams(window.location.search).has("test"))) {
   (window as unknown as Record<string, unknown>).__store = useWorkoutStore;
 }

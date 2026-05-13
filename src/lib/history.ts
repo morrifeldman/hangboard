@@ -104,6 +104,16 @@ export async function updateSession(record: SessionRecord): Promise<void> {
   await db.put(STORE, record);
 }
 
+export async function replaceAllSessions(records: SessionRecord[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(STORE, "readwrite");
+  await tx.store.clear();
+  for (const r of records) {
+    await tx.store.put(r);
+  }
+  await tx.done;
+}
+
 // ─── Session record builder (pure — unit-testable) ───────────────────────────
 
 type BuildArgs = {

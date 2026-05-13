@@ -9,9 +9,10 @@ import { GymLogScreen } from "./components/GymLogScreen";
 import { ProgressScreen } from "./components/ProgressScreen";
 import { PyramidScreen } from "./components/PyramidScreen";
 import { ScrollingPyramidsScreen } from "./components/ScrollingPyramidsScreen";
+import { SettingsScreen } from "./components/SettingsScreen";
 import type { SessionRecord } from "./lib/history";
 
-type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid" | "scrolling-pyramids";
+type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid" | "scrolling-pyramids" | "settings";
 
 export default function App() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -111,12 +112,17 @@ export default function App() {
     );
   }
 
+  if (view === "settings") {
+    return <SettingsScreen onBack={() => setView("home")} />;
+  }
+
   return (
     <HomeScreen
       onShowHistory={() => setView("history")}
       onShowProgress={() => setView("progress")}
       onLogGym={() => setView("gym-log")}
       onShowPyramid={() => setView("pyramid")}
+      onShowSettings={() => setView("settings")}
     />
   );
 }
