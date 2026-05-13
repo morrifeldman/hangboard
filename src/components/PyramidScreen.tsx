@@ -28,9 +28,9 @@ const INITIAL_CLIMB: NewClimbData = {
   notes: "",
 };
 
-type Props = { onBack: () => void };
+type Props = { onBack: () => void; onShowScrollingPyramids: () => void };
 
-export function PyramidScreen({ onBack }: Props) {
+export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [currentView, setCurrentView] = useState<ViewKey>("outdoor-sport");
   const [showSendsOnly, setShowSendsOnly] = useState(true);
@@ -112,6 +112,7 @@ export function PyramidScreen({ onBack }: Props) {
         canRefresh={!!mpUrl}
         isRefreshing={isRefreshing}
         onBack={onBack}
+        onShowScrolling={onShowScrollingPyramids}
       />
 
       <ViewTabs

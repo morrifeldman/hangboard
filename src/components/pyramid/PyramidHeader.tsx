@@ -1,4 +1,4 @@
-import { Plus, Upload, RefreshCw, ArrowLeft } from "lucide-react";
+import { Plus, Upload, RefreshCw, ArrowLeft, Layers } from "lucide-react";
 
 type Props = {
   onAddClimb: () => void;
@@ -7,9 +7,10 @@ type Props = {
   canRefresh: boolean;
   isRefreshing: boolean;
   onBack: () => void;
+  onShowScrolling: () => void;
 };
 
-export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isRefreshing, onBack }: Props) {
+export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
@@ -20,6 +21,14 @@ export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isR
           <h1 className="text-xl font-bold text-white">Climbing Pyramid</h1>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={onShowScrolling}
+            className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl flex items-center gap-1 text-sm hover:bg-indigo-700 transition-colors"
+            title="Scrolling Pyramids"
+          >
+            <Layers size={16} />
+            Scrolling
+          </button>
           <button
             onClick={onAddClimb}
             className="bg-green-600 text-white px-3 py-1.5 rounded-xl flex items-center gap-1 text-sm hover:bg-green-700 transition-colors"

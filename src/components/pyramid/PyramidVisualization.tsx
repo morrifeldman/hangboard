@@ -30,6 +30,14 @@ export function PyramidVisualization({
   const pyramidData = buildPyramid(finalClimbs, currentView);
   const maxClimbs = Math.max(...pyramidData.map((level) => level.climbs.length), 1);
 
+  // Cumulative count from the top (hardest) — "sends at or above this grade".
+  const cumulatives: number[] = [];
+  {
+    let running = 0;
+    for (const level of pyramidData) cumulatives.push((running += level.climbs.length));
+  }
+  const maxCum = cumulatives[cumulatives.length - 1] || 1;
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,22 +67,33 @@ export function PyramidVisualization({
 
   return (
     <div className="space-y-2 mb-8">
-      <h2 className="text-xl font-bold text-center mb-4 text-white">Pyramid</h2>
-
       <div className="relative">
         {/* Fixed grade labels */}
-        <div className="absolute left-0 top-0 z-10 w-16 bg-gray-900">
+        <div className="absolute left-0 top-0 z-10 w-36 bg-gray-900">
           <div className="space-y-1">
-            {pyramidData.map((level) => (
-              <div key={level.grade} className="h-8 flex items-center">
-                <div className="w-16 text-sm font-medium text-right pr-4 text-gray-400">{level.grade}</div>
+            {pyramidData.map((level, i) => (
+              <div
+                key={level.grade}
+                className="h-8 grid grid-cols-[3rem_1.5rem_28px_auto] items-center pl-1 pr-1 gap-1"
+              >
+                <span className="text-sm font-medium text-gray-400 tabular-nums">{level.grade}</span>
+                <span className="text-[10px] text-gray-500 tabular-nums">
+                  {level.climbs.length > 0 ? `[${level.climbs.length}]` : ""}
+                </span>
+                <div
+                  className="h-2 bg-indigo-500/60 rounded-sm justify-self-end"
+                  style={{ width: `${(cumulatives[i] / maxCum) * 24}px` }}
+                />
+                <span className="text-[10px] text-indigo-400/80 tabular-nums italic">
+                  {cumulatives[i] > 0 ? `(${cumulatives[i]})` : ""}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Scrollable pyramid */}
-        <div ref={scrollRef} className="overflow-x-auto pl-16">
+        <div ref={scrollRef} className="overflow-x-auto pl-36">
           <div style={{ minWidth: `${maxClimbs * 32 + 40}px` }}>
             <div className="space-y-1">
               {pyramidData.map((level) => (

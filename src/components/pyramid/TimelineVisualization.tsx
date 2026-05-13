@@ -73,8 +73,6 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
 
   return (
     <div className="mb-6">
-      <h2 className="text-xl font-bold text-center mb-4 text-white">Timeline</h2>
-
       <div className="relative">
         {/* Grade labels */}
         <div className="absolute left-0 top-0 z-10 w-16 bg-gray-900">
