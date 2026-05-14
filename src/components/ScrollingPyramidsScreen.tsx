@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, Layers } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, Layers, Trophy } from "lucide-react";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
@@ -29,6 +29,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
   const [kind, setKind] = useState<WindowKind>("seasons");
   const [newestFirst, setNewestFirst] = useState(true);
   const [showCounts, setShowCounts] = useState(false);
+  const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,19 +39,28 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
     });
   }, []);
 
-  // Filter by view + sends-only. Dedup happens per-window inside SeasonCard so
-  // a route re-sent in a later season still counts in its original season too.
-  const viewSends = useMemo(
-    () => getFilteredClimbs(climbs, view, true, [0, 100]).filter((c) => c.style !== "attempt"),
+  // viewClimbs is always the per-window dedup pool so attempt records can
+  // sum into the eventual send's climb count (matches main pyramid order:
+  // dedup first → drop attempt-style after). The "window source" — what
+  // decides which seasons get cards and which grades to show — is sends-only
+  // when the toggle is on (skip seasons where the user only ever bailed) and
+  // all climbs when the toggle is off (show project-only seasons too).
+  const viewClimbs = useMemo(
+    () => getFilteredClimbs(climbs, view, false, [0, 100]),
     [climbs, view],
   );
+  const viewSends = useMemo(
+    () => viewClimbs.filter((c) => c.style !== "attempt"),
+    [viewClimbs],
+  );
+  const windowSource = showSendsOnly ? viewSends : viewClimbs;
 
-  const gradesToShow = useMemo(() => computeGradeRange(viewSends), [viewSends]);
+  const gradesToShow = useMemo(() => computeGradeRange(windowSource), [windowSource]);
 
   const windows = useMemo(() => {
-    const ws = generateWindows(viewSends, kind);
+    const ws = generateWindows(windowSource, kind);
     return newestFirst ? ws : [...ws].reverse();
-  }, [viewSends, kind, newestFirst]);
+  }, [windowSource, kind, newestFirst]);
 
   return (
     <div className="h-dvh bg-gray-900 flex flex-col overflow-hidden">
@@ -64,6 +74,19 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
         </button>
         <Layers size={24} className="text-white" aria-label="Scrolling Pyramids" />
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setShowSendsOnly((v) => !v)}
+            className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
+              showSendsOnly
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
+            }`}
+            title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
+            aria-pressed={showSendsOnly}
+            aria-label="Toggle sends only"
+          >
+            <Trophy size={16} />
+          </button>
           <button
             onClick={() => setShowCounts((v) => !v)}
             className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
@@ -118,9 +141,10 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
             <SeasonCard
               key={w.id}
               window={w}
-              climbs={viewSends}
+              climbs={viewClimbs}
               gradesToShow={gradesToShow}
               showCounts={showCounts}
+              showSendsOnly={showSendsOnly}
               onClimbClick={(c) => setSelectedRoute(c.route)}
             />
           ))}
@@ -146,35 +170,42 @@ function SeasonCard({
   climbs,
   gradesToShow,
   showCounts,
+  showSendsOnly,
   onClimbClick,
 }: {
   window: SeasonWindow;
   climbs: ClimbRecord[];
   gradesToShow: readonly string[];
   showCounts: boolean;
+  showSendsOnly: boolean;
   onClimbClick: (c: ClimbRecord) => void;
 }) {
-  const windowClimbs = useMemo(
-    () => deduplicateForPyramid(filterClimbsByWindow(climbs, window)),
-    [climbs, window],
-  );
+  // Dedup includes attempts so their climb counts roll into the send record;
+  // when sends-only is on, drop pure-attempt routes (never sent in this window).
+  const windowClimbs = useMemo(() => {
+    const deduped = deduplicateForPyramid(filterClimbsByWindow(climbs, window));
+    return showSendsOnly ? deduped.filter((c) => c.style !== "attempt") : deduped;
+  }, [climbs, window, showSendsOnly]);
   const rows = useMemo(
     () => buildRowsForRange(windowClimbs, gradesToShow),
     [windowClimbs, gradesToShow],
   );
   const total = rows.reduce((sum, r) => sum + r.climbs.length, 0);
+  const totalLabel = showSendsOnly ? "send" : "climb";
 
   return (
     <div className="bg-gray-800 rounded-xl px-4 py-3">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-white font-semibold">{window.label}</h2>
         <span className="text-gray-400 text-xs">
-          {total} send{total === 1 ? "" : "s"}
+          {total} {totalLabel}{total === 1 ? "" : "s"}
         </span>
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-gray-500 text-sm py-4 text-center">No sends in this period</p>
+        <p className="text-gray-500 text-sm py-4 text-center">
+          No {showSendsOnly ? "sends" : "climbs"} in this period
+        </p>
       ) : (
         <PyramidBody
           rows={rows}

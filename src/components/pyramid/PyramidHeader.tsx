@@ -1,4 +1,4 @@
-import { Upload, RefreshCw, Layers, BarChart2 } from "lucide-react";
+import { Upload, RefreshCw, Layers, BarChart2, Trophy } from "lucide-react";
 import { BackChevronIcon, PyramidIcon } from "../icons";
 
 type Props = {
@@ -10,9 +10,11 @@ type Props = {
   onShowScrolling: () => void;
   showCounts: boolean;
   onToggleCounts: () => void;
+  showSendsOnly: boolean;
+  onToggleSendsOnly: () => void;
 };
 
-export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts }: Props) {
+export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
@@ -23,6 +25,19 @@ export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, o
           <PyramidIcon className="text-white" aria-label="Climbing Pyramid" />
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={onToggleSendsOnly}
+            className={`px-2.5 py-1.5 rounded-xl flex items-center text-sm transition-colors ${
+              showSendsOnly
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
+            }`}
+            title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
+            aria-pressed={showSendsOnly}
+            aria-label="Toggle sends only"
+          >
+            <Trophy size={16} />
+          </button>
           <button
             onClick={onToggleCounts}
             className={`px-2.5 py-1.5 rounded-xl flex items-center text-sm transition-colors ${

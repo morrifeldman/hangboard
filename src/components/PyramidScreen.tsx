@@ -115,12 +115,13 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         onShowScrolling={onShowScrollingPyramids}
         showCounts={showCounts}
         onToggleCounts={() => setShowCounts((v) => !v)}
+        showSendsOnly={showSendsOnly}
+        onToggleSendsOnly={() => setShowSendsOnly((v) => !v)}
       />
 
       <ViewTabs
         currentView={currentView}
         showSendsOnly={showSendsOnly}
-        setShowSendsOnly={setShowSendsOnly}
         climbs={climbs}
       />
 
