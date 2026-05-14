@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mountain, Home, ArrowDownNarrowWide, ArrowUpNarrowWide } from "lucide-react";
+import { Mountain, Home, ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2 } from "lucide-react";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
@@ -27,6 +27,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
   const [view, setView] = useState<ViewKey>("outdoor-sport");
   const [kind, setKind] = useState<WindowKind>("seasons");
   const [newestFirst, setNewestFirst] = useState(true);
+  const [showCounts, setShowCounts] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,14 +65,29 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           </svg>
         </button>
         <h1 className="text-white font-bold text-xl">Scrolling Pyramids</h1>
-        <button
-          onClick={() => setNewestFirst((v) => !v)}
-          className="ml-auto flex items-center gap-1.5 text-gray-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-md bg-gray-700/60 hover:bg-gray-700 transition-colors"
-          title={newestFirst ? "Newest first — tap to reverse" : "Oldest first — tap to reverse"}
-        >
-          {newestFirst ? <ArrowDownNarrowWide size={14} /> : <ArrowUpNarrowWide size={14} />}
-          {newestFirst ? "Newest" : "Oldest"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setShowCounts((v) => !v)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+              showCounts
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
+            }`}
+            title="Toggle per-grade counts and cumulative bars"
+            aria-pressed={showCounts}
+          >
+            <BarChart2 size={14} />
+            Counts
+          </button>
+          <button
+            onClick={() => setNewestFirst((v) => !v)}
+            className="flex items-center gap-1.5 text-gray-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-md bg-gray-700/60 hover:bg-gray-700 transition-colors"
+            title={newestFirst ? "Newest first — tap to reverse" : "Oldest first — tap to reverse"}
+          >
+            {newestFirst ? <ArrowDownNarrowWide size={14} /> : <ArrowUpNarrowWide size={14} />}
+            {newestFirst ? "Newest" : "Oldest"}
+          </button>
+        </div>
       </header>
 
       <div className="border-b border-gray-700 px-2">
@@ -128,6 +144,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
               window={w}
               climbs={viewSends}
               gradesToShow={gradesToShow}
+              showCounts={showCounts}
               onClimbClick={(c) => setSelectedRoute(c.route)}
             />
           ))}
@@ -152,11 +169,13 @@ function SeasonCard({
   window,
   climbs,
   gradesToShow,
+  showCounts,
   onClimbClick,
 }: {
   window: SeasonWindow;
   climbs: ClimbRecord[];
   gradesToShow: readonly string[];
+  showCounts: boolean;
   onClimbClick: (c: ClimbRecord) => void;
 }) {
   const windowClimbs = useMemo(
@@ -181,7 +200,7 @@ function SeasonCard({
       {rows.length === 0 ? (
         <p className="text-gray-500 text-sm py-4 text-center">No sends in this period</p>
       ) : (
-        <PyramidBody rows={rows} onClimbClick={onClimbClick} />
+        <PyramidBody rows={rows} showCounts={showCounts} onClimbClick={onClimbClick} />
       )}
     </div>
   );
@@ -193,9 +212,11 @@ type Row = { grade: string; climbs: ClimbRecord[] };
 
 function PyramidBody({
   rows,
+  showCounts,
   onClimbClick,
 }: {
   rows: Row[];
+  showCounts: boolean;
   onClimbClick: (c: ClimbRecord) => void;
 }) {
   const maxClimbs = Math.max(...rows.map((r) => r.climbs.length), 1);
@@ -206,30 +227,38 @@ function PyramidBody({
   const maxCum = cumulatives[cumulatives.length - 1] || 1;
   return (
     <div className="relative">
-      <div className="absolute left-0 top-0 z-10 w-32 bg-gray-800">
+      <div className={`absolute left-0 top-0 z-10 bg-gray-800 ${showCounts ? "w-32" : "w-14"}`}>
         <div className="space-y-1">
           {rows.map((r, i) => (
             <div
               key={r.grade}
-              className="h-6 grid grid-cols-[2.5rem_1.25rem_28px_auto] items-center pl-1 pr-1 gap-1"
+              className={`h-6 grid items-center pl-1 pr-1 gap-1 ${
+                showCounts
+                  ? "grid-cols-[2.5rem_1.25rem_28px_auto]"
+                  : "grid-cols-[2.5rem]"
+              }`}
             >
               <span className="text-xs font-medium text-gray-400 tabular-nums">{r.grade}</span>
-              <span className="text-[10px] text-gray-500 tabular-nums">
-                {r.climbs.length > 0 ? `[${r.climbs.length}]` : ""}
-              </span>
-              <div
-                className="h-1.5 bg-indigo-500/60 rounded-sm justify-self-end"
-                style={{ width: `${(cumulatives[i] / maxCum) * 24}px` }}
-              />
-              <span className="text-[10px] text-indigo-400/80 tabular-nums italic">
-                {cumulatives[i] > 0 ? `(${cumulatives[i]})` : ""}
-              </span>
+              {showCounts && (
+                <>
+                  <span className="text-[10px] text-gray-500 tabular-nums">
+                    {r.climbs.length > 0 ? `[${r.climbs.length}]` : ""}
+                  </span>
+                  <div
+                    className="h-1.5 bg-indigo-500/60 rounded-sm justify-self-end"
+                    style={{ width: `${(cumulatives[i] / maxCum) * 24}px` }}
+                  />
+                  <span className="text-[10px] text-indigo-400/80 tabular-nums italic">
+                    {cumulatives[i] > 0 ? `(${cumulatives[i]})` : ""}
+                  </span>
+                </>
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="overflow-x-auto pl-32 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className={`overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${showCounts ? "pl-32" : "pl-14"}`}>
         <div style={{ minWidth: `${maxClimbs * 26 + 16}px` }}>
           <div className="space-y-1">
             {rows.map((r) => (

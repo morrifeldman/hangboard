@@ -41,6 +41,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [showImportForm, setShowImportForm] = useState(false);
   const [newClimb, setNewClimb] = useState<NewClimbData>(INITIAL_CLIMB);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCounts, setShowCounts] = useState(false);
 
   const mpUrl = localStorage.getItem("mountainProjectUrl") || "";
 
@@ -113,6 +114,8 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         isRefreshing={isRefreshing}
         onBack={onBack}
         onShowScrolling={onShowScrollingPyramids}
+        showCounts={showCounts}
+        onToggleCounts={() => setShowCounts((v) => !v)}
       />
 
       <ViewTabs
@@ -130,6 +133,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
           climbs={climbs}
           currentView={currentView}
           showSendsOnly={showSendsOnly}
+          showCounts={showCounts}
           timeRange={timeRange}
           onClimbClick={setSelectedClimb}
           onAddClimbClick={() => setShowAddForm(true)}

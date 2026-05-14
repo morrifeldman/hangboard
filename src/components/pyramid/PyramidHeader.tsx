@@ -1,4 +1,4 @@
-import { Plus, Upload, RefreshCw, ArrowLeft, Layers } from "lucide-react";
+import { Plus, Upload, RefreshCw, ArrowLeft, Layers, BarChart2 } from "lucide-react";
 
 type Props = {
   onAddClimb: () => void;
@@ -8,9 +8,11 @@ type Props = {
   isRefreshing: boolean;
   onBack: () => void;
   onShowScrolling: () => void;
+  showCounts: boolean;
+  onToggleCounts: () => void;
 };
 
-export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling }: Props) {
+export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
@@ -21,6 +23,19 @@ export function PyramidHeader({ onAddClimb, onImport, onRefresh, canRefresh, isR
           <h1 className="text-xl font-bold text-white">Climbing Pyramid</h1>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={onToggleCounts}
+            className={`px-2.5 py-1.5 rounded-xl flex items-center text-sm transition-colors ${
+              showCounts
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
+            }`}
+            title="Toggle per-grade counts and cumulative bars"
+            aria-pressed={showCounts}
+            aria-label="Toggle counts"
+          >
+            <BarChart2 size={16} />
+          </button>
           <button
             onClick={onShowScrolling}
             className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl flex items-center gap-1 text-sm hover:bg-indigo-700 transition-colors"
