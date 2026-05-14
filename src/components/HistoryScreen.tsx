@@ -6,6 +6,7 @@ import type { ClimbRecord } from "../lib/climbs";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
+import { BackChevronIcon, ClockIcon } from "./icons";
 
 type Props = {
   onBack: () => void;
@@ -351,15 +352,12 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) 
           className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
           aria-label="Back"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5" /><path d="M12 5l-7 7 7 7" />
-          </svg>
+          <BackChevronIcon />
         </button>
-        <h1 className="text-white font-bold text-lg flex-1">Workout History</h1>
+        <ClockIcon className="text-white" aria-label="Workout History" />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="text-gray-400 hover:text-white transition-colors p-1"
+          className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
           aria-label="Import JSON"
           title="Import JSON file"
         >

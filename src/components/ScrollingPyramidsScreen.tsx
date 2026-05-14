@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mountain, Home, ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2 } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, Layers } from "lucide-react";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
 import type { SeasonWindow, WindowKind } from "../lib/pyramidData";
 import { getStyleColor, getFilteredClimbs } from "../lib/climbUtils";
 import { deduplicateForPyramid } from "../lib/deduplication";
-import { SPORT_GRADES, VIEWS } from "../constants/climbGrades";
+import { SPORT_GRADES } from "../constants/climbGrades";
 import type { ViewKey } from "../constants/climbGrades";
 import { RouteHistoryModal } from "./RouteHistoryModal";
+import { BackChevronIcon } from "./icons";
 
 type Props = { onBack: () => void };
-
-const SPORT_VIEWS = VIEWS.filter((v) => v.type === "sport");
 
 const KINDS: { key: WindowKind; label: string }[] = [
   { key: "seasons", label: "Seasons" },
@@ -24,7 +23,7 @@ const KINDS: { key: WindowKind; label: string }[] = [
 export function ScrollingPyramidsScreen({ onBack }: Props) {
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<ViewKey>("outdoor-sport");
+  const view: ViewKey = "outdoor-sport";
   const [kind, setKind] = useState<WindowKind>("seasons");
   const [newestFirst, setNewestFirst] = useState(true);
   const [showCounts, setShowCounts] = useState(false);
@@ -59,58 +58,33 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           aria-label="Back"
           className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+          <BackChevronIcon />
         </button>
-        <h1 className="text-white font-bold text-xl">Scrolling Pyramids</h1>
+        <Layers size={24} className="text-white" aria-label="Scrolling Pyramids" />
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setShowCounts((v) => !v)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md transition-colors ${
+            className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
               showCounts
                 ? "bg-indigo-600 text-white"
                 : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
             }`}
             title="Toggle per-grade counts and cumulative bars"
             aria-pressed={showCounts}
+            aria-label="Toggle counts"
           >
-            <BarChart2 size={14} />
-            Counts
+            <BarChart2 size={16} />
           </button>
           <button
             onClick={() => setNewestFirst((v) => !v)}
-            className="flex items-center gap-1.5 text-gray-300 hover:text-white text-xs font-medium px-2.5 py-1.5 rounded-md bg-gray-700/60 hover:bg-gray-700 transition-colors"
+            className="flex items-center px-2 py-1.5 rounded-md bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
             title={newestFirst ? "Newest first — tap to reverse" : "Oldest first — tap to reverse"}
+            aria-label={newestFirst ? "Sort: newest first" : "Sort: oldest first"}
           >
-            {newestFirst ? <ArrowDownNarrowWide size={14} /> : <ArrowUpNarrowWide size={14} />}
-            {newestFirst ? "Newest" : "Oldest"}
+            {newestFirst ? <ArrowDownNarrowWide size={16} /> : <ArrowUpNarrowWide size={16} />}
           </button>
         </div>
       </header>
-
-      <div className="border-b border-gray-700 px-2">
-        <div className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {SPORT_VIEWS.map((v) => {
-            const Icon = v.setting === "outdoor" ? Mountain : Home;
-            return (
-              <button
-                key={v.key}
-                onClick={() => setView(v.key)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 border-b-2 whitespace-nowrap text-sm transition-colors ${
-                  view === v.key
-                    ? "border-green-500 text-green-400 bg-green-500/10"
-                    : "border-transparent text-gray-400 hover:text-white"
-                }`}
-              >
-                <Icon size={16} />
-                {v.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="px-4 py-3 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {KINDS.map((k) => (

@@ -13,6 +13,7 @@ import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
+import { BackChevronIcon, BarChartIcon } from "./icons";
 import {
   buildTrend,
   buildCalendar,
@@ -187,12 +188,9 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
           aria-label="Back"
           className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
+          <BackChevronIcon />
         </button>
-        <h1 className="text-white font-bold text-xl">Progress</h1>
+        <BarChartIcon className="text-white" aria-label="Progress" />
       </header>
 
       {loading ? (

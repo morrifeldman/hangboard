@@ -32,7 +32,7 @@ type Props = { onBack: () => void; onShowScrollingPyramids: () => void };
 
 export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
-  const [currentView, setCurrentView] = useState<ViewKey>("outdoor-sport");
+  const currentView: ViewKey = "outdoor-sport";
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 100]);
   const [selectedClimb, setSelectedClimb] = useState<ClimbRecord | null>(null);
@@ -107,7 +107,6 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
       <PyramidHeader
-        onAddClimb={() => setShowAddForm(true)}
         onImport={() => setShowImportForm(true)}
         onRefresh={handleRefresh}
         canRefresh={!!mpUrl}
@@ -120,7 +119,6 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
 
       <ViewTabs
         currentView={currentView}
-        setCurrentView={setCurrentView}
         showSendsOnly={showSendsOnly}
         setShowSendsOnly={setShowSendsOnly}
         climbs={climbs}

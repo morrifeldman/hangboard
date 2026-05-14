@@ -4,6 +4,7 @@ import { HOLDS_B } from "../data/workout-b";
 import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
+import { BackChevronIcon } from "./icons";
 
 /** Small tap target to toggle set completion. */
 function SetDot({ completed, onClick }: { completed: boolean; onClick: () => void }) {
@@ -329,10 +330,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
           aria-label="Back"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5" /><path d="M12 5l-7 7 7 7" />
-          </svg>
+          <BackChevronIcon />
         </button>
         <h1 className="text-white font-bold text-lg">
           {editing ? "Edit Workout" : "Log Past Workout"}

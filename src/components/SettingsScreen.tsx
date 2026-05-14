@@ -8,6 +8,7 @@ import {
 import type { BackupFile } from "../lib/backup";
 import { getSessions } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
+import { BackChevronIcon, GearIcon } from "./icons";
 
 type Props = {
   onBack: () => void;
@@ -114,12 +115,9 @@ export function SettingsScreen({ onBack }: Props) {
           className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
           aria-label="Back"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5" /><path d="M12 5l-7 7 7 7" />
-          </svg>
+          <BackChevronIcon />
         </button>
-        <h1 className="text-white font-bold text-lg flex-1">Settings</h1>
+        <GearIcon className="text-white" aria-label="Settings" />
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
