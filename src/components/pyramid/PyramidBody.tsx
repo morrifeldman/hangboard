@@ -8,6 +8,8 @@ const IDEAL_GAP = 4;
 const MIN_TILE = 6;
 const MIN_GAP = 1;
 const TILE_COUNT_THRESHOLD = 14;
+const IDEAL_ROW_HEIGHT = Math.max(20, IDEAL_TILE + 6);
+const IDEAL_TILE_RADIUS = Math.max(2, Math.floor(IDEAL_TILE / 6));
 
 function fitTiles(avail: number, n: number) {
   if (n <= 0) return { tile: IDEAL_TILE, gap: IDEAL_GAP };
@@ -66,9 +68,11 @@ export function PyramidBody({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  // Tapping a grade label expands that row to full-size tiles on one line
+  // (overflowing horizontally if needed). Tap again — or another grade — to
+  // collapse/switch.
+  const [expandedGrade, setExpandedGrade] = useState<string | null>(null);
 
-  // Callback ref so the observer re-attaches if the element remounts
-  // (e.g. after an empty-state early-return upstream is replaced with real rows).
   const containerRef = useCallback((el: HTMLDivElement | null) => {
     if (!el) return;
     setContainerWidth(el.clientWidth);
@@ -95,36 +99,60 @@ export function PyramidBody({
     }
   }, [rows, maxClimbs, tileSize, tileGap]);
 
+  const toggleExpand = (grade: string) =>
+    setExpandedGrade((g) => (g === grade ? null : grade));
+
   return (
     <div ref={containerRef} className="relative">
-      {/* Fixed grade labels */}
+      {/* Fixed grade labels (clickable to bloom that row to full size) */}
       <div className={`absolute left-0 top-0 z-10 ${gutterBgClass} ${showCounts ? "w-36" : "w-16"}`}>
         <div className="space-y-1">
-          {rows.map((r, i) => (
-            <div
-              key={r.grade}
-              className={`grid items-center pl-1 pr-1 gap-1 ${
-                showCounts ? "grid-cols-[3rem_1.5rem_28px_auto]" : "grid-cols-[3rem]"
-              }`}
-              style={{ height: rowHeight }}
-            >
-              <span className="text-sm font-medium text-gray-400 tabular-nums">{r.grade}</span>
-              {showCounts && (
-                <>
-                  <span className="text-[10px] text-gray-500 tabular-nums">
-                    {r.climbs.length > 0 ? `[${r.climbs.length}]` : ""}
-                  </span>
-                  <div
-                    className="h-2 bg-indigo-500/60 rounded-sm justify-self-end"
-                    style={{ width: `${(cumulatives[i] / maxCum) * 24}px` }}
-                  />
-                  <span className="text-[10px] text-indigo-400/80 tabular-nums italic">
-                    {cumulatives[i] > 0 ? `(${cumulatives[i]})` : ""}
-                  </span>
-                </>
-              )}
-            </div>
-          ))}
+          {rows.map((r, i) => {
+            const isExpanded = expandedGrade === r.grade;
+            const hasClimbs = r.climbs.length > 0;
+            const rh = isExpanded ? IDEAL_ROW_HEIGHT : rowHeight;
+            return (
+              <button
+                key={r.grade}
+                type="button"
+                onClick={hasClimbs ? () => toggleExpand(r.grade) : undefined}
+                disabled={!hasClimbs}
+                title={
+                  hasClimbs
+                    ? isExpanded
+                      ? `Collapse ${r.grade}`
+                      : `Expand ${r.grade} to full size`
+                    : undefined
+                }
+                className={`grid w-full items-center pl-1 pr-1 gap-1 appearance-none border-0 bg-transparent text-left transition-colors ${
+                  showCounts ? "grid-cols-[3rem_1.5rem_28px_auto]" : "grid-cols-[3rem]"
+                } ${hasClimbs ? "cursor-pointer hover:bg-white/5" : "cursor-default"}`}
+                style={{ height: rh }}
+              >
+                <span
+                  className={`text-sm font-medium tabular-nums ${
+                    isExpanded ? "text-white" : "text-gray-400"
+                  }`}
+                >
+                  {r.grade}
+                </span>
+                {showCounts && (
+                  <>
+                    <span className="text-[10px] text-gray-500 tabular-nums">
+                      {r.climbs.length > 0 ? `[${r.climbs.length}]` : ""}
+                    </span>
+                    <div
+                      className="h-2 bg-indigo-500/60 rounded-sm justify-self-end"
+                      style={{ width: `${(cumulatives[i] / maxCum) * 24}px` }}
+                    />
+                    <span className="text-[10px] text-indigo-400/80 tabular-nums italic">
+                      {cumulatives[i] > 0 ? `(${cumulatives[i]})` : ""}
+                    </span>
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -137,37 +165,64 @@ export function PyramidBody({
       >
         <div style={{ minWidth: `${rowMinWidth}px` }}>
           <div className="space-y-1">
-            {rows.map((r) => (
-              <div
-                key={r.grade}
-                className="flex items-center"
-                style={{ height: rowHeight }}
-              >
-                <div className="flex-1 flex justify-center">
-                  <div className="flex" style={{ gap: tileGap }}>
-                    {r.climbs.map((climb, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => onClimbClick(climb)}
-                        title={getClimbTitle(climb)}
-                        className={`${getStyleColor(climb.style)} flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform appearance-none p-0 border-0 leading-none`}
+            {rows.map((r) => {
+              const isExpanded = expandedGrade === r.grade;
+              const t = isExpanded ? IDEAL_TILE : tileSize;
+              const g = isExpanded ? IDEAL_GAP : tileGap;
+              const rh = isExpanded ? IDEAL_ROW_HEIGHT : rowHeight;
+              const radius = isExpanded ? IDEAL_TILE_RADIUS : tileRadius;
+              const withCount = isExpanded ? true : showTileCount;
+              const rowIdealWidth =
+                r.climbs.length * t + Math.max(0, r.climbs.length - 1) * g;
+
+              const tiles = r.climbs.map((climb, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onClimbClick(climb)}
+                  title={getClimbTitle(climb)}
+                  className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform appearance-none p-0 border-0 leading-none`}
+                  style={{
+                    width: t,
+                    height: t,
+                    borderRadius: radius,
+                  }}
+                >
+                  {withCount && climb.climbs > (climb.style === "redpoint" ? 2 : 1)
+                    ? climb.climbs
+                    : ""}
+                </button>
+              ));
+
+              return (
+                <div
+                  key={r.grade}
+                  className="flex items-center"
+                  style={{ height: rh }}
+                >
+                  {isExpanded ? (
+                    <div className="flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <div
+                        className="flex"
                         style={{
-                          width: tileSize,
-                          height: tileSize,
-                          borderRadius: tileRadius,
+                          gap: g,
+                          justifyContent: "safe center",
+                          minWidth: `${rowIdealWidth}px`,
                         }}
                       >
-                        {showTileCount &&
-                        climb.climbs > (climb.style === "redpoint" ? 2 : 1)
-                          ? climb.climbs
-                          : ""}
-                      </button>
-                    ))}
-                  </div>
+                        {tiles}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex justify-center">
+                      <div className="flex" style={{ gap: g }}>
+                        {tiles}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
