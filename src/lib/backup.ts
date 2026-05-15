@@ -65,7 +65,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
 export function validateBackup(parsed: unknown): ValidateResult {
   if (!isObject(parsed)) return { ok: false, error: "File is not a JSON object." };
   if (parsed.app !== "hangboard") {
-    return { ok: false, error: "Not a Hangboard backup file (missing app marker)." };
+    return { ok: false, error: "Not a Cairn backup file (missing app marker)." };
   }
   if (parsed.version !== 1) {
     return { ok: false, error: `Unsupported backup version: ${String(parsed.version)}. Expected 1.` };
@@ -122,5 +122,5 @@ export function backupFilename(now: number = Date.now()): string {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `hangboard-backup-${yyyy}-${mm}-${dd}.json`;
+  return `cairn-backup-${yyyy}-${mm}-${dd}.json`;
 }

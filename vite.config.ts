@@ -8,9 +8,9 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "Hangboard Trainer",
-        short_name: "Hangboard",
-        description: "Personal hangboard training app",
+        name: "Cairn",
+        short_name: "Cairn",
+        description: "Personal climbing training app",
         theme_color: "#111827",
         background_color: "#111827",
         display: "standalone",

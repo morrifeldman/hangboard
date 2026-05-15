@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#1a1310"/>
+
+  <!-- Bottom stone: widest, dark sandstone -->
+  <path d="M 88,438
+           C 88,414 110,398 152,396
+           L 360,396
+           C 402,398 424,414 424,438
+           C 424,460 396,470 354,470
+           L 158,470
+           C 116,470 88,460 88,438 Z"
+        fill="#a87858"/>
+  <path d="M 100,420
+           C 110,408 130,402 156,402
+           L 358,402
+           C 384,402 404,408 414,420"
+        fill="none" stroke="#c79575" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Stone 2: warm light sand -->
+  <path d="M 118,346
+           C 118,322 140,310 178,310
+           L 334,310
+           C 374,310 396,324 396,348
+           C 396,368 366,382 326,382
+           L 184,382
+           C 144,382 118,366 118,346 Z"
+        fill="#d6ab7e"/>
+  <path d="M 132,328
+           C 142,318 160,314 184,314
+           L 330,314
+           C 358,314 376,318 386,330"
+        fill="none" stroke="#e8c9a5" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Stone 3: medium, offset slightly right for natural feel -->
+  <path d="M 162,272
+           C 162,252 180,240 208,240
+           L 326,240
+           C 354,240 372,254 372,274
+           C 372,292 350,302 320,302
+           L 206,302
+           C 178,302 162,290 162,272 Z"
+        fill="#b88963"/>
+  <path d="M 174,258
+           C 184,250 198,246 212,246
+           L 322,246
+           C 342,246 358,250 366,260"
+        fill="none" stroke="#d3a682" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Stone 4: smaller, offset slightly left -->
+  <path d="M 196,210
+           C 196,194 210,184 232,184
+           L 294,184
+           C 318,184 330,194 330,210
+           C 330,224 314,232 290,232
+           L 230,232
+           C 208,232 196,224 196,210 Z"
+        fill="#e0b888"/>
+  <path d="M 206,198
+           C 214,192 226,188 238,188
+           L 290,188
+           C 308,188 318,192 324,200"
+        fill="none" stroke="#f0d2aa" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Top stone: small, slightly tilted -->
+  <path d="M 226,156
+           C 226,142 240,134 256,134
+           L 274,134
+           C 290,134 300,144 298,158
+           C 296,170 282,176 268,176
+           L 254,176
+           C 240,176 226,168 226,156 Z"
+        fill="#9a7050"/>
+  <path d="M 236,146
+           C 244,140 254,138 262,138
+           L 274,138
+           C 286,138 294,142 294,150"
+        fill="none" stroke="#ba8e6e" stroke-width="3" stroke-linecap="round"/>
+</svg>

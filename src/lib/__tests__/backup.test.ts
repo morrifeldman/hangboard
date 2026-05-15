@@ -98,7 +98,7 @@ describe("validateBackup", () => {
   it("rejects a non-hangboard file", () => {
     const r = validateBackup({ app: "other", version: 1, exportedAt: 0, data: {} });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/Hangboard/i);
+    if (!r.ok) expect(r.error).toMatch(/Cairn/i);
   });
 
   it("rejects an unsupported version", () => {
@@ -149,11 +149,11 @@ describe("backupFilename", () => {
   it("formats date as YYYY-MM-DD", () => {
     // 2026-05-12 in local time — construct via Date so test passes in any TZ
     const t = new Date(2026, 4, 12, 10, 30).getTime();
-    expect(backupFilename(t)).toBe("hangboard-backup-2026-05-12.json");
+    expect(backupFilename(t)).toBe("cairn-backup-2026-05-12.json");
   });
 
   it("zero-pads single-digit months and days", () => {
     const t = new Date(2026, 0, 3).getTime();
-    expect(backupFilename(t)).toBe("hangboard-backup-2026-01-03.json");
+    expect(backupFilename(t)).toBe("cairn-backup-2026-01-03.json");
   });
 });

@@ -147,7 +147,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
   return (
     <div className="h-dvh bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 py-4 flex items-center justify-between">
-        <h1 className="text-white font-bold text-2xl">Hangboard</h1>
+        <h1 className="text-white font-bold text-2xl">Cairn</h1>
         <div className="flex items-center gap-1">
           <button
             onClick={onShowPyramid}
