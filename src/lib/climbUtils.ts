@@ -32,7 +32,10 @@ export function buildPyramid(filteredClimbs: ClimbRecord[], currentView: ViewKey
   const maxIdx = Math.max(...usedGrades.map((g) => gradeArr.indexOf(g)));
   const gradesToShow = grades.slice(minIdx, maxIdx + 1);
 
-  return [...gradesToShow].reverse().map((g) => ({ grade: g, climbs: pyramidData[g] }));
+  return [...gradesToShow].reverse().map((g) => ({
+    grade: g,
+    climbs: pyramidData[g].slice().sort((a, b) => a.date.localeCompare(b.date)),
+  }));
 }
 
 export function getFilteredClimbs(

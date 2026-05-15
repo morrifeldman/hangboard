@@ -239,5 +239,8 @@ function buildRowsForRange(
   for (const c of climbs) {
     if (map[c.grade]) map[c.grade].push(c);
   }
-  return [...gradesToShow].reverse().map((g) => ({ grade: g, climbs: map[g] }));
+  return [...gradesToShow].reverse().map((g) => ({
+    grade: g,
+    climbs: map[g].slice().sort((a, b) => a.date.localeCompare(b.date)),
+  }));
 }
