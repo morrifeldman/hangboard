@@ -1,4 +1,4 @@
-import { Upload, RefreshCw, Layers, BarChart2, Trophy } from "lucide-react";
+import { Upload, RefreshCw, Layers, BarChart2, Trophy, CalendarDays, Repeat } from "lucide-react";
 import { BackChevronIcon, PyramidIcon } from "../icons";
 
 type Props = {
@@ -12,9 +12,11 @@ type Props = {
   onToggleCounts: () => void;
   showSendsOnly: boolean;
   onToggleSendsOnly: () => void;
+  showSessionCounts: boolean;
+  onToggleSessionCounts: () => void;
 };
 
-export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly }: Props) {
+export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
@@ -50,6 +52,23 @@ export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, o
             aria-label="Toggle counts"
           >
             <BarChart2 size={16} />
+          </button>
+          <button
+            onClick={onToggleSessionCounts}
+            className={`px-2.5 py-1.5 rounded-xl flex items-center text-sm transition-colors ${
+              showSessionCounts
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white"
+            }`}
+            title={
+              showSessionCounts
+                ? "Tile numbers show sessions — tap to show climb counts"
+                : "Tile numbers show climbs — tap to show session counts"
+            }
+            aria-pressed={showSessionCounts}
+            aria-label="Toggle session vs climb counts"
+          >
+            {showSessionCounts ? <CalendarDays size={16} /> : <Repeat size={16} />}
           </button>
           <button
             onClick={onShowScrolling}

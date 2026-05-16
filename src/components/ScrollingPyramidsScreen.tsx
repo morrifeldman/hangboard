@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, Layers, Trophy } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Layers, Repeat, Trophy } from "lucide-react";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
@@ -29,6 +29,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
   const [kind, setKind] = useState<WindowKind>("seasons");
   const [newestFirst, setNewestFirst] = useState(true);
   const [showCounts, setShowCounts] = useState(false);
+  const [showSessionCounts, setShowSessionCounts] = useState(false);
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
@@ -101,6 +102,23 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
             <BarChart2 size={16} />
           </button>
           <button
+            onClick={() => setShowSessionCounts((v) => !v)}
+            className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
+              showSessionCounts
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
+            }`}
+            title={
+              showSessionCounts
+                ? "Tile numbers show sessions — tap to show climb counts"
+                : "Tile numbers show climbs — tap to show session counts"
+            }
+            aria-pressed={showSessionCounts}
+            aria-label="Toggle session vs climb counts"
+          >
+            {showSessionCounts ? <CalendarDays size={16} /> : <Repeat size={16} />}
+          </button>
+          <button
             onClick={() => setNewestFirst((v) => !v)}
             className="flex items-center px-2 py-1.5 rounded-md bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
             title={newestFirst ? "Newest first — tap to reverse" : "Oldest first — tap to reverse"}
@@ -144,6 +162,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
               climbs={viewClimbs}
               gradesToShow={gradesToShow}
               showCounts={showCounts}
+              showSessionCounts={showSessionCounts}
               showSendsOnly={showSendsOnly}
               onClimbClick={(c) => setSelectedRoute(c.route)}
             />
@@ -170,6 +189,7 @@ function SeasonCard({
   climbs,
   gradesToShow,
   showCounts,
+  showSessionCounts,
   showSendsOnly,
   onClimbClick,
 }: {
@@ -177,6 +197,7 @@ function SeasonCard({
   climbs: ClimbRecord[];
   gradesToShow: readonly string[];
   showCounts: boolean;
+  showSessionCounts: boolean;
   showSendsOnly: boolean;
   onClimbClick: (c: ClimbRecord) => void;
 }) {
@@ -210,6 +231,7 @@ function SeasonCard({
         <PyramidBody
           rows={rows}
           showCounts={showCounts}
+          showSessionCounts={showSessionCounts}
           onClimbClick={onClimbClick}
           gutterBgClass="bg-gray-800"
         />

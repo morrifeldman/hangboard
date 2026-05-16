@@ -1,6 +1,9 @@
 import type { ClimbRecord } from "./climbs";
 import { STYLE_PRIORITY } from "../constants/climbGrades";
 
+/** Pyramid climb after dedup — `sessions` is the number of source ClimbRecord entries merged. */
+export type PyramidClimb = ClimbRecord & { sessions: number };
+
 /** Same-day deduplication for timeline view. Merges entries for the same route on the same date. */
 export function deduplicateForTimeline(climbs: ClimbRecord[]): ClimbRecord[] {
   const byDate: Record<string, Record<string, ClimbRecord>> = {};
@@ -34,8 +37,8 @@ export function deduplicateForTimeline(climbs: ClimbRecord[]): ClimbRecord[] {
 }
 
 /** Aggressive cross-date deduplication for pyramid view. Merges all entries for the same route. */
-export function deduplicateForPyramid(climbs: ClimbRecord[]): ClimbRecord[] {
-  const byRoute: Record<string, ClimbRecord> = {};
+export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
+  const byRoute: Record<string, PyramidClimb> = {};
 
   for (const climb of climbs) {
     const routeKey = `${climb.route}-${climb.location}`;
@@ -51,6 +54,7 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): ClimbRecord[] {
       } else {
         existing.climbs += climb.climbs;
       }
+      existing.sessions += 1;
 
       if (climb.notes && climb.notes !== existing.notes) {
         existing.notes = existing.notes ? `${existing.notes}; ${climb.notes}` : climb.notes;
@@ -65,7 +69,7 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): ClimbRecord[] {
         existing.setting = climb.setting;
       }
     } else {
-      byRoute[routeKey] = { ...climb };
+      byRoute[routeKey] = { ...climb, sessions: 1 };
     }
   }
 

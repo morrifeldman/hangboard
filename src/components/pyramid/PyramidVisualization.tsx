@@ -10,6 +10,7 @@ type Props = {
   currentView: ViewKey;
   showSendsOnly: boolean;
   showCounts: boolean;
+  showSessionCounts: boolean;
   timeRange: [number, number];
   onClimbClick: (c: ClimbRecord) => void;
   onAddClimbClick: () => void;
@@ -20,6 +21,7 @@ export function PyramidVisualization({
   currentView,
   showSendsOnly,
   showCounts,
+  showSessionCounts,
   timeRange,
   onClimbClick,
   onAddClimbClick,
@@ -52,6 +54,7 @@ export function PyramidVisualization({
       <PyramidBody
         rows={pyramidData}
         showCounts={showCounts}
+        showSessionCounts={showSessionCounts}
         onClimbClick={onClimbClick}
         gutterBgClass="bg-gray-900"
       />

@@ -28,13 +28,15 @@ function fitTiles(avail: number, n: number) {
   };
 }
 
-function defaultTitle(climb: ClimbRecord): string {
-  const base = `${climb.route} - ${climb.style}`;
+function defaultTitle(climb: ClimbRecord & { sessions?: number }): string {
+  const sessionsText =
+    climb.sessions && climb.sessions > 1 ? ` · ${climb.sessions} sessions` : "";
+  const base = `${climb.route} - ${climb.style}${sessionsText}`;
   if (climb.style === "redpoint" && climb.climbs > 2) {
     return `${base} after ${climb.climbs - 1} attempts`;
   }
   if (climb.style === "attempt") {
-    return `${climb.route} — ${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}`;
+    return `${climb.route} — ${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}${sessionsText}`;
   }
   return base;
 }
@@ -42,16 +44,19 @@ function defaultTitle(climb: ClimbRecord): string {
 type Props = {
   rows: PyramidRow[];
   showCounts: boolean;
+  /** When true, the per-tile number shows session count (distinct entries) instead of climb count. */
+  showSessionCounts?: boolean;
   onClimbClick: (c: ClimbRecord) => void;
   /** Background utility class for the sticky label gutter; must match parent bg. */
   gutterBgClass?: string;
   /** Override the per-climb tooltip text. */
-  getClimbTitle?: (c: ClimbRecord) => string;
+  getClimbTitle?: (c: ClimbRecord & { sessions?: number }) => string;
 };
 
 export function PyramidBody({
   rows,
   showCounts,
+  showSessionCounts = false,
   onClimbClick,
   gutterBgClass = "bg-gray-900",
   getClimbTitle = defaultTitle,
@@ -175,24 +180,31 @@ export function PyramidBody({
               const rowIdealWidth =
                 r.climbs.length * t + Math.max(0, r.climbs.length - 1) * g;
 
-              const tiles = r.climbs.map((climb, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => onClimbClick(climb)}
-                  title={getClimbTitle(climb)}
-                  className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform appearance-none p-0 border-0 leading-none`}
-                  style={{
-                    width: t,
-                    height: t,
-                    borderRadius: radius,
-                  }}
-                >
-                  {withCount && climb.climbs > (climb.style === "redpoint" ? 2 : 1)
-                    ? climb.climbs
-                    : ""}
-                </button>
-              ));
+              const tiles = r.climbs.map((climb, idx) => {
+                const sessions = climb.sessions ?? 1;
+                const value = showSessionCounts ? sessions : climb.climbs;
+                const threshold = showSessionCounts
+                  ? 1
+                  : climb.style === "redpoint"
+                    ? 2
+                    : 1;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onClimbClick(climb)}
+                    title={getClimbTitle(climb)}
+                    className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform appearance-none p-0 border-0 leading-none`}
+                    style={{
+                      width: t,
+                      height: t,
+                      borderRadius: radius,
+                    }}
+                  >
+                    {withCount && value > threshold ? value : ""}
+                  </button>
+                );
+              });
 
               return (
                 <div

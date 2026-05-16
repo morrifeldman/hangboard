@@ -12,7 +12,9 @@ export function getStyleColor(style: ClimbStyle): string {
   }
 }
 
-export type PyramidRow = { grade: string; climbs: ClimbRecord[] };
+/** Row entries may carry an optional `sessions` count when sourced from `deduplicateForPyramid`. */
+export type PyramidRowClimb = ClimbRecord & { sessions?: number };
+export type PyramidRow = { grade: string; climbs: PyramidRowClimb[] };
 
 export function buildPyramid(filteredClimbs: ClimbRecord[], currentView: ViewKey): PyramidRow[] {
   const isBoulderer = currentView.includes("boulder");

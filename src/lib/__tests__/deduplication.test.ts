@@ -62,12 +62,14 @@ describe("deduplicateForPyramid", () => {
     expect(result[0].climbs).toBe(3);
     expect(result[0].style).toBe("redpoint");
     expect(result[0].date).toBe("2024-03-20"); // most recent
+    expect(result[0].sessions).toBe(2);
   });
 
   it("preserves attempt count for single redpoint", () => {
     const climbs = [makeClimb({ style: "redpoint", climbs: 2 })];
     const result = deduplicateForPyramid(climbs);
     expect(result[0].climbs).toBe(2);
+    expect(result[0].sessions).toBe(1);
   });
 
   it("uses best style (onsight > flash > redpoint > attempt)", () => {
@@ -77,5 +79,19 @@ describe("deduplicateForPyramid", () => {
     ];
     const result = deduplicateForPyramid(climbs);
     expect(result[0].style).toBe("flash");
+    expect(result[0].sessions).toBe(2);
+  });
+
+  it("counts sessions independently of climb sums on re-sends", () => {
+    const climbs = [
+      makeClimb({ date: "2024-03-15", style: "redpoint", climbs: 1 }),
+      makeClimb({ date: "2024-04-01", style: "redpoint", climbs: 1 }),
+      makeClimb({ date: "2024-05-01", style: "redpoint", climbs: 1 }),
+    ];
+    const result = deduplicateForPyramid(climbs);
+    expect(result).toHaveLength(1);
+    expect(result[0].sessions).toBe(3);
+    // Re-sends don't sum into climbs
+    expect(result[0].climbs).toBe(1);
   });
 });
