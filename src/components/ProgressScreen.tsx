@@ -22,6 +22,8 @@ import {
   calendarMonthLabels,
 } from "../lib/progressData";
 import type { TrendPoint, CalendarDay } from "../lib/progressData";
+import { buildGradeTrend, gradeLabel } from "../lib/gradeTrends";
+import type { Granularity } from "../lib/gradeTrends";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
@@ -114,6 +116,9 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [holdIndex, setHoldIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const [granularity, setGranularity] = useState<Granularity>("seasons");
+  const [rangeStart, setRangeStart] = useState(0);
+  const [rangeEnd, setRangeEnd] = useState(0);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs(), getNotes()])
@@ -173,6 +178,35 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const isTrendingUp =
     chartPoints.length >= 2 &&
     chartPoints[chartPoints.length - 1].weight >= chartPoints[0].weight;
+
+  const gradeTrendAll = useMemo(
+    () => buildGradeTrend(climbs, granularity),
+    [climbs, granularity],
+  );
+
+  // Reset range to full whenever the bucket list changes (granularity switch or first load).
+  useEffect(() => {
+    setRangeStart(0);
+    setRangeEnd(Math.max(0, gradeTrendAll.length - 1));
+  }, [gradeTrendAll.length]);
+
+  const visibleGradeTrend = useMemo(() => {
+    if (gradeTrendAll.length === 0) return [];
+    const s = Math.min(rangeStart, rangeEnd);
+    const e = Math.max(rangeStart, rangeEnd);
+    return gradeTrendAll.slice(s, e + 1);
+  }, [gradeTrendAll, rangeStart, rangeEnd]);
+
+  const gradeYDomain = useMemo<[number, number] | undefined>(() => {
+    const vals: number[] = [];
+    for (const p of visibleGradeTrend) {
+      if (p.onsight !== null) vals.push(p.onsight);
+      if (p.flash !== null) vals.push(p.flash);
+      if (p.redpoint !== null) vals.push(p.redpoint);
+    }
+    if (vals.length === 0) return undefined;
+    return [Math.max(0, Math.min(...vals) - 1), Math.min(15, Math.max(...vals) + 1)];
+  }, [visibleGradeTrend]);
 
   const lineColor = isTrendingUp ? "#22c55e" : "#6366f1";
 
@@ -391,6 +425,87 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
             </div>
           </section>
 
+          {/* ── Route grades (outdoor sport) ── */}
+          <section>
+            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Route Grades · Outdoor Sport</p>
+            <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-4">
+              {/* Granularity slider */}
+              <div>
+                <div className="flex justify-between text-[10px] text-gray-500 mb-1 px-0.5">
+                  <span>Months</span><span>Seasons</span><span>Years</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={2}
+                  step={1}
+                  value={granularity === "months" ? 0 : granularity === "seasons" ? 1 : 2}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setGranularity(v === 0 ? "months" : v === 1 ? "seasons" : "years");
+                  }}
+                  className="w-full accent-orange-500"
+                />
+              </div>
+
+              {gradeTrendAll.length === 0 ? (
+                <div className="h-[180px] flex items-center justify-center">
+                  <p className="text-gray-600 text-sm">No outdoor sport climbs yet</p>
+                </div>
+              ) : (
+                <>
+                  {/* Time-range dual-handle slider */}
+                  <RangeSlider
+                    max={gradeTrendAll.length - 1}
+                    start={Math.min(rangeStart, rangeEnd)}
+                    end={Math.max(rangeStart, rangeEnd)}
+                    startLabel={gradeTrendAll[Math.min(rangeStart, rangeEnd)]?.label ?? ""}
+                    endLabel={gradeTrendAll[Math.max(rangeStart, rangeEnd)]?.label ?? ""}
+                    onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); }}
+                  />
+
+                  {/* Chart */}
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={visibleGradeTrend} margin={{ top: 8, right: 8, bottom: 0, left: 32 }}>
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: "#6b7280", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        domain={gradeYDomain ?? [0, 15]}
+                        type="number"
+                        ticks={gradeYDomain ? rangeTicks(gradeYDomain[0], gradeYDomain[1]) : undefined}
+                        tick={{ fill: "#6b7280", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v: number) => gradeLabel(v)}
+                        width={36}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: "#1f2937", border: "none", borderRadius: 8, fontSize: 12 }}
+                        labelStyle={{ color: "#9ca3af" }}
+                        formatter={(v: number | undefined, name: string | undefined) => [v == null ? "—" : gradeLabel(v), name ?? ""]}
+                      />
+                      <Line type="monotone" dataKey="onsight"  name="Onsight"  stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      <Line type="monotone" dataKey="flash"    name="Flash"    stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      <Line type="monotone" dataKey="redpoint" name="Redpoint" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+
+                  {/* Legend */}
+                  <div className="flex gap-4 flex-wrap text-xs">
+                    <LegendItem color="bg-green-500" label="Onsight" />
+                    <LegendItem color="bg-blue-500" label="Flash" />
+                    <LegendItem color="bg-red-500" label="Redpoint" />
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
           {/* bottom padding */}
           <div className="h-4" />
         </div>
@@ -554,6 +669,60 @@ function climbStyleBadge(style: ClimbRecord["style"]): string {
   if (style === "flash") return "bg-blue-500/20 text-blue-400";
   if (style === "redpoint") return "bg-red-500/20 text-red-400";
   return "bg-gray-700 text-gray-400";
+}
+
+function rangeTicks(min: number, max: number): number[] {
+  const out: number[] = [];
+  for (let i = min; i <= max; i++) out.push(i);
+  return out;
+}
+
+type RangeSliderProps = {
+  max: number;
+  start: number;
+  end: number;
+  startLabel: string;
+  endLabel: string;
+  onChange: (start: number, end: number) => void;
+};
+
+function RangeSlider({ max, start, end, startLabel, endLabel, onChange }: RangeSliderProps) {
+  const pct = (v: number) => (max === 0 ? 0 : (v / max) * 100);
+  const thumbCls =
+    "absolute inset-x-0 top-0 w-full h-6 appearance-none bg-transparent pointer-events-none " +
+    "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none " +
+    "[&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full " +
+    "[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-orange-500 " +
+    "[&::-webkit-slider-thumb]:cursor-pointer " +
+    "[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 " +
+    "[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 " +
+    "[&::-moz-range-thumb]:border-orange-500 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-solid";
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between text-[10px] text-gray-500 px-0.5">
+        <span>{startLabel}</span>
+        <span>{endLabel}</span>
+      </div>
+      <div className="relative h-6">
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1 bg-gray-700 rounded" />
+        <div
+          className="absolute top-1/2 -translate-y-1/2 h-1 bg-orange-500 rounded"
+          style={{ left: `${pct(start)}%`, right: `${100 - pct(end)}%` }}
+        />
+        <input
+          type="range" min={0} max={max} step={1} value={start}
+          onChange={(e) => onChange(Math.min(Number(e.target.value), end), end)}
+          className={thumbCls}
+        />
+        <input
+          type="range" min={0} max={max} step={1} value={end}
+          onChange={(e) => onChange(start, Math.max(Number(e.target.value), start))}
+          className={thumbCls}
+        />
+      </div>
+    </div>
+  );
 }
 
 
