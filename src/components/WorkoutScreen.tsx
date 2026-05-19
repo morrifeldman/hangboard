@@ -4,6 +4,18 @@ import { PrepTimer } from "./PrepTimer";
 import { HangTimer } from "./HangTimer";
 import { BreakTimer } from "./BreakTimer";
 import { addSession, buildSessionRecord } from "../lib/history";
+import { currentPhaseFullSecs, remainingWorkoutSecs } from "../lib/workoutTime";
+import { SET1_REPS, SET2_REPS } from "../data/workout";
+
+function fmtTime(s: number): string {
+  const t = Math.max(0, Math.round(s));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+}
 
 export function WorkoutScreen() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -19,6 +31,7 @@ export function WorkoutScreen() {
   const startedAt = useWorkoutStore((s) => s.startedAt);
   const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
+  const totalScheduledSecs = useWorkoutStore((s) => s.totalScheduledSecs);
 
   const [confirming, setConfirming] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
@@ -86,6 +99,66 @@ export function WorkoutScreen() {
   const holds = currentHolds();
   const currentHoldDef = holds[holdIndex];
   const numSets = currentHoldDef?.numSets ?? 2;
+
+  // Track elapsed in the current phase so we can derive "remaining" / "done" / "total" for the header.
+  // Refs reset whenever the SessionState advances; pause time is accumulated separately so the
+  // numbers freeze on pause and resume cleanly.
+  const phaseStartedAtRef = useRef(Date.now());
+  const phasePausedAccumRef = useRef(0);
+  const pauseStartedAtRef = useRef<number | null>(paused ? Date.now() : null);
+  const lastSessionStateRef = useRef({ phase, holdIndex, setNumber, repIndex });
+  const [, forceTick] = useState(0);
+
+  // Reset phase tracking SYNCHRONOUSLY when state advances. Doing this in useEffect would leave
+  // one rendered frame where the new phase is paired with the old phaseStartedAt — making
+  // remaining look momentarily smaller and elapsed appear to tick backwards on the next frame.
+  const prev = lastSessionStateRef.current;
+  if (
+    prev.phase !== phase ||
+    prev.holdIndex !== holdIndex ||
+    prev.setNumber !== setNumber ||
+    prev.repIndex !== repIndex
+  ) {
+    lastSessionStateRef.current = { phase, holdIndex, setNumber, repIndex };
+    phaseStartedAtRef.current = Date.now();
+    phasePausedAccumRef.current = 0;
+    pauseStartedAtRef.current = paused ? Date.now() : null;
+  }
+
+  useEffect(() => {
+    if (paused) {
+      pauseStartedAtRef.current = Date.now();
+    } else if (pauseStartedAtRef.current !== null) {
+      phasePausedAccumRef.current += (Date.now() - pauseStartedAtRef.current) / 1000;
+      pauseStartedAtRef.current = null;
+    }
+  }, [paused]);
+
+  useEffect(() => {
+    if (phase === "idle" || phase === "done") return;
+    const id = setInterval(() => forceTick((x) => x + 1), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  const sessionState = { phase, holdIndex, setNumber, repIndex };
+  const phaseFull = currentPhaseFullSecs(sessionState, holds);
+  const pausedNow =
+    paused && pauseStartedAtRef.current !== null
+      ? (Date.now() - pauseStartedAtRef.current) / 1000
+      : 0;
+  const phaseElapsed =
+    (Date.now() - phaseStartedAtRef.current) / 1000 -
+    phasePausedAccumRef.current -
+    pausedNow;
+  const phaseRemaining = Math.max(0, phaseFull - phaseElapsed);
+  const remainingSecs = remainingWorkoutSecs(
+    sessionState,
+    holds,
+    SET1_REPS,
+    SET2_REPS,
+    phaseRemaining,
+  );
+  const elapsedSecs = Math.max(0, totalScheduledSecs - remainingSecs);
 
   const renderPanel = () => {
     switch (phase) {
@@ -239,9 +312,27 @@ export function WorkoutScreen() {
       </header>
 
       <div className="bg-gray-800 border-t border-gray-700 px-4 py-1.5" data-testid="phase-bar">
-        <span className="text-xs font-semibold uppercase tracking-wide">
-          {phaseLabel()}
-        </span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide">
+            {phaseLabel()}
+          </span>
+          {phase !== "done" && phase !== "idle" && totalScheduledSecs > 0 && (
+            <div
+              className="flex gap-3 text-[10px] uppercase tracking-wide tabular-nums text-gray-400"
+              data-testid="time-readout"
+            >
+              <span>
+                <span className="text-white font-semibold">{fmtTime(elapsedSecs)}</span> done
+              </span>
+              <span>
+                <span className="text-white font-semibold">{fmtTime(remainingSecs)}</span> left
+              </span>
+              <span>
+                <span className="text-white font-semibold">{fmtTime(totalScheduledSecs)}</span> total
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <main className={`flex-1 flex flex-col items-center ${phase === "break" ? "justify-start pt-4 pb-4" : "justify-center py-8"}`}>

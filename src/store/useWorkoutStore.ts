@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { HOLDS, HOLDS_B, HOLDS_TEST, SET1_REPS, SET2_REPS } from "../data/workout";
 import type { HoldDefinition } from "../data/workout";
 import * as SM from "../lib/stateMachine";
+import { totalWorkoutSecs } from "../lib/workoutTime";
 
 import type { WorkoutPhase } from "../lib/stateMachine";
 export type { WorkoutPhase };
@@ -31,6 +32,7 @@ interface WorkoutStore {
   overrides: Overrides;
   paused: boolean;
   startedAt: number | null;
+  totalScheduledSecs: number;
 
   // Selectors
   currentHolds: () => readonly HoldDefinition[];
@@ -86,6 +88,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       overrides: {},
       paused: false,
       startedAt: null,
+      totalScheduledSecs: 0,
 
       currentHolds: () => holdsFor(get().selectedWorkout),
 
@@ -124,6 +127,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       },
 
       startWorkout: () => {
+        const holds = holdsFor(get().selectedWorkout);
         set({
           phase: "prep",
           holdIndex: 0,
@@ -131,6 +135,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
           repIndex: 0,
           overrides: {},
           startedAt: Date.now(),
+          totalScheduledSecs: totalWorkoutSecs(holds, SET1_REPS, SET2_REPS),
         });
       },
 
