@@ -31,6 +31,7 @@ const GYM_LABELS: Record<string, string> = {
   "hard-bouldering":  "Hard Bouldering",
   "limit-bouldering": "Limit Bouldering",
   "injury":           "Injury",
+  "stretching":       "Stretching",
 };
 
 function workoutLabel(record: SessionRecord): string {
@@ -70,6 +71,14 @@ function gymSummary(data: GymData): string {
       const parts: string[] = [];
       if (data.bodyPart) parts.push(data.bodyPart);
       if (data.severity) parts.push(data.severity);
+      return parts.join(" · ") || "—";
+    }
+    case "stretching": {
+      const parts: string[] = [];
+      if (data.reps && data.holdSec) parts.push(`${data.reps} × ${data.holdSec}s`);
+      else if (data.reps) parts.push(`${data.reps} reps`);
+      else if (data.holdSec) parts.push(`${data.holdSec}s hold`);
+      if (data.stretches && data.stretches.length > 0) parts.push(data.stretches.join(", "));
       return parts.join(" · ") || "—";
     }
   }
@@ -314,6 +323,7 @@ const ALL_VALID_TYPES = new Set([
   "repeaters", "max-hang", "beginner",
   "arc", "cir", "pe-route", "lbc", "wbl",
   "performance", "hard-bouldering", "limit-bouldering", "injury",
+  "stretching",
 ]);
 
 export function HistoryScreen({ onBack, onImport, onImportGym, onAddNote, onEdit, onEditNote }: Props) {

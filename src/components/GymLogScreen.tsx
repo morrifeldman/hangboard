@@ -28,18 +28,20 @@ function localTimeString(ts: number): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-// Extract field values from existing gymData into a flat string map for editing
+// Extract field values from existing gymData into a flat string map for editing.
+// Arrays are joined with "," — round-trips via the multi-select renderer.
 function gymDataToFields(gymData: GymData): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const [k, v] of Object.entries(gymData)) {
-    if (k !== "type" && v !== undefined) fields[k] = String(v);
+    if (k === "type" || v === undefined) continue;
+    fields[k] = Array.isArray(v) ? v.join(",") : String(v);
   }
   return fields;
 }
 
 // Build a GymData from a workout def + field string values; returns null if required fields missing
 function buildGymData(def: GymWorkoutDef, fields: Record<string, string>): GymData | null {
-  const values: Record<string, string | number> = { type: def.id };
+  const values: Record<string, string | number | string[]> = { type: def.id };
   for (const fd of def.fieldDefs) {
     const raw = fields[fd.key]?.trim() ?? "";
     if (!raw && !fd.optional) return null; // required field missing
@@ -48,6 +50,8 @@ function buildGymData(def: GymWorkoutDef, fields: Record<string, string>): GymDa
       const n = parseFloat(raw);
       if (isNaN(n)) return null;
       values[fd.key] = n;
+    } else if (fd.type === "multi-select") {
+      values[fd.key] = raw.split(",").map((s) => s.trim()).filter(Boolean);
     } else {
       values[fd.key] = raw;
     }
@@ -92,6 +96,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   const setField = (key: string, value: string) =>
     setFields((prev) => ({ ...prev, [key]: value }));
+
+  const toggleMultiSelect = (key: string, opt: string) => {
+    const current = (fields[key] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const next = current.includes(opt)
+      ? current.filter((o) => o !== opt)
+      : [...current, opt];
+    setField(key, next.join(","));
+  };
 
   const handleSave = async () => {
     const gymData = buildGymData(def, fields);
@@ -206,10 +218,38 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             {def.fieldDefs.map((fd, i) => {
               const isGrade = fd.type === "grade-v" || fd.type === "grade-yds";
               const grades = fd.type === "grade-v" ? V_GRADES : YDS_GRADES;
+              const borderCls = i < def.fieldDefs.length - 1 ? "border-b border-gray-700" : "";
+              if (fd.type === "multi-select") {
+                const selected = new Set((fields[fd.key] ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+                return (
+                  <div key={fd.key} className={`px-4 py-3 ${borderCls}`}>
+                    <label className="text-gray-400 text-sm block mb-2">
+                      {fd.label}
+                      {fd.optional && <span className="text-gray-600 ml-1 text-xs">(opt)</span>}
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fd.options?.map((o) => (
+                        <button
+                          key={o}
+                          type="button"
+                          onClick={() => toggleMultiSelect(fd.key, o)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
+                            selected.has(o)
+                              ? "bg-orange-500 text-white"
+                              : "bg-gray-700 text-gray-400 border border-gray-600"
+                          }`}
+                        >
+                          {o}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div
                   key={fd.key}
-                  className={`px-4 py-3 flex items-center gap-3 ${i < def.fieldDefs.length - 1 ? "border-b border-gray-700" : ""}`}
+                  className={`px-4 py-3 flex items-center gap-3 ${borderCls}`}
                 >
                   <label className="text-gray-400 text-sm flex-1">
                     {fd.label}

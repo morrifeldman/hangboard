@@ -570,6 +570,7 @@ function sessionTypeLabel(type: SessionRecord["workoutType"]): string {
   if (type === "hard-bouldering") return "Hard Bouldering";
   if (type === "limit-bouldering") return "Limit Bouldering";
   if (type === "injury") return "Injury";
+  if (type === "stretching") return "Stretching";
   return type;
 }
 
@@ -604,6 +605,14 @@ function gymDataSummary(data: NonNullable<SessionRecord["gymData"]>): string {
     const parts: string[] = [];
     if (data.bodyPart) parts.push(data.bodyPart);
     if (data.severity) parts.push(data.severity);
+    return parts.length > 0 ? parts.join(" · ") : "Logged";
+  }
+  if (data.type === "stretching") {
+    const parts: string[] = [];
+    if (data.reps && data.holdSec) parts.push(`${data.reps} × ${data.holdSec}s`);
+    else if (data.reps) parts.push(`${data.reps} reps`);
+    else if (data.holdSec) parts.push(`${data.holdSec}s hold`);
+    if (data.stretches && data.stretches.length > 0) parts.push(data.stretches.join(", "));
     return parts.length > 0 ? parts.join(" · ") : "Logged";
   }
   return "";

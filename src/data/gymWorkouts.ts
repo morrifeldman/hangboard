@@ -1,6 +1,6 @@
 import type { GymWorkoutType } from "../lib/history";
 
-export type FieldType = "number" | "text" | "grade-v" | "grade-yds" | "select";
+export type FieldType = "number" | "text" | "grade-v" | "grade-yds" | "select" | "multi-select";
 
 export type FieldDef = {
   key: string;
@@ -115,6 +115,18 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     fieldDefs: [
       { key: "bodyPart", label: "Body part", type: "text", optional: true },
       { key: "severity", label: "Severity",  type: "select", options: ["Mild", "Moderate", "Severe"], optional: true },
+    ],
+  },
+  {
+    id: "stretching",
+    label: "Stretching",
+    description: "Mobility / flexibility work",
+    category: "performance",
+    fieldDefs: [
+      { key: "stretches", label: "Stretches", type: "multi-select",
+        options: ["Hamstrings", "Quads", "Adductors", "IT band"], optional: true },
+      { key: "reps", label: "Reps per stretch", type: "number", optional: true },
+      { key: "holdSec", label: "Hold time", type: "number", unit: "sec", optional: true },
     ],
   },
 ];

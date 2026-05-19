@@ -5,7 +5,8 @@ import type { HoldDefinition } from "../data/holds";
 
 export type GymWorkoutType =
   | "arc" | "cir" | "pe-route" | "lbc" | "wbl"
-  | "performance" | "hard-bouldering" | "limit-bouldering" | "injury";
+  | "performance" | "hard-bouldering" | "limit-bouldering" | "injury"
+  | "stretching";
 
 export type GymData =
   | { type: "arc";              climbMin: number; routes?: number; downclimb?: string; wallMin?: number; maxGrade?: string }
@@ -16,7 +17,8 @@ export type GymData =
   | { type: "wbl";              topV: string; durationMin: number }
   | { type: "hard-bouldering";  level: string; durationMin: number }
   | { type: "limit-bouldering"; level: string; durationMin: number }
-  | { type: "injury";           bodyPart?: string; severity?: string };
+  | { type: "injury";           bodyPart?: string; severity?: string }
+  | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number };
 
 export type SessionSetRecord = {
   weight: number;
