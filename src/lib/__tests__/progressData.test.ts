@@ -214,14 +214,14 @@ describe("buildCalendar", () => {
     expect(found?.workoutType).toBe("repeaters");
   });
 
-  it("marks 'both' when a day has both workout types", () => {
+  it("falls back to 'repeaters' when a day has both hangboard types (rare in practice)", () => {
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 5);
     const sa = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
     const sb = makeSession({ id: "2", workoutType: "max-hang", startedAt: recentDate.getTime() + 3600000 });
     const grid = buildCalendar([sa, sb]);
     const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("both");
+    expect(found?.workoutType).toBe("repeaters");
   });
 
   it("week array is in Monday→Sunday order (day 0 is Mon)", () => {
@@ -238,6 +238,47 @@ describe("buildCalendar", () => {
     const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: oldDate.getTime() });
     const grid = buildCalendar([s]);
     const anyMarked = grid.flat().some((d) => d.workoutType !== null);
+    expect(anyMarked).toBe(false);
+  });
+
+  it("marks note: false by default on every day", () => {
+    const grid = buildCalendar([]);
+    for (const week of grid) {
+      for (const day of week) {
+        expect(day.note).toBe(false);
+      }
+    }
+  });
+
+  it("marks note: true on days present in noteDates", () => {
+    const recent = new Date();
+    recent.setDate(recent.getDate() - 3);
+    const key = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, "0")}-${String(recent.getDate()).padStart(2, "0")}`;
+    const grid = buildCalendar([], undefined, new Set([key]));
+    const noteDays = grid.flat().filter((d) => d.note);
+    expect(noteDays).toHaveLength(1);
+    expect(noteDays[0].workoutType).toBeNull();
+    expect(noteDays[0].outdoor).toBe(false);
+  });
+
+  it("note flag is independent of workout/outdoor flags", () => {
+    const recent = new Date();
+    recent.setDate(recent.getDate() - 3);
+    const key = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, "0")}-${String(recent.getDate()).padStart(2, "0")}`;
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: recent.getTime() });
+    const grid = buildCalendar([s], new Set([key]), new Set([key]));
+    const day = grid.flat().find((d) => d.note);
+    expect(day?.workoutType).toBe("repeaters");
+    expect(day?.outdoor).toBe(true);
+    expect(day?.note).toBe(true);
+  });
+
+  it("ignores notes outside the 12-week window", () => {
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 90);
+    const key = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, "0")}-${String(oldDate.getDate()).padStart(2, "0")}`;
+    const grid = buildCalendar([], undefined, new Set([key]));
+    const anyMarked = grid.flat().some((d) => d.note);
     expect(anyMarked).toBe(false);
   });
 });

@@ -13,6 +13,8 @@ import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
+import { getNotes } from "../lib/notes";
+import type { NoteRecord } from "../lib/notes";
 import { BackChevronIcon, BarChartIcon } from "./icons";
 import {
   buildTrend,
@@ -96,7 +98,6 @@ function CustomDot({ cx, cy, payload, onClick }: DotProps) {
 function colorFor(t: CalendarDay["workoutType"]): string {
   if (t === "repeaters") return "bg-green-600";
   if (t === "max-hang") return "bg-blue-500";
-  if (t === "both") return "bg-purple-500";
   if (t === "gym") return "bg-orange-500";
   if (t === "gym+hangboard") return "bg-amber-400";
   return "bg-gray-800";
@@ -107,6 +108,7 @@ function colorFor(t: CalendarDay["workoutType"]): string {
 export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
+  const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
   const [holdIndex, setHoldIndex] = useState(0);
@@ -114,8 +116,8 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getSessions(), getClimbs()])
-      .then(([s, c]) => { setSessions(s); setClimbs(c); })
+    Promise.all([getSessions(), getClimbs(), getNotes()])
+      .then(([s, c, n]) => { setSessions(s); setClimbs(c); setNotes(n); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -159,7 +161,14 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
     () => new Set(climbs.map((c) => c.date)),
     [climbs],
   );
-  const calendarWeeks = useMemo(() => buildCalendar(sessions, climbDateSet), [sessions, climbDateSet]);
+  const noteDateSet = useMemo(
+    () => new Set(notes.map((n) => n.date)),
+    [notes],
+  );
+  const calendarWeeks = useMemo(
+    () => buildCalendar(sessions, climbDateSet, noteDateSet),
+    [sessions, climbDateSet, noteDateSet],
+  );
   const monthLabels = useMemo(() => calendarMonthLabels(calendarWeeks), [calendarWeeks]);
   const isTrendingUp =
     chartPoints.length >= 2 &&
@@ -178,6 +187,7 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
         return local === selectedDate;
       })
     : [];
+  const dayNotes = selectedDate ? notes.filter((n) => n.date === selectedDate) : [];
 
   return (
     <div className="h-dvh bg-gray-900 flex flex-col overflow-hidden">
@@ -230,24 +240,29 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                 {calendarWeeks.map((week, wi) => (
                   <div key={wi} className="flex flex-col gap-1">
                     {week.map((day, di) => {
-                      const active = !!(day.workoutType || day.outdoor);
+                      const active = !!(day.workoutType || day.outdoor || day.note);
+                      const cellColor =
+                        day.workoutType
+                          ? colorFor(day.workoutType)
+                          : day.outdoor
+                            ? "bg-teal-600"
+                            : day.note
+                              ? "bg-purple-600"
+                              : "bg-gray-800";
+                      const titleParts = [day.workoutType, day.outdoor ? "outdoor" : "", day.note ? "note" : ""].filter(Boolean);
+                      const showNoteDot = day.note && (day.workoutType || day.outdoor);
                       return (
                         <div
                           key={di}
-                          className={`w-3 h-3 rounded-sm relative ${
-                            day.outdoor && !day.workoutType
-                              ? "bg-teal-600"
-                              : colorFor(day.workoutType)
-                          } ${active ? "cursor-pointer" : ""}`}
+                          className={`w-3 h-3 rounded-sm relative ${cellColor} ${active ? "cursor-pointer" : ""}`}
                           onClick={active ? () => setSelectedDate(day.date.toISOString().slice(0, 10)) : undefined}
-                          title={
-                            active
-                              ? `${day.date.toLocaleDateString()}: ${[day.workoutType, day.outdoor ? "outdoor" : ""].filter(Boolean).join(" + ")}`
-                              : undefined
-                          }
+                          title={active ? `${day.date.toLocaleDateString()}: ${titleParts.join(" + ")}` : undefined}
                         >
                           {day.outdoor && day.workoutType && (
                             <div className="absolute bottom-0 right-0 w-1 h-1 rounded-full bg-teal-400" />
+                          )}
+                          {showNoteDot && (
+                            <div className="absolute top-0 right-0 w-1 h-1 rounded-full bg-purple-300" />
                           )}
                         </div>
                       );
@@ -260,10 +275,10 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
               <div className="flex gap-3 mt-3 flex-wrap">
                 <LegendItem color="bg-green-600" label="Repeaters" />
                 <LegendItem color="bg-blue-500" label="Max Hang" />
-                <LegendItem color="bg-purple-500" label="Both" />
                 <LegendItem color="bg-orange-500" label="Gym" />
                 <LegendItem color="bg-amber-400" label="Gym + Board" />
                 <LegendItem color="bg-teal-600" label="Outdoor" />
+                <LegendItem color="bg-purple-600" label="Note" />
               </div>
             </div>
           </section>
@@ -407,6 +422,25 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
                 </svg>
               </button>
             </div>
+
+            {/* Notes section */}
+            {dayNotes.length > 0 && (
+              <div className="px-4 py-3">
+                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Notes</p>
+                <div className="flex flex-col gap-2.5">
+                  {dayNotes.map((note) => (
+                    <div key={note.id} className="flex flex-col gap-1">
+                      {note.category && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium self-start bg-purple-500/20 text-purple-300">
+                          {note.category}
+                        </span>
+                      )}
+                      <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">{note.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Climbs section */}
             {dayClimbs.length > 0 && (

@@ -3,6 +3,8 @@ import { getSessions, addSession } from "../lib/history";
 import type { SessionRecord, GymData } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
+import { getNotes } from "../lib/notes";
+import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
@@ -12,8 +14,12 @@ type Props = {
   onBack: () => void;
   onImport: () => void;
   onImportGym: () => void;
+  onAddNote: () => void;
   onEdit: (record: SessionRecord) => void;
+  onEditNote: (note: NoteRecord) => void;
 };
+
+type TimelineFilter = "all" | "workouts" | "climbs" | "notes";
 
 const GYM_LABELS: Record<string, string> = {
   "arc":              "ARC",
@@ -99,7 +105,8 @@ function formatDuration(startedAt: number, completedAt: number): string {
 
 type TimelineItem =
   | { kind: "session"; record: SessionRecord; ts: number }
-  | { kind: "climbs"; date: string; ts: number; climbs: ClimbRecord[] };
+  | { kind: "climbs"; date: string; ts: number; climbs: ClimbRecord[] }
+  | { kind: "note"; record: NoteRecord; ts: number };
 
 // ─── Grade range helpers ──────────────────────────────────────────────────────
 
@@ -216,6 +223,41 @@ function ClimbDayCard({ climbs, onRouteClick }: { climbs: ClimbRecord[]; onRoute
   );
 }
 
+function NoteCard({ record, onEdit }: { record: NoteRecord; onEdit: (n: NoteRecord) => void }) {
+  const ts = new Date(`${record.date}T12:00:00`).getTime();
+  return (
+    <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
+      <button
+        className="w-full text-left px-4 py-3 flex items-start justify-between gap-3"
+        onClick={() => onEdit(record)}
+      >
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-semibold text-sm">{formatDate(ts)}</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-500/20 text-purple-300">
+              {record.category || "Note"}
+            </span>
+          </div>
+          <p className="text-gray-300 text-sm mt-1 whitespace-pre-wrap break-words">
+            {record.text}
+          </p>
+        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16" height="16" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round"
+          className="text-gray-600 flex-shrink-0 mt-1"
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: SessionRecord) => void }) {
   const label = workoutLabel(record);
   const duration = formatDuration(record.startedAt, record.completedAt);
@@ -274,18 +316,20 @@ const ALL_VALID_TYPES = new Set([
   "performance", "hard-bouldering", "limit-bouldering", "injury",
 ]);
 
-export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) {
+export function HistoryScreen({ onBack, onImport, onImportGym, onAddNote, onEdit, onEditNote }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
+  const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const [filter, setFilter] = useState<TimelineFilter>("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    Promise.all([getSessions(), getClimbs()])
-      .then(([s, c]) => { setSessions(s); setClimbs(c); })
+    Promise.all([getSessions(), getClimbs(), getNotes()])
+      .then(([s, c, n]) => { setSessions(s); setClimbs(c); setNotes(n); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -309,8 +353,18 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) 
       record,
       ts: record.startedAt,
     }));
-    return [...sessionItems, ...climbItems].sort((a, b) => b.ts - a.ts);
-  }, [sessions, climbs]);
+    const noteItems: TimelineItem[] = notes.map((record) => ({
+      kind: "note",
+      record,
+      // Anchor to noon on the date; offset by createdAt within the day so multiple notes order stably
+      ts: new Date(`${record.date}T12:00:00`).getTime() + (record.createdAt % 86_400_000) / 1000,
+    }));
+    const all = [...sessionItems, ...climbItems, ...noteItems].sort((a, b) => b.ts - a.ts);
+    if (filter === "all") return all;
+    if (filter === "workouts") return all.filter((i) => i.kind === "session");
+    if (filter === "climbs") return all.filter((i) => i.kind === "climbs");
+    return all.filter((i) => i.kind === "note");
+  }, [sessions, climbs, notes, filter]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -403,6 +457,12 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) 
               >
                 Gym Session
               </button>
+              <button
+                onClick={() => { setAddMenuOpen(false); onAddNote(); }}
+                className="w-full text-left px-4 py-3 text-sm text-purple-300 hover:bg-gray-600 transition-colors border-t border-gray-600"
+              >
+                Note
+              </button>
             </div>
           )}
         </div>
@@ -413,19 +473,48 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onEdit }: Props) 
         </div>
       )}
 
+      {/* Filter pills */}
+      {!loading && (sessions.length > 0 || climbs.length > 0 || notes.length > 0) && (
+        <div className="px-4 pt-3 shrink-0">
+          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(["all", "workouts", "climbs", "notes"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  filter === f
+                    ? f === "notes" ? "bg-purple-600 text-white" : "bg-indigo-600 text-white"
+                    : "bg-gray-800 text-gray-400 border border-gray-700"
+                }`}
+              >
+                {f === "all" ? "All" : f === "workouts" ? "Workouts" : f === "climbs" ? "Climbs" : "Notes"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         {loading && <p className="text-gray-500 text-center py-12">Loading…</p>}
         {!loading && timeline.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="text-gray-400 text-base font-medium">No workouts yet</p>
-            <p className="text-gray-600 text-sm">Complete a session to see your history here.</p>
+            <p className="text-gray-400 text-base font-medium">
+              {filter === "all" ? "No workouts yet" : `No ${filter} yet`}
+            </p>
+            <p className="text-gray-600 text-sm">
+              {filter === "all"
+                ? "Complete a session to see your history here."
+                : `Add a ${filter === "notes" ? "note" : filter.slice(0, -1)} from the + menu.`}
+            </p>
           </div>
         )}
         {timeline.map((item) =>
           item.kind === "session" ? (
             <SessionCard key={item.record.id} record={item.record} onEdit={onEdit} />
-          ) : (
+          ) : item.kind === "climbs" ? (
             <ClimbDayCard key={item.date} climbs={item.climbs} onRouteClick={setSelectedRoute} />
+          ) : (
+            <NoteCard key={item.record.id} record={item.record} onEdit={onEditNote} />
           )
         )}
       </main>

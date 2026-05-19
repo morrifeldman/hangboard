@@ -49,7 +49,7 @@ export type SessionRecord = {
 // ─── IndexedDB setup ─────────────────────────────────────────────────────────
 
 const DB_NAME = "hangboard-history";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = "sessions";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -65,6 +65,10 @@ export function getDB(): Promise<IDBPDatabase> {
         if (!db.objectStoreNames.contains("climbs")) {
           const climbStore = db.createObjectStore("climbs", { keyPath: "id" });
           climbStore.createIndex("by-date", "date");
+        }
+        if (!db.objectStoreNames.contains("notes")) {
+          const noteStore = db.createObjectStore("notes", { keyPath: "id" });
+          noteStore.createIndex("by-date", "date");
         }
       },
     });

@@ -10,9 +10,11 @@ import { ProgressScreen } from "./components/ProgressScreen";
 import { PyramidScreen } from "./components/PyramidScreen";
 import { ScrollingPyramidsScreen } from "./components/ScrollingPyramidsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
+import { NoteEditorScreen } from "./components/NoteEditorScreen";
 import type { SessionRecord } from "./lib/history";
+import type { NoteRecord } from "./lib/notes";
 
-type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid" | "scrolling-pyramids" | "settings";
+type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid" | "scrolling-pyramids" | "settings" | "note-add" | "note-edit";
 
 export default function App() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -20,6 +22,7 @@ export default function App() {
   const [view, setView] = useState<AppView>("home");
   const [editRecord, setEditRecord] = useState<SessionRecord | null>(null);
   const [gymEditRecord, setGymEditRecord] = useState<SessionRecord | null>(null);
+  const [editNote, setEditNote] = useState<NoteRecord | null>(null);
   const [editReturnView, setEditReturnView] = useState<AppView>("history");
 
   useWakeLock(isActive);
@@ -32,6 +35,7 @@ export default function App() {
         onBack={() => setView("home")}
         onImport={() => setView("import")}
         onImportGym={() => setView("gym-log")}
+        onAddNote={() => setView("note-add")}
         onEdit={(record) => {
           if (record.gymData !== undefined) {
             setGymEditRecord(record);
@@ -42,6 +46,7 @@ export default function App() {
             setView("edit");
           }
         }}
+        onEditNote={(note) => { setEditNote(note); setView("note-edit"); }}
       />
     );
   }
@@ -114,6 +119,26 @@ export default function App() {
 
   if (view === "settings") {
     return <SettingsScreen onBack={() => setView("home")} />;
+  }
+
+  if (view === "note-add") {
+    return (
+      <NoteEditorScreen
+        onBack={() => setView("history")}
+        onSaved={() => setView("history")}
+      />
+    );
+  }
+
+  if (view === "note-edit" && editNote) {
+    return (
+      <NoteEditorScreen
+        onBack={() => setView("history")}
+        onSaved={() => { setEditNote(null); setView("history"); }}
+        onDeleted={() => { setEditNote(null); setView("history"); }}
+        initialRecord={editNote}
+      />
+    );
   }
 
   return (
