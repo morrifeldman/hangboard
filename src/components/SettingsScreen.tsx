@@ -8,6 +8,13 @@ import {
 import type { BackupFile } from "../lib/backup";
 import { getSessions } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
+import {
+  getPrefs,
+  permissionStatus,
+  requestPermission,
+  setPrefs,
+} from "../lib/notifications";
+import type { NotificationPrefs } from "../lib/notifications";
 import { BackChevronIcon, GearIcon } from "./icons";
 
 type Props = {
@@ -28,12 +35,33 @@ export function SettingsScreen({ onBack }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<RestorePending | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(() => getPrefs());
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
+    () => permissionStatus(),
+  );
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs()])
       .then(([s, c]) => setCounts({ sessions: s.length, climbs: c.length }))
       .catch(() => setCounts({ sessions: 0, climbs: 0 }));
   }, []);
+
+  const handleToggleNotif = async () => {
+    if (notifPrefs.enabled) {
+      setNotifPrefs(setPrefs({ enabled: false }));
+      return;
+    }
+    if (notifPermission !== "granted") {
+      const result = await requestPermission();
+      setNotifPermission(result);
+      if (result !== "granted") return;
+    }
+    setNotifPrefs(setPrefs({ enabled: true }));
+  };
+
+  const handleTimeChange = (time: string) => {
+    setNotifPrefs(setPrefs({ time }));
+  };
 
   const clearMessages = () => {
     setStatus(null);
@@ -170,6 +198,47 @@ export function SettingsScreen({ onBack }: Props) {
           )}
           {error && (
             <p className="text-red-400 text-sm" data-testid="settings-error">{error}</p>
+          )}
+        </section>
+
+        <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3" data-testid="settings-notifications">
+          <h2 className="text-white font-semibold text-base">Daily reminder</h2>
+          <p className="text-gray-400 text-sm leading-relaxed">
+            Browser notification when today has a planned workout. Fires on the
+            next app open at or after your chosen time, once per day. Closed-app
+            delivery isn&apos;t supported on the web.
+          </p>
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-white text-sm">Enable</span>
+            <input
+              type="checkbox"
+              checked={notifPrefs.enabled}
+              onChange={handleToggleNotif}
+              disabled={notifPermission === "unsupported"}
+              className="w-5 h-5 accent-green-600"
+              data-testid="settings-notif-toggle"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-white text-sm">Time</span>
+            <input
+              type="time"
+              value={notifPrefs.time}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+              data-testid="settings-notif-time"
+            />
+          </label>
+          {notifPermission === "denied" && (
+            <p className="text-amber-400 text-xs">
+              Browser notifications are blocked — enable them in your browser or
+              OS settings to receive reminders.
+            </p>
+          )}
+          {notifPermission === "unsupported" && (
+            <p className="text-amber-400 text-xs">
+              This browser doesn&apos;t support notifications.
+            </p>
           )}
         </section>
 

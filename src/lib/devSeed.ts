@@ -1,6 +1,8 @@
 // Dev/test-only seeding helpers. Exposes:
 //   window.__seedSyntheticClimbs("default" | "wide" | "seasons" | "attempts")
 //   window.__clearSyntheticClimbs()
+//   window.__seedSyntheticSchedule(weeks?)
+//   window.__clearSyntheticSchedule()
 //
 // All seeded records use ids prefixed with `synthetic-` so the clear helper
 // (and any other tooling) can safely remove them without touching real data.
@@ -8,6 +10,13 @@
 import { addClimb, deleteClimb, getClimbs } from "./climbs";
 import type { ClimbRecord } from "./climbs";
 import type { ClimbStyle } from "../constants/climbGrades";
+import { getDB } from "./history";
+import {
+  addDays,
+  startOfWeek,
+  toLocalDateString,
+} from "./schedules";
+import type { ScheduleDayType, ScheduleRecord } from "./schedules";
 
 type Scenario = "default" | "wide" | "seasons" | "attempts";
 
@@ -151,6 +160,62 @@ async function seed(scenario: Scenario = "default"): Promise<number> {
   return seeds.length;
 }
 
+// ─── Schedule seeding ────────────────────────────────────────────────────────
+
+const SAMPLE_WEEK: ScheduleDayType[] = [
+  "power",
+  "rest",
+  "endurance",
+  "rest",
+  "hangboard",
+  "outdoor",
+  "outdoor",
+];
+
+async function clearSyntheticSchedule(): Promise<number> {
+  const db = await getDB();
+  const all = (await db.getAll("schedules")) as ScheduleRecord[];
+  const tx = db.transaction("schedules", "readwrite");
+  let deleted = 0;
+  for (const s of all) {
+    if (s.id.startsWith("synthetic-sched-")) {
+      await tx.store.delete(s.id);
+      deleted++;
+    }
+  }
+  await tx.done;
+  return deleted;
+}
+
+async function seedSyntheticSchedule(weeks = 2): Promise<number> {
+  await clearSyntheticSchedule();
+  const db = await getDB();
+  const start = startOfWeek(new Date());
+  const now = Date.now();
+  const tx = db.transaction("schedules", "readwrite");
+  let n = 0;
+  for (let w = 0; w < weeks; w++) {
+    for (let d = 0; d < 7; d++) {
+      const date = toLocalDateString(addDays(start, w * 7 + d));
+      const existing = (await tx.store.index("by-date").get(date)) as ScheduleRecord | undefined;
+      if (existing) await tx.store.delete(existing.id);
+      const rec: ScheduleRecord = {
+        id: `synthetic-sched-${date}`,
+        date,
+        dayType: SAMPLE_WEEK[d],
+        createdAt: now,
+        updatedAt: now,
+      };
+      await tx.store.put(rec);
+      n++;
+    }
+  }
+  await tx.done;
+  // eslint-disable-next-line no-console
+  console.log(`[devSeed] Seeded ${n} schedule entries (${weeks} weeks)`);
+  return n;
+}
+
 if (
   typeof window !== "undefined" &&
   (import.meta.env.DEV || new URLSearchParams(window.location.search).has("test"))
@@ -158,4 +223,6 @@ if (
   const w = window as unknown as Record<string, unknown>;
   w.__seedSyntheticClimbs = seed;
   w.__clearSyntheticClimbs = clearSynthetic;
+  w.__seedSyntheticSchedule = seedSyntheticSchedule;
+  w.__clearSyntheticSchedule = clearSyntheticSchedule;
 }

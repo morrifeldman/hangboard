@@ -8,8 +8,15 @@ import { initAudio } from "../lib/audio";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
+import { getClimbs } from "../lib/climbs";
 import { buildTrend } from "../lib/progressData";
 import type { TrendPoint } from "../lib/progressData";
+import {
+  getSchedule,
+  SCHEDULE_TYPE_META,
+  toLocalDateString,
+} from "../lib/schedules";
+import type { ScheduleRecord } from "../lib/schedules";
 
 type EditKey = { holdId: string; set: 1 | 2 } | null;
 
@@ -99,9 +106,10 @@ type HomeScreenProps = {
   onLogGym: () => void;
   onShowPyramid: () => void;
   onShowSettings: () => void;
+  onShowSchedule: () => void;
 };
 
-export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyramid, onShowSettings }: HomeScreenProps) {
+export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyramid, onShowSettings, onShowSchedule }: HomeScreenProps) {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const weights = useWorkoutStore((s) => s.weights);
   const weightsB = useWorkoutStore((s) => s.weightsB);
@@ -112,9 +120,25 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
 
   const [editing, setEditing] = useState<EditKey>(null);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [todaysPlan, setTodaysPlan] = useState<ScheduleRecord | null>(null);
+  const [loggedToday, setLoggedToday] = useState(false);
 
   useEffect(() => {
     getSessions().then(setSessions).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const todayKey = toLocalDateString(new Date());
+    Promise.all([getSchedule(todayKey), getSessions(), getClimbs()])
+      .then(([plan, sess, cl]) => {
+        setTodaysPlan(plan ?? null);
+        const hasSession = sess.some(
+          (s) => toLocalDateString(new Date(s.startedAt)) === todayKey,
+        );
+        const hasClimb = cl.some((c) => c.date === todayKey);
+        setLoggedToday(hasSession || hasClimb);
+      })
+      .catch(() => {});
   }, []);
 
   const holds = currentHolds();
@@ -192,6 +216,30 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
             </svg>
           </button>
           <button
+            onClick={onShowSchedule}
+            aria-label="View schedule"
+            className="text-gray-400 hover:text-white transition-colors p-1"
+            data-testid="open-schedule"
+          >
+            {/* Calendar icon */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </button>
+          <button
             onClick={onShowHistory}
             aria-label="View workout history"
             className="text-gray-400 hover:text-white transition-colors p-1"
@@ -236,6 +284,17 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
           </button>
         </div>
       </header>
+
+      {todaysPlan && (
+        <button
+          onClick={onShowSchedule}
+          data-testid="today-banner"
+          className={`mx-4 mt-3 px-3 py-2 rounded-xl text-white text-sm font-medium text-left ${SCHEDULE_TYPE_META[todaysPlan.dayType].bg}`}
+        >
+          Today: {SCHEDULE_TYPE_META[todaysPlan.dayType].label} day
+          {loggedToday && " · logged ✓"}
+        </button>
+      )}
 
       {/* Workout picker */}
       <div className="px-4 pt-3 pb-1 flex gap-2">

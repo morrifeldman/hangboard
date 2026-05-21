@@ -11,10 +11,11 @@ import { PyramidScreen } from "./components/PyramidScreen";
 import { ScrollingPyramidsScreen } from "./components/ScrollingPyramidsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { NoteEditorScreen } from "./components/NoteEditorScreen";
+import { ScheduleScreen } from "./components/ScheduleScreen";
 import type { SessionRecord } from "./lib/history";
 import type { NoteRecord } from "./lib/notes";
 
-type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid" | "scrolling-pyramids" | "settings" | "note-add" | "note-edit";
+type AppView = "home" | "history" | "import" | "edit" | "gym-log" | "gym-edit" | "progress" | "pyramid" | "scrolling-pyramids" | "settings" | "note-add" | "note-edit" | "schedule";
 
 export default function App() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -121,6 +122,10 @@ export default function App() {
     return <SettingsScreen onBack={() => setView("home")} />;
   }
 
+  if (view === "schedule") {
+    return <ScheduleScreen onBack={() => setView("home")} />;
+  }
+
   if (view === "note-add") {
     return (
       <NoteEditorScreen
@@ -148,6 +153,7 @@ export default function App() {
       onLogGym={() => setView("gym-log")}
       onShowPyramid={() => setView("pyramid")}
       onShowSettings={() => setView("settings")}
+      onShowSchedule={() => setView("schedule")}
     />
   );
 }
