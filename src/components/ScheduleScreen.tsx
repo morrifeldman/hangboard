@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { BackChevronIcon } from "./icons";
+import { BackChevronIcon, CalendarIcon } from "./icons";
 import {
   buildScheduleWeeks,
   deleteScheduleByDate,
@@ -81,7 +81,7 @@ export function ScheduleScreen({ onBack }: Props) {
         >
           <BackChevronIcon />
         </button>
-        <h1 className="text-white font-bold text-xl">Schedule</h1>
+        <CalendarIcon className="text-white" aria-label="Schedule" />
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
