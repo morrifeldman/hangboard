@@ -6,7 +6,10 @@ import type { HoldDefinition } from "../data/holds";
 export type GymWorkoutType =
   | "arc" | "cir" | "pe-route" | "lbc" | "wbl"
   | "performance" | "hard-bouldering" | "limit-bouldering" | "injury"
-  | "stretching";
+  | "cardio" | "stretching" | "freeform";
+
+export type FreeformEntry = { key: string; value: string };
+export type FreeformSection = { name: string; entries: FreeformEntry[] };
 
 export type GymData =
   | { type: "arc";              climbMin: number; routes?: number; downclimb?: string; wallMin?: number; maxGrade?: string }
@@ -18,7 +21,9 @@ export type GymData =
   | { type: "hard-bouldering";  level: string; durationMin: number }
   | { type: "limit-bouldering"; level: string; durationMin: number }
   | { type: "injury";           bodyPart?: string; severity?: string }
-  | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number };
+  | { type: "cardio";           mode: string; durationMin: number; intensity?: string }
+  | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number }
+  | { type: "freeform";         title: string; sections: FreeformSection[] };
 
 export type SessionSetRecord = {
   weight: number;

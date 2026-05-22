@@ -118,15 +118,33 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     ],
   },
   {
+    id: "cardio",
+    label: "Cardio",
+    description: "Bike, run, or elliptical — zone 2 / aerobic conditioning",
+    category: "endurance",
+    fieldDefs: [
+      { key: "mode",        label: "Mode",      type: "select", options: ["Bike", "Run", "Elliptical"] },
+      { key: "durationMin", label: "Duration",  type: "number", unit: "min" },
+      { key: "intensity",   label: "Intensity", type: "select", options: ["Easy", "Moderate", "Hard"], optional: true },
+    ],
+  },
+  {
     id: "stretching",
     label: "Stretching",
     description: "Mobility / flexibility work",
     category: "performance",
     fieldDefs: [
       { key: "stretches", label: "Stretches", type: "multi-select",
-        options: ["Hamstrings", "Quads", "Adductors", "IT band"], optional: true },
+        options: ["Hamstrings", "Quads", "Adductors", "IT band", "Calves"], optional: true },
       { key: "reps", label: "Reps per stretch", type: "number", optional: true },
       { key: "holdSec", label: "Hold time", type: "number", unit: "sec", optional: true },
     ],
+  },
+  {
+    id: "freeform",
+    label: "Freeform",
+    description: "Free-form workout — title, sections, key/value entries",
+    category: "performance",
+    fieldDefs: [],
   },
 ];
