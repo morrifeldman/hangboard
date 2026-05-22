@@ -46,7 +46,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   },
   {
     id: "pe-route",
-    label: "PE Route Intervals",
+    label: "PE Intervals",
     description: "High intensity power endurance training. Target ~1 letter grade above current onsight grade",
     category: "power",
     fieldDefs: [
@@ -68,7 +68,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   },
   {
     id: "performance",
-    label: "Performance",
+    label: "Perf",
     description: "Projecting specific grades",
     category: "performance",
     fieldDefs: [
@@ -89,7 +89,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   },
   {
     id: "hard-bouldering",
-    label: "Hard Bouldering",
+    label: "Hard Boulder",
     description: "Just above flash level, 2–3 problems, 3–4 quality attempts per problem. 2–5 min rest between attempts",
     category: "performance",
     fieldDefs: [
@@ -99,7 +99,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   },
   {
     id: "limit-bouldering",
-    label: "Limit Bouldering",
+    label: "Limit Boulder",
     description: "2–4 \"realistic\" problems, 4–5 quality attempts per problem. 2–5 min rest between attempts, 5–10 min rest between problems",
     category: "performance",
     fieldDefs: [
@@ -130,7 +130,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   },
   {
     id: "stretching",
-    label: "Stretching",
+    label: "Stretch",
     description: "Mobility / flexibility work",
     category: "performance",
     fieldDefs: [

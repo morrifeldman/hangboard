@@ -319,13 +319,13 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         {/* Workout type pill picker */}
         <div>
           <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Workout Type</p>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex flex-wrap gap-2">
             {GYM_WORKOUTS.map((w) => (
               <button
                 key={w.id}
                 onClick={() => handleWorkoutTypeChange(w.id)}
                 disabled={editing}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
                   workoutType === w.id
                     ? "bg-orange-500 text-white"
                     : "bg-gray-800 text-gray-400 border border-gray-700"
