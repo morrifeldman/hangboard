@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { BackChevronIcon, CalendarIcon } from "./icons";
+import { BackChevronIcon, CalendarIcon, NoteIcon } from "./icons";
 import {
   buildScheduleWeeks,
   deleteScheduleByDate,
@@ -9,7 +9,7 @@ import {
   startOfWeek,
   upsertSchedule,
 } from "../lib/schedules";
-import type { ScheduleDay, ScheduleDayType, ScheduleRecord } from "../lib/schedules";
+import type { Adherence, ScheduleDay, ScheduleDayType, ScheduleRecord } from "../lib/schedules";
 import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
@@ -54,8 +54,14 @@ export function ScheduleScreen({ onBack }: Props) {
     setSchedules(next);
   };
 
-  const handlePick = async (date: string, dayType: ScheduleDayType) => {
-    await upsertSchedule({ date, dayType });
+  const handlePick = async (date: string, dayType: ScheduleDayType, note: string) => {
+    await upsertSchedule({ date, dayType, note });
+    await refreshSchedules();
+    setEditingDate(null);
+  };
+
+  const handleSaveNote = async (date: string, note: string) => {
+    await upsertSchedule({ date, note });
     await refreshSchedules();
     setEditingDate(null);
   };
@@ -127,7 +133,8 @@ export function ScheduleScreen({ onBack }: Props) {
       {editingDay && (
         <EditSheet
           day={editingDay}
-          onPick={(t) => handlePick(editingDay.date, t)}
+          onPick={(t, n) => handlePick(editingDay.date, t, n)}
+          onSaveNote={(n) => handleSaveNote(editingDay.date, n)}
           onClear={() => handleClear(editingDay.date)}
           onCancel={() => setEditingDate(null)}
         />
@@ -162,6 +169,13 @@ function DayChip({
         {day.jsDate.getDate()}
       </span>
       <AdherenceDot adherence={day.adherence} />
+      {day.note && (
+        <NoteIcon
+          size={14}
+          className="absolute bottom-1 right-1 text-white/90"
+          aria-label="Has note"
+        />
+      )}
     </button>
   );
 }
@@ -176,7 +190,7 @@ function AdherenceDot({ adherence }: { adherence: ScheduleDay["adherence"] }) {
         : "bg-gray-400"; // unplanned-logged
   return (
     <span
-      className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${cls}`}
+      className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full ${cls}`}
       aria-hidden="true"
     />
   );
@@ -184,14 +198,57 @@ function AdherenceDot({ adherence }: { adherence: ScheduleDay["adherence"] }) {
 
 // ─── EditSheet ───────────────────────────────────────────────────────────────
 
+const ADHERENCE_META: Record<
+  Adherence,
+  { dot: string | null; dotClass: string; label: string }
+> = {
+  "planned-and-logged": {
+    dot: "Green",
+    dotClass: "bg-green-400",
+    label: "Planned and logged",
+  },
+  "planned-not-logged": {
+    dot: "Amber",
+    dotClass: "bg-amber-400",
+    label: "Planned but nothing logged",
+  },
+  "unplanned-logged": {
+    dot: "Gray",
+    dotClass: "bg-gray-400",
+    label: "Logged without a plan",
+  },
+  "planned-future": {
+    dot: null,
+    dotClass: "",
+    label: "Planned, upcoming",
+  },
+  none: {
+    dot: null,
+    dotClass: "",
+    label: "No plan, nothing logged",
+  },
+};
+
+function loggedSummary(day: ScheduleDay): string | null {
+  const s = day.logged.sessions.length;
+  const c = day.logged.climbs.length;
+  if (s + c === 0) return null;
+  const parts: string[] = [];
+  if (s > 0) parts.push(`${s} session${s === 1 ? "" : "s"}`);
+  if (c > 0) parts.push(`${c} climb${c === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
 function EditSheet({
   day,
   onPick,
+  onSaveNote,
   onClear,
   onCancel,
 }: {
   day: ScheduleDay;
-  onPick: (t: ScheduleDayType) => void;
+  onPick: (t: ScheduleDayType, note: string) => void;
+  onSaveNote: (note: string) => void;
   onClear: () => void;
   onCancel: () => void;
 }) {
@@ -201,6 +258,12 @@ function EditSheet({
     day: "numeric",
   });
 
+  const [note, setNote] = useState(day.note ?? "");
+  const noteChanged = note.trim() !== (day.note ?? "").trim();
+
+  const adh = ADHERENCE_META[day.adherence];
+  const loggedLine = loggedSummary(day);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
@@ -208,7 +271,7 @@ function EditSheet({
       data-testid="schedule-edit-sheet"
     >
       <div
-        className="w-full sm:max-w-sm bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 flex flex-col gap-4"
+        className="w-full sm:max-w-sm bg-gray-800 rounded-t-2xl sm:rounded-2xl p-5 flex flex-col gap-4 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-0.5">
@@ -216,11 +279,43 @@ function EditSheet({
           <p className="text-gray-400 text-xs">Plan this day</p>
         </div>
 
+        <div
+          className="flex items-start gap-2.5 rounded-lg bg-gray-900/60 p-3"
+          data-testid="schedule-adherence-summary"
+        >
+          {adh.dot ? (
+            <span
+              className={`mt-0.5 w-3 h-3 rounded-full shrink-0 ${adh.dotClass}`}
+              aria-hidden="true"
+            />
+          ) : (
+            <span
+              className="mt-0.5 w-3 h-3 rounded-full shrink-0 border border-gray-600"
+              aria-hidden="true"
+            />
+          )}
+          <div className="flex flex-col gap-0.5 text-xs leading-snug">
+            <span className="text-white font-medium">{adh.label}</span>
+            {day.dayType && (
+              <span className="text-gray-400">
+                Planned: {SCHEDULE_TYPE_META[day.dayType].label}
+              </span>
+            )}
+            {loggedLine ? (
+              <span className="text-gray-400">Logged: {loggedLine}</span>
+            ) : (
+              !day.isPast && day.dayType && (
+                <span className="text-gray-500">Nothing logged yet</span>
+              )
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           {SCHEDULE_TYPE_ORDER.map((t) => (
             <button
               key={t}
-              onClick={() => onPick(t)}
+              onClick={() => onPick(t, note)}
               data-testid={`schedule-pick-${t}`}
               className={`py-3 rounded-xl text-white font-semibold text-sm ${SCHEDULE_TYPE_META[t].bg} ${
                 day.dayType === t ? "ring-2 ring-white/70" : ""
@@ -229,6 +324,32 @@ function EditSheet({
               {SCHEDULE_TYPE_META[t].label}
             </button>
           ))}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="schedule-note"
+            className="text-gray-300 text-xs font-medium"
+          >
+            Note
+          </label>
+          <textarea
+            id="schedule-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="How did it go? (optional)"
+            rows={3}
+            className="w-full rounded-lg bg-gray-900 text-white text-sm px-3 py-2 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-white/30 resize-none"
+            data-testid="schedule-note-input"
+          />
+          <button
+            onClick={() => onSaveNote(note)}
+            disabled={!noteChanged}
+            className="self-end px-3 py-1.5 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white text-xs font-semibold"
+            data-testid="schedule-save-note"
+          >
+            Save Note
+          </button>
         </div>
 
         <div className="flex gap-2 pt-1">
@@ -241,7 +362,7 @@ function EditSheet({
           </button>
           <button
             onClick={onClear}
-            disabled={!day.dayType}
+            disabled={!day.dayType && !day.note}
             className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white font-semibold text-sm"
             data-testid="schedule-clear"
           >

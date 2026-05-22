@@ -33,7 +33,8 @@ export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
 export type ScheduleRecord = {
   id: string;
   date: string; // YYYY-MM-DD (local)
-  dayType: ScheduleDayType;
+  dayType?: ScheduleDayType;
+  note?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -51,6 +52,7 @@ export type ScheduleDay = {
   isToday: boolean;
   isPast: boolean;
   dayType?: ScheduleDayType;
+  note?: string;
   logged: { sessions: SessionRecord[]; climbs: ClimbRecord[] };
   adherence: Adherence;
 };
@@ -118,11 +120,12 @@ export function buildScheduleWeeks(
       const isToday = date === todayKey;
       const isPast = date < todayKey;
 
+      const planned = !!plan?.dayType;
       let adherence: Adherence;
-      if (plan && hasLog) adherence = "planned-and-logged";
-      else if (plan && !hasLog && isPast) adherence = "planned-not-logged";
-      else if (plan && !hasLog) adherence = "planned-future";
-      else if (!plan && hasLog) adherence = "unplanned-logged";
+      if (planned && hasLog) adherence = "planned-and-logged";
+      else if (planned && !hasLog && isPast) adherence = "planned-not-logged";
+      else if (planned && !hasLog) adherence = "planned-future";
+      else if (!planned && hasLog) adherence = "unplanned-logged";
       else adherence = "none";
 
       week.push({
@@ -131,6 +134,7 @@ export function buildScheduleWeeks(
         isToday,
         isPast,
         dayType: plan?.dayType,
+        note: plan?.note,
         logged: { sessions: daySessions, climbs: dayClimbs },
         adherence,
       });
@@ -159,22 +163,41 @@ export async function getSchedule(date: string): Promise<ScheduleRecord | undefi
  * Insert or replace the schedule for a given date. The by-date index is unique,
  * so we do the lookup and the write inside one transaction to avoid races.
  * If a record for the date already exists, we reuse its id (idempotent updates).
+ *
+ * Pass `dayType` and/or `note` to set those fields. Pass `undefined` to leave a
+ * field unchanged on an existing record. If both fields end up empty, the
+ * record is deleted.
  */
 export async function upsertSchedule(input: {
   date: string;
-  dayType: ScheduleDayType;
-}): Promise<ScheduleRecord> {
+  dayType?: ScheduleDayType;
+  note?: string;
+}): Promise<ScheduleRecord | undefined> {
   const db = await getDB();
   const tx = db.transaction(STORE, "readwrite");
   const index = tx.store.index("by-date");
   const existing = (await index.get(input.date)) as ScheduleRecord | undefined;
+
+  const nextDayType =
+    "dayType" in input ? input.dayType : existing?.dayType;
+  const trimmedNote = input.note?.trim();
+  const nextNote =
+    "note" in input ? (trimmedNote ? trimmedNote : undefined) : existing?.note;
+
+  if (!nextDayType && !nextNote) {
+    if (existing) await tx.store.delete(existing.id);
+    await tx.done;
+    return undefined;
+  }
+
   const now = Date.now();
   const record: ScheduleRecord = existing
-    ? { ...existing, dayType: input.dayType, updatedAt: now }
+    ? { ...existing, dayType: nextDayType, note: nextNote, updatedAt: now }
     : {
         id: crypto.randomUUID(),
         date: input.date,
-        dayType: input.dayType,
+        dayType: nextDayType,
+        note: nextNote,
         createdAt: now,
         updatedAt: now,
       };

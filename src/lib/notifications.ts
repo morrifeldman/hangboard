@@ -97,7 +97,7 @@ export async function maybeFireDailyReminder(now: Date = new Date()): Promise<vo
   if (nowMinutes < target) return;
 
   const plan = await getSchedule(todayKey);
-  if (!plan) return;
+  if (!plan?.dayType) return;
 
   const meta = SCHEDULE_TYPE_META[plan.dayType];
   try {

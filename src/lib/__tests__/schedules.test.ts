@@ -128,4 +128,26 @@ describe("buildScheduleWeeks", () => {
     expect(todayCell.adherence).toBe("unplanned-logged");
     expect(todayCell.dayType).toBeUndefined();
   });
+
+  it("treats a note-only schedule record as unplanned and surfaces the note", () => {
+    const sched: ScheduleRecord[] = [
+      { id: "n-1", date: "2026-05-19", note: "felt strong", createdAt: 0, updatedAt: 0 },
+    ];
+    const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
+    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
+    expect(day.dayType).toBeUndefined();
+    expect(day.note).toBe("felt strong");
+    expect(day.adherence).toBe("none");
+  });
+
+  it("keeps a typed day with a note as planned and surfaces both", () => {
+    const sched: ScheduleRecord[] = [
+      { id: "n-2", date: "2026-05-19", dayType: "power", note: "tweaked finger", createdAt: 0, updatedAt: 0 },
+    ];
+    const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
+    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
+    expect(day.dayType).toBe("power");
+    expect(day.note).toBe("tweaked finger");
+    expect(day.adherence).toBe("planned-not-logged");
+  });
 });

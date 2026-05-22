@@ -285,7 +285,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
         </div>
       </header>
 
-      {todaysPlan && (
+      {todaysPlan?.dayType && (
         <button
           onClick={onShowSchedule}
           data-testid="today-banner"

@@ -81,6 +81,17 @@ export function CalendarIcon({ size = 24, className, "aria-label": label }: Icon
   );
 }
 
+export function NoteIcon({ size = 24, className, "aria-label": label }: IconProps) {
+  return (
+    <Svg size={size} className={className} label={label}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <polyline points="14 3 14 9 20 9" />
+      <line x1="8" y1="13" x2="15" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
+    </Svg>
+  );
+}
+
 export function GearIcon({ size = 24, className, "aria-label": label }: IconProps) {
   return (
     <Svg size={size} className={className} label={label}>
