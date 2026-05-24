@@ -202,7 +202,7 @@ async function seedSyntheticSchedule(weeks = 2): Promise<number> {
       const rec: ScheduleRecord = {
         id: `synthetic-sched-${date}`,
         date,
-        dayType: SAMPLE_WEEK[d],
+        dayTypes: [SAMPLE_WEEK[d]],
         createdAt: now,
         updatedAt: now,
       };

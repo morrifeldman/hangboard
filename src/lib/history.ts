@@ -5,11 +5,14 @@ import type { HoldDefinition } from "../data/holds";
 
 export type GymWorkoutType =
   | "arc" | "cir" | "pe-route" | "lbc" | "wbl"
-  | "performance" | "hard-bouldering" | "limit-bouldering" | "injury"
+  | "performance" | "hard-bouldering" | "limit-bouldering" | "campus" | "injury"
   | "cardio" | "stretching" | "freeform";
 
 export type FreeformEntry = { key: string; value: string };
 export type FreeformSection = { name: string; entries: FreeformEntry[] };
+
+/** One campus-board set row: rung size + ladder name + hand sequence + optional note. */
+export type CampusSet = { rung: string; name: string; sequence: string; note?: string };
 
 export type GymData =
   | { type: "arc";              climbMin: number; routes?: number; downclimb?: string; wallMin?: number; maxGrade?: string }
@@ -20,6 +23,7 @@ export type GymData =
   | { type: "wbl";              topV: string; durationMin: number }
   | { type: "hard-bouldering";  level: string; durationMin: number }
   | { type: "limit-bouldering"; level: string; durationMin: number }
+  | { type: "campus";           sets: CampusSet[] }
   | { type: "injury";           bodyPart?: string; severity?: string }
   | { type: "cardio";           mode: string; durationMin: number; intensity?: string }
   | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number }
@@ -56,8 +60,10 @@ export type SessionRecord = {
 // ─── IndexedDB setup ─────────────────────────────────────────────────────────
 
 const DB_NAME = "hangboard-history";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE = "sessions";
+/** Device-local key/value store (reminder config etc.) shared with the service worker. */
+const META_STORE = "meta";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -81,10 +87,26 @@ export function getDB(): Promise<IDBPDatabase> {
           const schedStore = db.createObjectStore("schedules", { keyPath: "id" });
           schedStore.createIndex("by-date", "date", { unique: true });
         }
+        if (!db.objectStoreNames.contains(META_STORE)) {
+          // Out-of-line keys: db.put(META_STORE, value, key)
+          db.createObjectStore(META_STORE);
+        }
       },
     });
   }
   return dbPromise;
+}
+
+/** Read a device-local key/value entry from the shared `meta` store. */
+export async function getMeta<T>(key: string): Promise<T | undefined> {
+  const db = await getDB();
+  return (await db.get(META_STORE, key)) as T | undefined;
+}
+
+/** Write a device-local key/value entry to the shared `meta` store. */
+export async function setMeta(key: string, value: unknown): Promise<void> {
+  const db = await getDB();
+  await db.put(META_STORE, value, key);
 }
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────

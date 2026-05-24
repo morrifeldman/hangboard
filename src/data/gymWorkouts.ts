@@ -1,4 +1,4 @@
-import type { GymWorkoutType } from "../lib/history";
+import type { GymWorkoutType, CampusSet } from "../lib/history";
 
 export type FieldType = "number" | "text" | "grade-v" | "grade-yds" | "select" | "multi-select";
 
@@ -108,6 +108,14 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     ],
   },
   {
+    id: "campus",
+    label: "Campus",
+    description:
+      "Campus board — Metolius/Moon rung spacing. Each row is a set: pick rung size, ladder name, and hand sequence (B=both, L=left, R=right; number = rung). Starts from the standard routine — edit, add, or reset rows.",
+    category: "power",
+    fieldDefs: [], // custom row editor, like freeform
+  },
+  {
     id: "injury",
     label: "Injury",
     description: "Log an injury or pain event",
@@ -147,4 +155,36 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     category: "performance",
     fieldDefs: [],
   },
+];
+
+// ─── Campus board dropdown options + default routine ───────────────────────────
+
+export const CAMPUS_RUNGS = ["Large", "Medium", "Small"];
+export const CAMPUS_NAMES = ["Matching Ladder", "Basic Ladder", "Max Ladder"];
+
+/**
+ * Preset hand sequences grouped by ladder name. The sequence field also allows
+ * free entry, and previously-logged sequences are merged in at runtime — so
+ * Max Ladder (and the rest) stay extensible.
+ */
+export const CAMPUS_SEQUENCES: Record<string, string[]> = {
+  "Matching Ladder": ["B1-L2-R2-L3-R3-L4-B4", "B1-R2-L2-R3-L3-R4-B4"],
+  "Basic Ladder": ["B1-L2-R3-L4-R5-L6-B6", "B1-R2-L3-R4-L5-R6-B6"],
+  "Max Ladder": ["B1-L3-R4-B4", "B1-R3-L4-B4", "B1-L3-R5-B5", "B1-R3-L5-B5"],
+};
+
+/** Standard campus routine, pre-seeded into a new Campus log. */
+export const CAMPUS_TEMPLATE: CampusSet[] = [
+  { rung: "Large",  name: "Matching Ladder", sequence: "B1-L2-R2-L3-R3-L4-B4" },
+  { rung: "Large",  name: "Matching Ladder", sequence: "B1-R2-L2-R3-L3-R4-B4" },
+  { rung: "Medium", name: "Matching Ladder", sequence: "B1-L2-R2-L3-R3-L4-B4" },
+  { rung: "Medium", name: "Matching Ladder", sequence: "B1-R2-L2-R3-L3-R4-B4" },
+  { rung: "Large",  name: "Basic Ladder",    sequence: "B1-L2-R3-L4-R5-L6-B6" },
+  { rung: "Large",  name: "Basic Ladder",    sequence: "B1-R2-L3-R4-L5-R6-B6" },
+  { rung: "Medium", name: "Basic Ladder",    sequence: "B1-L2-R3-L4-R5-L6-B6" },
+  { rung: "Medium", name: "Basic Ladder",    sequence: "B1-R2-L3-R4-L5-R6-B6" },
+  { rung: "Medium", name: "Max Ladder",      sequence: "B1-L3-R4-B4" },
+  { rung: "Medium", name: "Max Ladder",      sequence: "B1-R3-L4-B4" },
+  { rung: "Medium", name: "Max Ladder",      sequence: "B1-L3-R5-B5" },
+  { rung: "Medium", name: "Max Ladder",      sequence: "B1-R3-L5-B5" },
 ];

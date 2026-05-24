@@ -53,9 +53,10 @@ jj git push --bookmark main
 - `src/lib/haptics.ts` — `navigator.vibrate` is optional-chained → no-op on desktop.
 
 ### Persistence (IDB)
-- DB: `"hangboard-history"`, version 3.
-- Stores: `"sessions"` (workout records, including gym entries), `"climbs"` (route logs), `"notes"` (dated notes).
+- DB: `"hangboard-history"`, version 5.
+- Stores: `"sessions"` (workout records, including gym entries), `"climbs"` (route logs), `"notes"` (dated notes), `"schedules"` (planner days, `by-date` unique index), `"meta"` (device-local key/value, out-of-line keys — reminder config etc., **shared with the service worker**).
 - Session index: `"by-start"` on `startedAt`.
+- `getMeta`/`setMeta` (in `history.ts`) wrap the `meta` store. The SW reads it via the raw IndexedDB API (no `idb` import) since it can't share app modules that pull DOM globals.
 
 ### Workout types
 - **Repeaters** (`workoutType: "repeaters"`) — Workout A, 2 sets of 7/6 reps, 7s hang / 3s rest.
@@ -103,9 +104,18 @@ Run `fuser -k 5173/tcp` before the E2E suite **and** before relaunching dev afte
 - **Playwright MCP screenshots** live in `screenshots/` (gitignored). Never save to repo root.
 - **Tests**: Vitest unit tests live alongside source under `src/lib/__tests__/`. Use `node` environment (set in `vitest.config.ts`); pure libraries import from `src/data/holds.ts` (NOT `src/data/workout.ts`).
 
-## Build Gotcha
+## Service worker & background reminders
 
-`vite.config.ts` sets `workbox.mode: "development"` to dodge a terser worker-pool hang that otherwise blocks `dist/sw.js` from being written. Don't switch to production mode without revisiting.
+`vite.config.ts` uses vite-plugin-pwa in **`injectManifest`** mode with a custom SW at `src/sw.ts` (Vite/esbuild bundles it, which also sidesteps the old workbox-build terser worker-pool hang — no more `workbox.mode: "development"` needed). The SW:
+- Precaches via `precacheAndRoute(self.__WB_MANIFEST)` — **reference that expression verbatim**; aliasing `self` erases workbox's injection marker and breaks the build.
+- Handles `periodicsync` (tag `daily-reminder`) → `runDailyReminder()` reads `meta`/`schedules` from IDB and fires the daily notification. Periodic Background Sync is client-only and **approximate** (Chrome decides cadence, installed Android PWA only); the foreground `maybeFireDailyReminder` (`main.tsx`) is the catch-up path.
+- Handles a `test-reminder` `postMessage` (Settings → "Send test notification") to fire immediately.
+
+`src/sw.ts` is **excluded from `tsconfig.app.json`** and typechecked by its own `tsconfig.worker.json` (WebWorker lib). Keep it self-contained — no imports of app modules that pull DOM globals (`localStorage`, `Notification`). Periodic-sync types live in `src/types/periodic-sync.d.ts` (app + worker) and `src/sw-env.d.ts` (worker-only event types).
+
+## Deploy
+
+Vercel auto-detects Vite. Push to `main` (via `jj git push --bookmark main`) → auto-deploys.
 
 ## Deploy
 

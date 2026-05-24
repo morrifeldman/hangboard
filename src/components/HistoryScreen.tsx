@@ -69,6 +69,10 @@ function gymSummary(data: GymData): string {
     case "hard-bouldering":
     case "limit-bouldering":
       return `${data.level} · ${data.durationMin} min`;
+    case "campus": {
+      const n = data.sets.length;
+      return `${n} set${n === 1 ? "" : "s"}`;
+    }
     case "injury": {
       const parts: string[] = [];
       if (data.bodyPart) parts.push(data.bodyPart);

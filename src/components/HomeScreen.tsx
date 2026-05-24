@@ -13,10 +13,11 @@ import { buildTrend } from "../lib/progressData";
 import type { TrendPoint } from "../lib/progressData";
 import {
   getSchedule,
+  normalizeDayTypes,
   SCHEDULE_TYPE_META,
   toLocalDateString,
 } from "../lib/schedules";
-import type { ScheduleRecord } from "../lib/schedules";
+import type { ScheduleDayType } from "../lib/schedules";
 
 type EditKey = { holdId: string; set: 1 | 2 } | null;
 
@@ -120,7 +121,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
 
   const [editing, setEditing] = useState<EditKey>(null);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
-  const [todaysPlan, setTodaysPlan] = useState<ScheduleRecord | null>(null);
+  const [todayTypes, setTodayTypes] = useState<ScheduleDayType[]>([]);
   const [loggedToday, setLoggedToday] = useState(false);
 
   useEffect(() => {
@@ -131,7 +132,7 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
     const todayKey = toLocalDateString(new Date());
     Promise.all([getSchedule(todayKey), getSessions(), getClimbs()])
       .then(([plan, sess, cl]) => {
-        setTodaysPlan(plan ?? null);
+        setTodayTypes(normalizeDayTypes(plan));
         const hasSession = sess.some(
           (s) => toLocalDateString(new Date(s.startedAt)) === todayKey,
         );
@@ -285,14 +286,13 @@ export function HomeScreen({ onShowHistory, onShowProgress, onLogGym, onShowPyra
         </div>
       </header>
 
-      {todaysPlan?.dayType && (
+      {todayTypes.length > 0 && !loggedToday && (
         <button
           onClick={onShowSchedule}
           data-testid="today-banner"
-          className={`mx-4 mt-3 px-3 py-2 rounded-xl text-white text-sm font-medium text-left ${SCHEDULE_TYPE_META[todaysPlan.dayType].bg}`}
+          className={`mx-4 mt-3 px-3 py-2 rounded-xl text-white text-sm font-medium text-left ${SCHEDULE_TYPE_META[todayTypes[0]].bg}`}
         >
-          Today: {SCHEDULE_TYPE_META[todaysPlan.dayType].label} day
-          {loggedToday && " · logged ✓"}
+          Today: {todayTypes.map((t) => SCHEDULE_TYPE_META[t].label).join(" + ")} day
         </button>
       )}
 

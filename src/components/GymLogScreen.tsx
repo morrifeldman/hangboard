@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
-import type { SessionRecord, GymData, GymWorkoutType, FreeformSection } from "../lib/history";
-import { GYM_WORKOUTS } from "../data/gymWorkouts";
+import type { SessionRecord, GymData, GymWorkoutType, FreeformSection, CampusSet } from "../lib/history";
+import { GYM_WORKOUTS, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES } from "../data/gymWorkouts";
 import type { GymWorkoutDef } from "../data/gymWorkouts";
 import { V_GRADES, YDS_GRADES } from "../lib/gradeUtils";
 import { useWorkoutStore } from "../store/useWorkoutStore";
@@ -87,6 +87,40 @@ function buildFreeformGymData(title: string, sections: FreeformSection[]): GymDa
   return { type: "freeform", title: trimmedTitle, sections: cleanedSections };
 }
 
+function campusTemplateSets(): CampusSet[] {
+  return CAMPUS_TEMPLATE.map((s) => ({ ...s }));
+}
+
+// Build a campus GymData; drops fully-empty rows. Returns null when no row has content.
+function buildCampusGymData(sets: CampusSet[]): GymData | null {
+  const cleaned: CampusSet[] = [];
+  for (const s of sets) {
+    const rung = s.rung.trim();
+    const name = s.name.trim();
+    const sequence = s.sequence.trim();
+    const note = s.note?.trim();
+    if (!rung && !name && !sequence && !note) continue;
+    cleaned.push({ rung, name, sequence, ...(note ? { note } : {}) });
+  }
+  if (cleaned.length === 0) return null;
+  return { type: "campus", sets: cleaned };
+}
+
+// Past campus sequences grouped by ladder name — merged with presets so the dropdowns grow.
+function collectCampusSequences(sessions: SessionRecord[]): Record<string, string[]> {
+  const byName: Record<string, Set<string>> = {};
+  for (const s of sessions) {
+    if (s.gymData?.type !== "campus") continue;
+    for (const row of s.gymData.sets) {
+      if (!row.name || !row.sequence) continue;
+      (byName[row.name] ??= new Set<string>()).add(row.sequence);
+    }
+  }
+  const out: Record<string, string[]> = {};
+  for (const [name, set] of Object.entries(byName)) out[name] = Array.from(set);
+  return out;
+}
+
 function collectFreeformAutocomplete(sessions: SessionRecord[]): {
   keys: string[];
   sectionNames: string[];
@@ -128,7 +162,11 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   );
   const [workoutType, setWorkoutType] = useState<GymWorkoutType>(initialWorkoutType);
   const [fields, setFields] = useState<Record<string, string>>(() =>
-    initialRecord?.gymData ? gymDataToFields(initialRecord.gymData) : (gymDefaults[initialWorkoutType] ?? {})
+    initialRecord?.gymData &&
+    initialRecord.gymData.type !== "freeform" &&
+    initialRecord.gymData.type !== "campus"
+      ? gymDataToFields(initialRecord.gymData)
+      : (gymDefaults[initialWorkoutType] ?? {})
   );
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -146,6 +184,13 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       : emptyFreeformSections()
   );
 
+  const initialCampus =
+    initialRecord?.gymData?.type === "campus" ? initialRecord.gymData : null;
+  const [campusSets, setCampusSets] = useState<CampusSet[]>(() =>
+    initialCampus ? initialCampus.sets.map((s) => ({ ...s })) : campusTemplateSets(),
+  );
+  const [campusSeqByName, setCampusSeqByName] = useState<Record<string, string[]>>({});
+
   const [freeformKeys, setFreeformKeys] = useState<string[]>([]);
   const [freeformSectionNames, setFreeformSectionNames] = useState<string[]>([]);
   const [lastFreeform, setLastFreeform] = useState<SessionRecord | undefined>();
@@ -157,6 +202,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       const { keys, sectionNames, lastFreeform } = collectFreeformAutocomplete(sessions);
       setFreeformKeys(keys);
       setFreeformSectionNames(sectionNames);
+      setCampusSeqByName(collectCampusSequences(sessions));
       // When editing, don't surface the current record as "last" — that's the one being edited.
       const last = editing ? sessions.find((s) => s.id !== initialRecord?.id && s.gymData?.type === "freeform") : lastFreeform;
       setLastFreeform(last);
@@ -165,15 +211,26 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   }, [editing, initialRecord?.id]);
 
   const def = GYM_WORKOUTS.find((w) => w.id === workoutType)!;
+  const isCampus = workoutType === "campus";
   const freeformGymData =
     workoutType === "freeform" ? buildFreeformGymData(freeformTitle, freeformSections) : null;
+  const campusGymData = isCampus ? buildCampusGymData(campusSets) : null;
   const valid =
-    workoutType === "freeform" ? freeformGymData !== null : isFormValid(def, fields);
+    workoutType === "freeform"
+      ? freeformGymData !== null
+      : isCampus
+        ? campusGymData !== null
+        : isFormValid(def, fields);
+
+  // Per-ladder-name sequence options: presets ∪ previously-logged.
+  const sequencesFor = (name: string): string[] =>
+    Array.from(new Set([...(CAMPUS_SEQUENCES[name] ?? []), ...(campusSeqByName[name] ?? [])]));
 
   const handleWorkoutTypeChange = (t: GymWorkoutType) => {
     if (editing) return;
     setWorkoutType(t);
     setFields(gymDefaults[t] ?? {});
+    if (t === "campus") setCampusSets(campusTemplateSets());
   };
 
   const useLastFreeform = () => {
@@ -217,6 +274,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const removeFreeformSection = (sIdx: number) =>
     setFreeformSections((prev) => prev.filter((_, i) => i !== sIdx));
 
+  const setCampusRow = (i: number, patch: Partial<CampusSet>) =>
+    setCampusSets((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const addCampusRow = () =>
+    setCampusSets((prev) => [...prev, { rung: "", name: "", sequence: "" }]);
+  const removeCampusRow = (i: number) =>
+    setCampusSets((prev) => prev.filter((_, j) => j !== i));
+  const resetCampusTemplate = () => setCampusSets(campusTemplateSets());
+
   const setField = (key: string, value: string) =>
     setFields((prev) => ({ ...prev, [key]: value }));
 
@@ -230,7 +295,11 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   const handleSave = async () => {
     const gymData =
-      workoutType === "freeform" ? freeformGymData : buildGymData(def, fields);
+      workoutType === "freeform"
+        ? freeformGymData
+        : workoutType === "campus"
+          ? campusGymData
+          : buildGymData(def, fields);
     if (!gymData) return;
     setSaving(true);
     try {
@@ -261,7 +330,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       }
       // Freeform shape doesn't fit the flat Record<string,string> defaults store;
       // "Use last freeform" handles carry-forward instead.
-      if (workoutType !== "freeform") {
+      if (workoutType !== "freeform" && workoutType !== "campus") {
         setGymDefaults(workoutType, fields);
       }
       onSaved();
@@ -298,7 +367,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         </h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-8 flex flex-col gap-5">
         {/* Date + Time */}
         <div className="flex items-center gap-3">
           <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
@@ -432,6 +501,101 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             <datalist id="freeform-section-names">
               {freeformSectionNames.map((n) => <option key={n} value={n} />)}
             </datalist>
+          </div>
+        ) : isCampus ? (
+          <div className="flex flex-col gap-3">
+            {!editing && (
+              <button
+                type="button"
+                onClick={resetCampusTemplate}
+                className="self-start text-xs font-semibold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-full border border-orange-500/40 bg-orange-500/10"
+              >
+                ↺ Reset to routine
+              </button>
+            )}
+            {campusSets.map((row, i) => {
+              // Presets ∪ previously-saved ∪ sequences already used by same-Name rows
+              // in this form — so a custom entry is instantly reusable across sibling sets.
+              const seqOptions = Array.from(
+                new Set([
+                  ...sequencesFor(row.name),
+                  ...campusSets
+                    .filter((r) => r.name === row.name && r.sequence)
+                    .map((r) => r.sequence),
+                ]),
+              );
+              const nameOptions = Array.from(
+                new Set([
+                  ...CAMPUS_NAMES,
+                  ...(row.name && !CAMPUS_NAMES.includes(row.name) ? [row.name] : []),
+                ]),
+              );
+              return (
+                <div key={i} className="bg-gray-800 rounded-xl p-2 flex items-center gap-1.5">
+                  <select
+                    value={row.rung}
+                    onChange={(e) => setCampusRow(i, { rung: e.target.value })}
+                    aria-label="Rung size"
+                    className="shrink-0 bg-gray-700 text-white rounded-lg px-1.5 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                  >
+                    <option value="" disabled hidden>Rung</option>
+                    {CAMPUS_RUNGS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  <select
+                    value={row.name}
+                    onChange={(e) => setCampusRow(i, { name: e.target.value })}
+                    aria-label="Ladder name"
+                    className="shrink-0 max-w-[7rem] bg-gray-700 text-white rounded-lg px-1.5 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                  >
+                    <option value="" disabled hidden>Name</option>
+                    {nameOptions.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <select
+                    value={row.sequence}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        const v = window.prompt(
+                          "Hand sequence (B=both, L=left, R=right; number = rung)",
+                          row.sequence,
+                        );
+                        if (v != null) setCampusRow(i, { sequence: v.trim() });
+                      } else {
+                        setCampusRow(i, { sequence: e.target.value });
+                      }
+                    }}
+                    aria-label="Hand sequence"
+                    className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg px-1.5 py-1.5 text-xs font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                  >
+                    <option value="" disabled hidden>Sequence</option>
+                    {seqOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                    <option value="__custom__">+ Custom…</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={row.note ?? ""}
+                    onChange={(e) => setCampusRow(i, { note: e.target.value })}
+                    placeholder="Note"
+                    aria-label="Set note"
+                    className="flex-1 min-w-0 bg-gray-700/60 text-white rounded-lg px-1.5 py-1.5 text-xs placeholder-gray-500 border border-gray-700 focus:outline-none focus:border-orange-500/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeCampusRow(i)}
+                    aria-label="Remove set"
+                    className="shrink-0 text-gray-500 hover:text-red-400 text-lg leading-none w-6 h-7 flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={addCampusRow}
+              className="self-start text-xs font-semibold text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800"
+            >
+              + Add set
+            </button>
           </div>
         ) : def && def.fieldDefs.length > 0 && (
           <div className="bg-gray-800 rounded-xl overflow-hidden">

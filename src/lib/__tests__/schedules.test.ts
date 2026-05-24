@@ -2,21 +2,26 @@ import { describe, it, expect } from "vitest";
 import {
   toLocalDateString,
   startOfWeek,
-  addDays,
   buildScheduleWeeks,
+  normalizeDayTypes,
+  typeMatches,
 } from "../schedules";
-import type { ScheduleRecord } from "../schedules";
+import type { ScheduleDayType, ScheduleRecord } from "../schedules";
 import type { SessionRecord } from "../history";
 import type { ClimbRecord } from "../climbs";
 
-function makeSchedule(date: string, dayType: ScheduleRecord["dayType"]): ScheduleRecord {
-  return { id: `s-${date}`, date, dayType, createdAt: 0, updatedAt: 0 };
+function makeSchedule(date: string, dayTypes: ScheduleDayType[]): ScheduleRecord {
+  return { id: `s-${date}`, date, dayTypes, createdAt: 0, updatedAt: 0 };
 }
 
-function makeSessionOn(date: Date, id = "sess-1"): SessionRecord {
+function makeSessionOn(
+  date: Date,
+  workoutType: SessionRecord["workoutType"] = "repeaters",
+  id = "sess-1",
+): SessionRecord {
   return {
     id,
-    workoutType: "repeaters",
+    workoutType,
     startedAt: date.getTime(),
     completedAt: date.getTime() + 1000,
     bailed: false,
@@ -24,7 +29,11 @@ function makeSessionOn(date: Date, id = "sess-1"): SessionRecord {
   };
 }
 
-function makeClimb(date: string, id = "climb-1"): ClimbRecord {
+function makeClimb(
+  date: string,
+  overrides: Partial<ClimbRecord> = {},
+  id = "climb-1",
+): ClimbRecord {
   return {
     id,
     route: "Test",
@@ -36,6 +45,7 @@ function makeClimb(date: string, id = "climb-1"): ClimbRecord {
     climbs: 1,
     date,
     notes: "",
+    ...overrides,
   };
 }
 
@@ -72,6 +82,80 @@ describe("startOfWeek", () => {
   });
 });
 
+describe("normalizeDayTypes", () => {
+  it("returns the dayTypes array when present", () => {
+    expect(normalizeDayTypes({ dayTypes: ["power", "rest"] })).toEqual(["power", "rest"]);
+  });
+
+  it("folds a legacy single dayType into an array", () => {
+    expect(normalizeDayTypes({ dayType: "endurance" })).toEqual(["endurance"]);
+  });
+
+  it("prefers dayTypes over a stale legacy dayType", () => {
+    expect(normalizeDayTypes({ dayTypes: ["outdoor"], dayType: "power" })).toEqual(["outdoor"]);
+  });
+
+  it("returns [] for an empty or missing record", () => {
+    expect(normalizeDayTypes(undefined)).toEqual([]);
+    expect(normalizeDayTypes({})).toEqual([]);
+  });
+});
+
+describe("typeMatches (generous)", () => {
+  const day = new Date(2026, 4, 19, 9, 0);
+
+  it("hangboard matches any hangboard session", () => {
+    expect(typeMatches("hangboard", [makeSessionOn(day, "max-hang")], [])).toBe(true);
+    expect(typeMatches("hangboard", [makeSessionOn(day, "arc")], [])).toBe(false);
+  });
+
+  it("power matches max-hang, bouldering gym types, or a boulder climb", () => {
+    expect(typeMatches("power", [makeSessionOn(day, "max-hang")], [])).toBe(true);
+    expect(typeMatches("power", [makeSessionOn(day, "limit-bouldering")], [])).toBe(true);
+    expect(typeMatches("power", [], [makeClimb("2026-05-19", { type: "boulder" })])).toBe(true);
+    expect(typeMatches("power", [makeSessionOn(day, "arc")], [])).toBe(false);
+    // wbl is a warm-up, not power
+    expect(typeMatches("power", [makeSessionOn(day, "wbl")], [])).toBe(false);
+    // campus board is contact-strength → power
+    expect(typeMatches("power", [makeSessionOn(day, "campus")], [])).toBe(true);
+  });
+
+  it("endurance matches repeaters, arc/cir/pe-route/lbc, or a sport climb", () => {
+    expect(typeMatches("endurance", [makeSessionOn(day, "repeaters")], [])).toBe(true);
+    expect(typeMatches("endurance", [makeSessionOn(day, "arc")], [])).toBe(true);
+    expect(typeMatches("endurance", [], [makeClimb("2026-05-19", { type: "sport" })])).toBe(true);
+    expect(typeMatches("endurance", [makeSessionOn(day, "max-hang")], [])).toBe(false);
+  });
+
+  it("bouldering matches any boulder climb or bouldering gym types", () => {
+    expect(typeMatches("bouldering", [], [makeClimb("2026-05-19", { type: "boulder" })])).toBe(true);
+    expect(typeMatches("bouldering", [makeSessionOn(day, "hard-bouldering")], [])).toBe(true);
+    expect(typeMatches("bouldering", [makeSessionOn(day, "wbl")], [])).toBe(true);
+    expect(typeMatches("bouldering", [], [makeClimb("2026-05-19", { type: "sport" })])).toBe(false);
+  });
+
+  it("outdoor matches any outdoor climb", () => {
+    expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "outdoor" })])).toBe(true);
+    expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "indoor" })])).toBe(false);
+  });
+
+  it("stretching matches a stretching session", () => {
+    expect(typeMatches("stretching", [makeSessionOn(day, "stretching")], [])).toBe(true);
+    expect(typeMatches("stretching", [makeSessionOn(day, "repeaters")], [])).toBe(false);
+  });
+
+  it("rest matches when nothing — or only stretching — was logged", () => {
+    expect(typeMatches("rest", [], [])).toBe(true);
+    expect(typeMatches("rest", [makeSessionOn(day, "stretching")], [])).toBe(true);
+    expect(typeMatches("rest", [makeSessionOn(day)], [])).toBe(false);
+    // stretching plus anything else (a session or a climb) breaks the rest day
+    expect(
+      typeMatches("rest", [makeSessionOn(day, "stretching"), makeSessionOn(day, "repeaters", "s2")], []),
+    ).toBe(false);
+    expect(typeMatches("rest", [makeSessionOn(day, "stretching")], [makeClimb("2026-05-19")])).toBe(false);
+  });
+});
+
 describe("buildScheduleWeeks", () => {
   const start = new Date(2026, 4, 18); // Mon May 18, 2026
   const today = new Date(2026, 4, 20); // Wed May 20
@@ -99,34 +183,43 @@ describe("buildScheduleWeeks", () => {
     expect(todays[0].date).toBe("2026-05-20");
   });
 
-  it("assigns planned-and-logged when a scheduled past day has a session that day", () => {
-    const yesterday = addDays(today, -1); // Tue May 19
-    const session = makeSessionOn(new Date(2026, 4, 19, 9, 0));
-    const sched = [makeSchedule("2026-05-19", "power")];
-    const weeks = buildScheduleWeeks(start, 1, sched, [session], [], today);
-    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
-    expect(day.dayType).toBe("power");
-    expect(day.adherence).toBe("planned-and-logged");
-    expect(day.logged.sessions).toHaveLength(1);
-    expect(yesterday.getDate()).toBe(19); // sanity
-  });
-
-  it("assigns planned-not-logged for a past scheduled day with no log", () => {
-    const sched = [makeSchedule("2026-05-19", "endurance")];
+  it("normalizes a legacy single-dayType record into dayTypes", () => {
+    const sched: ScheduleRecord[] = [
+      { id: "legacy", date: "2026-05-19", dayType: "power", createdAt: 0, updatedAt: 0 },
+    ];
     const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
     const day = weeks[0].find((d) => d.date === "2026-05-19")!;
-    expect(day.adherence).toBe("planned-not-logged");
+    expect(day.dayTypes).toEqual(["power"]);
   });
 
-  it("distinguishes planned-future from unplanned-logged", () => {
-    const sched = [makeSchedule("2026-05-23", "outdoor")]; // future Saturday
-    const climbToday = makeClimb("2026-05-20"); // today, unplanned
-    const weeks = buildScheduleWeeks(start, 1, sched, [], [climbToday], today);
+  it("marks a planned type 'done' when a matching session was logged that day", () => {
+    const session = makeSessionOn(new Date(2026, 4, 19, 9, 0), "repeaters");
+    const sched = [makeSchedule("2026-05-19", ["hangboard"])];
+    const weeks = buildScheduleWeeks(start, 1, sched, [session], [], today);
+    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
+    expect(day.dayTypes).toEqual(["hangboard"]);
+    expect(day.typeStatus).toEqual([{ type: "hangboard", state: "done" }]);
+    expect(day.adherence).toBe("planned-and-logged");
+  });
+
+  it("marks done and missed per-type on a multi-type past day", () => {
+    // logged a sport climb → endurance done; power (no boulder/max-hang) → missed
+    const sched = [makeSchedule("2026-05-19", ["power", "endurance"])];
+    const climb = makeClimb("2026-05-19", { type: "sport", setting: "indoor" });
+    const weeks = buildScheduleWeeks(start, 1, sched, [], [climb], today);
+    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
+    expect(day.typeStatus).toEqual([
+      { type: "power", state: "missed" },
+      { type: "endurance", state: "done" },
+    ]);
+  });
+
+  it("marks an unlogged future planned type as 'upcoming'", () => {
+    const sched = [makeSchedule("2026-05-23", ["outdoor"])]; // future Saturday
+    const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
     const future = weeks[0].find((d) => d.date === "2026-05-23")!;
-    const todayCell = weeks[0].find((d) => d.date === "2026-05-20")!;
+    expect(future.typeStatus).toEqual([{ type: "outdoor", state: "upcoming" }]);
     expect(future.adherence).toBe("planned-future");
-    expect(todayCell.adherence).toBe("unplanned-logged");
-    expect(todayCell.dayType).toBeUndefined();
   });
 
   it("treats a note-only schedule record as unplanned and surfaces the note", () => {
@@ -135,19 +228,8 @@ describe("buildScheduleWeeks", () => {
     ];
     const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
     const day = weeks[0].find((d) => d.date === "2026-05-19")!;
-    expect(day.dayType).toBeUndefined();
+    expect(day.dayTypes).toEqual([]);
     expect(day.note).toBe("felt strong");
     expect(day.adherence).toBe("none");
-  });
-
-  it("keeps a typed day with a note as planned and surfaces both", () => {
-    const sched: ScheduleRecord[] = [
-      { id: "n-2", date: "2026-05-19", dayType: "power", note: "tweaked finger", createdAt: 0, updatedAt: 0 },
-    ];
-    const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
-    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
-    expect(day.dayType).toBe("power");
-    expect(day.note).toBe("tweaked finger");
-    expect(day.adherence).toBe("planned-not-logged");
   });
 });

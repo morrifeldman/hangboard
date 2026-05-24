@@ -10,15 +10,17 @@ export type ScheduleDayType =
   | "hangboard"
   | "outdoor"
   | "bouldering"
+  | "stretching"
   | "rest";
 
-export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: string }> = {
-  power: { label: "Power", bg: "bg-red-600" },
-  endurance: { label: "Endurance", bg: "bg-blue-600" },
-  hangboard: { label: "Hangboard", bg: "bg-indigo-600" },
-  outdoor: { label: "Outdoor", bg: "bg-teal-600" },
-  bouldering: { label: "Bouldering", bg: "bg-amber-600" },
-  rest: { label: "Rest", bg: "bg-gray-600" },
+export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: string; dot: string }> = {
+  power: { label: "Power", bg: "bg-red-600", dot: "bg-red-400" },
+  endurance: { label: "Endurance", bg: "bg-blue-600", dot: "bg-blue-400" },
+  hangboard: { label: "Hangboard", bg: "bg-indigo-600", dot: "bg-indigo-400" },
+  outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
+  bouldering: { label: "Bouldering", bg: "bg-amber-600", dot: "bg-amber-400" },
+  stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
+  rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
 };
 
 export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
@@ -27,17 +29,29 @@ export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
   "hangboard",
   "outdoor",
   "bouldering",
+  "stretching",
   "rest",
 ];
 
 export type ScheduleRecord = {
   id: string;
   date: string; // YYYY-MM-DD (local)
+  dayTypes?: ScheduleDayType[];
+  /** @deprecated legacy single-type field; read-only, kept for back-compat */
   dayType?: ScheduleDayType;
   note?: string;
   createdAt: number;
   updatedAt: number;
 };
+
+/** Normalize a record's planned types, folding the legacy single `dayType`. */
+export function normalizeDayTypes(
+  r: Pick<ScheduleRecord, "dayTypes" | "dayType"> | undefined | null,
+): ScheduleDayType[] {
+  if (!r) return [];
+  if (r.dayTypes) return r.dayTypes;
+  return r.dayType ? [r.dayType] : [];
+}
 
 export type Adherence =
   | "planned-and-logged"
@@ -46,16 +60,65 @@ export type Adherence =
   | "planned-future"
   | "none";
 
+/** Per-planned-type completion state for a day. */
+export type TypeStatus = {
+  type: ScheduleDayType;
+  state: "done" | "missed" | "upcoming";
+};
+
 export type ScheduleDay = {
   date: string;
   jsDate: Date;
   isToday: boolean;
   isPast: boolean;
-  dayType?: ScheduleDayType;
+  dayTypes: ScheduleDayType[];
+  typeStatus: TypeStatus[];
   note?: string;
   logged: { sessions: SessionRecord[]; climbs: ClimbRecord[] };
   adherence: Adherence;
 };
+
+// ─── Generous per-type matching ───────────────────────────────────────────────
+
+/**
+ * Generously decide whether anything logged on a day could be construed as
+ * satisfying a planned type. `rest` is special: it is "matched" when nothing
+ * was logged, or when the only thing logged was stretching (stretching is
+ * compatible with a rest day).
+ */
+export function typeMatches(
+  type: ScheduleDayType,
+  sessions: ReadonlyArray<SessionRecord>,
+  climbs: ReadonlyArray<ClimbRecord>,
+): boolean {
+  const workouts = new Set(sessions.map((s) => s.workoutType));
+  const has = (...kinds: SessionRecord["workoutType"][]) =>
+    kinds.some((k) => workouts.has(k));
+  const anyBoulder = climbs.some((c) => c.type === "boulder");
+  const anySport = climbs.some((c) => c.type === "sport");
+
+  switch (type) {
+    case "hangboard":
+      return has("repeaters", "max-hang", "beginner");
+    case "power":
+      // wbl is a warm-up boulder ladder, not a power session — excluded here.
+      return (
+        has("max-hang", "performance", "hard-bouldering", "limit-bouldering", "campus") ||
+        anyBoulder
+      );
+    case "endurance":
+      return has("repeaters", "arc", "cir", "pe-route", "lbc") || anySport;
+    case "bouldering":
+      return anyBoulder || has("hard-bouldering", "limit-bouldering", "wbl");
+    case "outdoor":
+      return climbs.some((c) => c.setting === "outdoor");
+    case "stretching":
+      return has("stretching");
+    case "rest":
+      // Resting — or only stretching — keeps a rest day satisfied.
+      return climbs.length === 0 && sessions.every((s) => s.workoutType === "stretching");
+  }
+}
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
@@ -120,7 +183,14 @@ export function buildScheduleWeeks(
       const isToday = date === todayKey;
       const isPast = date < todayKey;
 
-      const planned = !!plan?.dayType;
+      const dayTypes = normalizeDayTypes(plan);
+      const planned = dayTypes.length > 0;
+
+      const typeStatus: TypeStatus[] = dayTypes.map((type) => {
+        if (typeMatches(type, daySessions, dayClimbs)) return { type, state: "done" };
+        return { type, state: isPast ? "missed" : "upcoming" };
+      });
+
       let adherence: Adherence;
       if (planned && hasLog) adherence = "planned-and-logged";
       else if (planned && !hasLog && isPast) adherence = "planned-not-logged";
@@ -133,7 +203,8 @@ export function buildScheduleWeeks(
         jsDate,
         isToday,
         isPast,
-        dayType: plan?.dayType,
+        dayTypes,
+        typeStatus,
         note: plan?.note,
         logged: { sessions: daySessions, climbs: dayClimbs },
         adherence,
@@ -170,7 +241,7 @@ export async function getSchedule(date: string): Promise<ScheduleRecord | undefi
  */
 export async function upsertSchedule(input: {
   date: string;
-  dayType?: ScheduleDayType;
+  dayTypes?: ScheduleDayType[];
   note?: string;
 }): Promise<ScheduleRecord | undefined> {
   const db = await getDB();
@@ -178,29 +249,29 @@ export async function upsertSchedule(input: {
   const index = tx.store.index("by-date");
   const existing = (await index.get(input.date)) as ScheduleRecord | undefined;
 
-  const nextDayType =
-    "dayType" in input ? input.dayType : existing?.dayType;
+  const nextDayTypes =
+    "dayTypes" in input ? (input.dayTypes ?? []) : normalizeDayTypes(existing);
   const trimmedNote = input.note?.trim();
   const nextNote =
     "note" in input ? (trimmedNote ? trimmedNote : undefined) : existing?.note;
 
-  if (!nextDayType && !nextNote) {
+  if (nextDayTypes.length === 0 && !nextNote) {
     if (existing) await tx.store.delete(existing.id);
     await tx.done;
     return undefined;
   }
 
   const now = Date.now();
-  const record: ScheduleRecord = existing
-    ? { ...existing, dayType: nextDayType, note: nextNote, updatedAt: now }
-    : {
-        id: crypto.randomUUID(),
-        date: input.date,
-        dayType: nextDayType,
-        note: nextNote,
-        createdAt: now,
-        updatedAt: now,
-      };
+  const base = existing
+    ? { ...existing, updatedAt: now }
+    : { id: crypto.randomUUID(), date: input.date, createdAt: now, updatedAt: now };
+  // Drop the legacy single-type field; persist the array form going forward.
+  const record: ScheduleRecord = {
+    ...base,
+    dayTypes: nextDayTypes,
+    dayType: undefined,
+    note: nextNote,
+  };
   await tx.store.put(record);
   await tx.done;
   return record;

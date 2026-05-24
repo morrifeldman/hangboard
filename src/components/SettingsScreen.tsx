@@ -10,11 +10,15 @@ import { getSessions } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import {
   getPrefs,
+  periodicReminderStatus,
   permissionStatus,
+  registerPeriodicReminder,
   requestPermission,
+  sendTestNotification,
   setPrefs,
+  unregisterPeriodicReminder,
 } from "../lib/notifications";
-import type { NotificationPrefs } from "../lib/notifications";
+import type { NotificationPrefs, PeriodicReminderSupport } from "../lib/notifications";
 import { BackChevronIcon, GearIcon } from "./icons";
 
 type Props = {
@@ -39,6 +43,8 @@ export function SettingsScreen({ onBack }: Props) {
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
     () => permissionStatus(),
   );
+  const [bgStatus, setBgStatus] = useState<PeriodicReminderSupport>("unsupported");
+  const [notifTest, setNotifTest] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs()])
@@ -46,9 +52,14 @@ export function SettingsScreen({ onBack }: Props) {
       .catch(() => setCounts({ sessions: 0, climbs: 0 }));
   }, []);
 
+  useEffect(() => {
+    periodicReminderStatus().then(setBgStatus).catch(() => setBgStatus("unsupported"));
+  }, []);
+
   const handleToggleNotif = async () => {
     if (notifPrefs.enabled) {
       setNotifPrefs(setPrefs({ enabled: false }));
+      void unregisterPeriodicReminder();
       return;
     }
     if (notifPermission !== "granted") {
@@ -57,10 +68,22 @@ export function SettingsScreen({ onBack }: Props) {
       if (result !== "granted") return;
     }
     setNotifPrefs(setPrefs({ enabled: true }));
+    await registerPeriodicReminder();
+    setBgStatus(await periodicReminderStatus());
   };
 
   const handleTimeChange = (time: string) => {
     setNotifPrefs(setPrefs({ time }));
+  };
+
+  const handleTestNotif = async () => {
+    if (notifPermission !== "granted") {
+      const result = await requestPermission();
+      setNotifPermission(result);
+      if (result !== "granted") return;
+    }
+    const ok = await sendTestNotification();
+    setNotifTest(ok ? "Sent — check your notifications." : "Couldn't send a test notification.");
   };
 
   const clearMessages = () => {
@@ -204,9 +227,9 @@ export function SettingsScreen({ onBack }: Props) {
         <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3" data-testid="settings-notifications">
           <h2 className="text-white font-semibold text-base">Daily reminder</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
-            Browser notification when today has a planned workout. Fires on the
-            next app open at or after your chosen time, once per day. Closed-app
-            delivery isn&apos;t supported on the web.
+            Notification when today has a planned workout, once per day at or
+            after your chosen time. Fires on app open, and — on an installed
+            Android PWA — in the background too.
           </p>
           <label className="flex items-center justify-between gap-3">
             <span className="text-white text-sm">Enable</span>
@@ -229,6 +252,19 @@ export function SettingsScreen({ onBack }: Props) {
               data-testid="settings-notif-time"
             />
           </label>
+          <button
+            onClick={handleTestNotif}
+            disabled={notifPermission === "unsupported"}
+            className="self-start px-3 py-1.5 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white text-xs font-semibold"
+            data-testid="settings-notif-test"
+          >
+            Send test notification
+          </button>
+          {notifTest && (
+            <p className="text-gray-400 text-xs" data-testid="settings-notif-test-status">
+              {notifTest}
+            </p>
+          )}
           {notifPermission === "denied" && (
             <p className="text-amber-400 text-xs">
               Browser notifications are blocked — enable them in your browser or
@@ -238,6 +274,20 @@ export function SettingsScreen({ onBack }: Props) {
           {notifPermission === "unsupported" && (
             <p className="text-amber-400 text-xs">
               This browser doesn&apos;t support notifications.
+            </p>
+          )}
+          {notifPrefs.enabled && bgStatus === "granted" && (
+            <p className="text-gray-500 text-xs leading-relaxed">
+              Background reminders are on. Timing is approximate — Android
+              decides when to wake the app (roughly daily), so the alert may
+              arrive a while after your set time.
+            </p>
+          )}
+          {notifPrefs.enabled && bgStatus !== "granted" && (
+            <p className="text-gray-500 text-xs leading-relaxed">
+              Background delivery isn&apos;t available here, so reminders fire
+              on the next app open. Install Cairn to your Android home screen
+              and use it a few times to enable closed-app reminders.
             </p>
           )}
         </section>

@@ -9,7 +9,12 @@ import {
   startOfWeek,
   upsertSchedule,
 } from "../lib/schedules";
-import type { Adherence, ScheduleDay, ScheduleDayType, ScheduleRecord } from "../lib/schedules";
+import type {
+  ScheduleDay,
+  ScheduleDayType,
+  ScheduleRecord,
+  TypeStatus,
+} from "../lib/schedules";
 import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
@@ -54,14 +59,12 @@ export function ScheduleScreen({ onBack }: Props) {
     setSchedules(next);
   };
 
-  const handlePick = async (date: string, dayType: ScheduleDayType, note: string) => {
-    await upsertSchedule({ date, dayType, note });
-    await refreshSchedules();
-    setEditingDate(null);
-  };
-
-  const handleSaveNote = async (date: string, note: string) => {
-    await upsertSchedule({ date, note });
+  const handleSave = async (
+    date: string,
+    dayTypes: ScheduleDayType[],
+    note: string,
+  ) => {
+    await upsertSchedule({ date, dayTypes, note });
     await refreshSchedules();
     setEditingDate(null);
   };
@@ -125,16 +128,17 @@ export function ScheduleScreen({ onBack }: Props) {
         </button>
 
         <p className="text-gray-600 text-xs leading-relaxed">
-          Tap a day to set Power, Endurance, Hangboard, Outdoor, Bouldering, or
-          Rest. Past planned days show a green dot when something was logged.
+          Tap a day to plan one or more of Power, Endurance, Hangboard, Outdoor,
+          Bouldering, Stretching, or Rest. Each plan shows a colored dot — it
+          turns into a checkmark once you log something that fits, or a struck
+          dot if a past day went unlogged.
         </p>
       </main>
 
       {editingDay && (
         <EditSheet
           day={editingDay}
-          onPick={(t, n) => handlePick(editingDay.date, t, n)}
-          onSaveNote={(n) => handleSaveNote(editingDay.date, n)}
+          onSave={(types, n) => handleSave(editingDay.date, types, n)}
           onClear={() => handleClear(editingDay.date)}
           onCancel={() => setEditingDate(null)}
         />
@@ -154,25 +158,26 @@ function DayChip({
   letter: string;
   onClick: () => void;
 }) {
-  const bg = day.dayType ? SCHEDULE_TYPE_META[day.dayType].bg : "bg-gray-800";
   const ring = day.isToday ? "ring-2 ring-white/70" : "";
+  const statusAttr = day.typeStatus.map((s) => `${s.type}:${s.state}`).join(",");
   return (
     <button
       onClick={onClick}
       data-testid={`schedule-day-${day.date}`}
-      data-day-type={day.dayType ?? ""}
+      data-day-types={day.dayTypes.join(",")}
+      data-type-status={statusAttr}
       data-adherence={day.adherence}
-      className={`relative aspect-square rounded-lg ${bg} ${ring} flex flex-col items-center justify-center text-white active:scale-95 transition-transform`}
+      className={`relative aspect-square rounded-lg bg-gray-800 ${ring} flex flex-col items-center justify-center text-white active:scale-95 transition-transform`}
     >
       <span className="text-[10px] leading-none text-white/70">{letter}</span>
       <span className="text-base font-bold leading-tight">
         {day.jsDate.getDate()}
       </span>
-      <AdherenceDot adherence={day.adherence} />
+      <TypeRow statuses={day.typeStatus} />
       {day.note && (
         <NoteIcon
           size={14}
-          className="absolute bottom-1 right-1 text-white/90"
+          className="absolute top-1 right-1 text-white/90"
           aria-label="Has note"
         />
       )}
@@ -180,54 +185,55 @@ function DayChip({
   );
 }
 
-function AdherenceDot({ adherence }: { adherence: ScheduleDay["adherence"] }) {
-  if (adherence === "none" || adherence === "planned-future") return null;
-  const cls =
-    adherence === "planned-and-logged"
-      ? "bg-green-400"
-      : adherence === "planned-not-logged"
-        ? "bg-amber-400"
-        : "bg-gray-400"; // unplanned-logged
+/** Row of per-type markers along the bottom of a day square. */
+function TypeRow({ statuses }: { statuses: TypeStatus[] }) {
+  if (statuses.length === 0) return null;
+  return (
+    <span className="absolute bottom-1 left-0 right-0 flex items-center justify-center gap-0.5">
+      {statuses.map((s) => (
+        <TypeMarker key={s.type} status={s} />
+      ))}
+    </span>
+  );
+}
+
+function TypeMarker({ status }: { status: TypeStatus }) {
+  const { type, state } = status;
+  const meta = SCHEDULE_TYPE_META[type];
+  const color = meta.dot.replace("bg-", "text-");
+  if (state === "done") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className={`w-3 h-3 ${color}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-label={`${meta.label} done`}
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    );
+  }
+  if (state === "missed") {
+    return (
+      <span className="relative inline-flex w-2 h-2" aria-label={`${meta.label} missed`}>
+        <span className={`absolute inset-0 rounded-full ${meta.dot} opacity-40`} />
+        <span className="absolute left-1/2 top-1/2 w-[3px] h-0.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white/80" />
+      </span>
+    );
+  }
   return (
     <span
-      className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full ${cls}`}
-      aria-hidden="true"
+      className={`w-2 h-2 rounded-full ${meta.dot}`}
+      aria-label={`${meta.label} planned`}
     />
   );
 }
 
 // ─── EditSheet ───────────────────────────────────────────────────────────────
-
-const ADHERENCE_META: Record<
-  Adherence,
-  { dot: string | null; dotClass: string; label: string }
-> = {
-  "planned-and-logged": {
-    dot: "Green",
-    dotClass: "bg-green-400",
-    label: "Planned and logged",
-  },
-  "planned-not-logged": {
-    dot: "Amber",
-    dotClass: "bg-amber-400",
-    label: "Planned but nothing logged",
-  },
-  "unplanned-logged": {
-    dot: "Gray",
-    dotClass: "bg-gray-400",
-    label: "Logged without a plan",
-  },
-  "planned-future": {
-    dot: null,
-    dotClass: "",
-    label: "Planned, upcoming",
-  },
-  none: {
-    dot: null,
-    dotClass: "",
-    label: "No plan, nothing logged",
-  },
-};
 
 function loggedSummary(day: ScheduleDay): string | null {
   const s = day.logged.sessions.length;
@@ -239,16 +245,20 @@ function loggedSummary(day: ScheduleDay): string | null {
   return parts.join(" · ");
 }
 
+const STATE_LABEL: Record<TypeStatus["state"], string> = {
+  done: "done",
+  missed: "missed",
+  upcoming: "planned",
+};
+
 function EditSheet({
   day,
-  onPick,
-  onSaveNote,
+  onSave,
   onClear,
   onCancel,
 }: {
   day: ScheduleDay;
-  onPick: (t: ScheduleDayType, note: string) => void;
-  onSaveNote: (note: string) => void;
+  onSave: (dayTypes: ScheduleDayType[], note: string) => void;
   onClear: () => void;
   onCancel: () => void;
 }) {
@@ -259,9 +269,25 @@ function EditSheet({
   });
 
   const [note, setNote] = useState(day.note ?? "");
-  const noteChanged = note.trim() !== (day.note ?? "").trim();
+  const [selected, setSelected] = useState<Set<ScheduleDayType>>(
+    () => new Set(day.dayTypes),
+  );
 
-  const adh = ADHERENCE_META[day.adherence];
+  const toggle = (t: ScheduleDayType) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+
+  const orderedSelected = SCHEDULE_TYPE_ORDER.filter((t) => selected.has(t));
+  const noteChanged = note.trim() !== (day.note ?? "").trim();
+  const typesChanged =
+    orderedSelected.length !== day.dayTypes.length ||
+    orderedSelected.some((t, i) => t !== day.dayTypes[i]);
+  const dirty = noteChanged || typesChanged;
+
   const loggedLine = loggedSummary(day);
 
   return (
@@ -276,49 +302,53 @@ function EditSheet({
       >
         <div className="flex flex-col gap-0.5">
           <h2 className="text-white font-semibold text-base">{dateLabel}</h2>
-          <p className="text-gray-400 text-xs">Plan this day</p>
+          <p className="text-gray-400 text-xs">
+            Plan this day — tap to add or remove
+          </p>
         </div>
 
-        <div
-          className="flex items-start gap-2.5 rounded-lg bg-gray-900/60 p-3"
-          data-testid="schedule-adherence-summary"
-        >
-          {adh.dot ? (
-            <span
-              className={`mt-0.5 w-3 h-3 rounded-full shrink-0 ${adh.dotClass}`}
-              aria-hidden="true"
-            />
-          ) : (
-            <span
-              className="mt-0.5 w-3 h-3 rounded-full shrink-0 border border-gray-600"
-              aria-hidden="true"
-            />
-          )}
-          <div className="flex flex-col gap-0.5 text-xs leading-snug">
-            <span className="text-white font-medium">{adh.label}</span>
-            {day.dayType && (
-              <span className="text-gray-400">
-                Planned: {SCHEDULE_TYPE_META[day.dayType].label}
-              </span>
-            )}
+        {(day.typeStatus.length > 0 || loggedLine) && (
+          <div
+            className="flex flex-col gap-1.5 rounded-lg bg-gray-900/60 p-3 text-xs leading-snug"
+            data-testid="schedule-adherence-summary"
+          >
+            {day.typeStatus.map((s) => (
+              <div key={s.type} className="flex items-center gap-2">
+                <span className="shrink-0">
+                  <TypeMarker status={s} />
+                </span>
+                <span
+                  className={
+                    s.state === "missed"
+                      ? "text-gray-500 line-through"
+                      : "text-white"
+                  }
+                >
+                  {SCHEDULE_TYPE_META[s.type].label}
+                </span>
+                <span className="text-gray-500">· {STATE_LABEL[s.state]}</span>
+              </div>
+            ))}
             {loggedLine ? (
               <span className="text-gray-400">Logged: {loggedLine}</span>
             ) : (
-              !day.isPast && day.dayType && (
+              !day.isPast &&
+              day.dayTypes.length > 0 && (
                 <span className="text-gray-500">Nothing logged yet</span>
               )
             )}
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           {SCHEDULE_TYPE_ORDER.map((t) => (
             <button
               key={t}
-              onClick={() => onPick(t, note)}
+              onClick={() => toggle(t)}
               data-testid={`schedule-pick-${t}`}
+              aria-pressed={selected.has(t)}
               className={`py-3 rounded-xl text-white font-semibold text-sm ${SCHEDULE_TYPE_META[t].bg} ${
-                day.dayType === t ? "ring-2 ring-white/70" : ""
+                selected.has(t) ? "ring-2 ring-white/70" : "opacity-60"
               } active:scale-95 transition-transform`}
             >
               {SCHEDULE_TYPE_META[t].label}
@@ -342,32 +372,34 @@ function EditSheet({
             className="w-full rounded-lg bg-gray-900 text-white text-sm px-3 py-2 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-white/30 resize-none"
             data-testid="schedule-note-input"
           />
-          <button
-            onClick={() => onSaveNote(note)}
-            disabled={!noteChanged}
-            className="self-end px-3 py-1.5 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white text-xs font-semibold"
-            data-testid="schedule-save-note"
-          >
-            Save Note
-          </button>
         </div>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-col gap-2 pt-1">
           <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm"
-            data-testid="schedule-cancel"
+            onClick={() => onSave(orderedSelected, note)}
+            disabled={!dirty}
+            className="w-full py-2.5 rounded-xl bg-green-600 active:bg-green-700 disabled:opacity-40 text-white font-semibold text-sm"
+            data-testid="schedule-save"
           >
-            Cancel
+            Save
           </button>
-          <button
-            onClick={onClear}
-            disabled={!day.dayType && !day.note}
-            className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white font-semibold text-sm"
-            data-testid="schedule-clear"
-          >
-            Clear
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onCancel}
+              className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm"
+              data-testid="schedule-cancel"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onClear}
+              disabled={day.dayTypes.length === 0 && !day.note}
+              className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white font-semibold text-sm"
+              data-testid="schedule-clear"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </div>
     </div>
