@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { BackChevronIcon, CalendarIcon, NoteIcon } from "./icons";
 import {
+  addDays,
   buildScheduleWeeks,
   deleteScheduleByDate,
   getSchedules,
@@ -23,9 +24,11 @@ import type { ClimbRecord } from "../lib/climbs";
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function weekTitle(weekIndex: number, weekStart: Date): string {
-  if (weekIndex === 0) return "This week";
-  if (weekIndex === 1) return "Next week";
+/** Offset is in weeks relative to the current (today's) week. */
+function weekTitle(offset: number, weekStart: Date): string {
+  if (offset === 0) return "This week";
+  if (offset === 1) return "Next week";
+  if (offset === -1) return "Last week";
   return `Week of ${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()}`;
 }
 
@@ -35,7 +38,7 @@ export function ScheduleScreen({ onBack }: Props) {
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
-  const [weekCount, setWeekCount] = useState(2);
+  const [weekCount, setWeekCount] = useState(3);
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,7 +51,10 @@ export function ScheduleScreen({ onBack }: Props) {
       .catch(() => {});
   }, []);
 
-  const weekStart = useMemo(() => startOfWeek(new Date()), []);
+  // Anchor the current week, then start the view one week earlier so recent
+  // workouts stay visible (e.g. last week's sessions when it's Monday).
+  const thisWeekStart = useMemo(() => startOfWeek(new Date()), []);
+  const weekStart = useMemo(() => addDays(thisWeekStart, -7), [thisWeekStart]);
   const weeks = useMemo(
     () => buildScheduleWeeks(weekStart, weekCount, schedules, sessions, climbs),
     [weekStart, weekCount, schedules, sessions, climbs],
@@ -96,6 +102,9 @@ export function ScheduleScreen({ onBack }: Props) {
       <main className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
         {weeks.map((week, wIdx) => {
           const ws = new Date(week[0].jsDate);
+          const offset = Math.round(
+            (ws.getTime() - thisWeekStart.getTime()) / (7 * 24 * 60 * 60 * 1000),
+          );
           return (
             <section
               key={week[0].date}
@@ -103,7 +112,7 @@ export function ScheduleScreen({ onBack }: Props) {
               data-testid={`schedule-week-${wIdx}`}
             >
               <h2 className="text-gray-300 font-semibold text-sm uppercase tracking-wide">
-                {weekTitle(wIdx, ws)}
+                {weekTitle(offset, ws)}
               </h2>
               <div className="grid grid-cols-7 gap-1">
                 {week.map((day, i) => (
