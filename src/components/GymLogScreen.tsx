@@ -5,7 +5,9 @@ import { GYM_WORKOUTS, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUE
 import type { GymWorkoutDef } from "../data/gymWorkouts";
 import { V_GRADES, YDS_GRADES } from "../lib/gradeUtils";
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { BackChevronIcon, NoteIcon } from "./icons";
+import { Audio, initAudio } from "../lib/audio";
+import { Haptics } from "../lib/haptics";
+import { BackChevronIcon, NoteIcon, ClockIcon } from "./icons";
 
 type Props = {
   onBack: () => void;
@@ -144,6 +146,149 @@ function collectFreeformAutocomplete(sessions: SessionRecord[]): {
     sectionNames: Array.from(sectionNames).sort(),
     lastFreeform,
   };
+}
+
+// Standalone rest countdown for campus sessions — no tie to the workout state machine.
+// Just a configurable timer you reset between ladders; the chosen length persists.
+const REST_KEY = "hangboard-campus-rest-secs";
+const REST_PRESETS = [60, 90, 120, 180, 300];
+
+function formatMMSS(secs: number): string {
+  const m = Math.floor(secs / 60);
+  return `${m}:${String(secs % 60).padStart(2, "0")}`;
+}
+
+// Accepts plain seconds ("90") or m:ss ("1:30"); returns null on garbage.
+function parseDurationInput(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  if (t.includes(":")) {
+    const [m, s] = t.split(":");
+    const mins = parseInt(m, 10);
+    const secs = parseInt(s, 10);
+    if (isNaN(mins) || isNaN(secs)) return null;
+    return mins * 60 + secs;
+  }
+  const n = parseInt(t, 10);
+  return isNaN(n) ? null : n;
+}
+
+function CampusRestTimer() {
+  const [duration, setDuration] = useState<number>(() => {
+    const saved = Number(localStorage.getItem(REST_KEY));
+    return Number.isFinite(saved) && saved > 0 ? saved : 180;
+  });
+  const [remaining, setRemaining] = useState(duration);
+  const [running, setRunning] = useState(false);
+  const deadlineRef = useRef(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => {
+      const left = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) {
+        setRunning(false);
+        Audio.restEnd();
+        Haptics.setComplete();
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const pickDuration = (secs: number) => {
+    setDuration(secs);
+    localStorage.setItem(REST_KEY, String(secs));
+    setRunning(false);
+    setRemaining(secs);
+  };
+
+  const toggle = () => {
+    if (running) {
+      setRunning(false);
+      return;
+    }
+    initAudio(); // unlock the AudioContext inside this user gesture
+    Audio.restStart();
+    Haptics.hangStart();
+    const from = remaining > 0 ? remaining : duration;
+    deadlineRef.current = Date.now() + from * 1000;
+    setRemaining(from);
+    setRunning(true);
+  };
+
+  const reset = () => {
+    setRunning(false);
+    setRemaining(duration);
+  };
+
+  const done = !running && remaining === 0;
+
+  return (
+    <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-2.5">
+      <div className="flex items-center gap-3">
+        <ClockIcon size={18} className="text-gray-500 shrink-0" />
+        <span
+          className={`font-mono tabular-nums text-2xl font-bold tracking-tight ${
+            done ? "text-orange-400" : "text-white"
+          }`}
+        >
+          {formatMMSS(remaining)}
+        </span>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={running ? "Pause rest timer" : "Start rest timer"}
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-orange-500 text-white text-lg hover:bg-orange-400 transition-colors"
+        >
+          {running ? "⏸" : "▶"}
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          aria-label="Reset rest timer"
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-gray-600 text-gray-400 hover:text-white text-base"
+        >
+          ↺
+        </button>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {REST_PRESETS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => pickDuration(p)}
+            aria-pressed={duration === p}
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+              duration === p
+                ? "bg-gray-700 text-white border border-gray-600"
+                : "text-gray-400 hover:text-white border border-gray-700"
+            }`}
+          >
+            {formatMMSS(p)}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            const v = window.prompt("Rest length — seconds or m:ss", formatMMSS(duration));
+            if (v == null) return;
+            const secs = parseDurationInput(v);
+            if (secs != null && secs > 0) pickDuration(secs);
+          }}
+          aria-pressed={!REST_PRESETS.includes(duration)}
+          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+            !REST_PRESETS.includes(duration)
+              ? "bg-gray-700 text-white border border-gray-600"
+              : "text-gray-400 hover:text-white border border-gray-700"
+          }`}
+        >
+          Custom…
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
@@ -616,6 +761,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           </div>
         ) : isCampus ? (
           <div className="flex flex-col gap-3">
+            <CampusRestTimer />
             {campusSets.map((row, i) => {
               // Presets ∪ previously-saved ∪ sequences already used by same-Name rows
               // in this form — so a custom entry is instantly reusable across sibling sets.

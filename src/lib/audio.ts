@@ -49,4 +49,13 @@ export const Audio = {
     await beep(880, 120);
     setTimeout(() => beep(1100, 150), 180);
   },
+  // Rising two-tone to kick off a rest; restEnd is the same pair reversed (falling).
+  restStart: async () => {
+    await beep(880, 120);
+    setTimeout(() => beep(1100, 150), 180);
+  },
+  restEnd: async () => {
+    await beep(1100, 120);
+    setTimeout(() => beep(880, 150), 180);
+  },
 };
