@@ -87,14 +87,6 @@ describe("normalizeDayTypes", () => {
     expect(normalizeDayTypes({ dayTypes: ["power", "rest"] })).toEqual(["power", "rest"]);
   });
 
-  it("folds a legacy single dayType into an array", () => {
-    expect(normalizeDayTypes({ dayType: "endurance" })).toEqual(["endurance"]);
-  });
-
-  it("prefers dayTypes over a stale legacy dayType", () => {
-    expect(normalizeDayTypes({ dayTypes: ["outdoor"], dayType: "power" })).toEqual(["outdoor"]);
-  });
-
   it("returns [] for an empty or missing record", () => {
     expect(normalizeDayTypes(undefined)).toEqual([]);
     expect(normalizeDayTypes({})).toEqual([]);
@@ -185,15 +177,6 @@ describe("buildScheduleWeeks", () => {
     const todays = weeks[0].filter((d) => d.isToday);
     expect(todays).toHaveLength(1);
     expect(todays[0].date).toBe("2026-05-20");
-  });
-
-  it("normalizes a legacy single-dayType record into dayTypes", () => {
-    const sched: ScheduleRecord[] = [
-      { id: "legacy", date: "2026-05-19", dayType: "power", createdAt: 0, updatedAt: 0 },
-    ];
-    const weeks = buildScheduleWeeks(start, 1, sched, [], [], today);
-    const day = weeks[0].find((d) => d.date === "2026-05-19")!;
-    expect(day.dayTypes).toEqual(["power"]);
   });
 
   it("marks a planned type 'done' when a matching session was logged that day", () => {

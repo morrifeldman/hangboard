@@ -40,23 +40,16 @@ export type ScheduleRecord = {
   id: string;
   date: string; // YYYY-MM-DD (local)
   dayTypes?: ScheduleDayType[];
-  /** @deprecated legacy single-type field; read-only, kept for back-compat */
-  dayType?: ScheduleDayType;
   note?: string;
   createdAt: number;
   updatedAt: number;
 };
 
-/** Normalize a record's planned types, folding the legacy single `dayType`. */
+/** A record's planned types, normalized to an array (null-safe). */
 export function normalizeDayTypes(
-  r: Pick<ScheduleRecord, "dayTypes" | "dayType"> | undefined | null,
+  r: Pick<ScheduleRecord, "dayTypes"> | undefined | null,
 ): ScheduleDayType[] {
-  if (!r) return [];
-  if (r.dayTypes) return r.dayTypes;
-  // This is the one sanctioned reader of the legacy single-type field; alias
-  // it locally so the public `@deprecated` marker still warns everywhere else.
-  const legacy = (r as { dayType?: ScheduleDayType }).dayType;
-  return legacy ? [legacy] : [];
+  return r?.dayTypes ?? [];
 }
 
 export type Adherence =
@@ -246,9 +239,9 @@ export async function getSchedule(date: string): Promise<ScheduleRecord | undefi
  * so we do the lookup and the write inside one transaction to avoid races.
  * If a record for the date already exists, we reuse its id (idempotent updates).
  *
- * Pass `dayType` and/or `note` to set those fields. Pass `undefined` to leave a
- * field unchanged on an existing record. If both fields end up empty, the
- * record is deleted.
+ * Pass `dayTypes` and/or `note` to set those fields. Omit a field to leave it
+ * unchanged on an existing record. If both fields end up empty, the record is
+ * deleted.
  */
 export async function upsertSchedule(input: {
   date: string;
@@ -276,11 +269,9 @@ export async function upsertSchedule(input: {
   const base = existing
     ? { ...existing, updatedAt: now }
     : { id: crypto.randomUUID(), date: input.date, createdAt: now, updatedAt: now };
-  // Drop the legacy single-type field; persist the array form going forward.
   const record: ScheduleRecord = {
     ...base,
     dayTypes: nextDayTypes,
-    dayType: undefined,
     note: nextNote,
   };
   await tx.store.put(record);

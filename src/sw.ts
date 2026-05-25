@@ -107,7 +107,7 @@ function parseHHMM(s: string): number {
   return h * 60 + mm;
 }
 
-type SchedulePlan = { dayTypes?: string[]; dayType?: string };
+type SchedulePlan = { dayTypes?: string[] };
 
 async function runDailyReminder(now: Date = new Date()): Promise<void> {
   const db = await openHistoryDB();
@@ -132,7 +132,7 @@ async function runDailyReminder(now: Date = new Date()): Promise<void> {
   if (now.getHours() * 60 + now.getMinutes() < target) return db.close();
 
   const plan = await idbGetByIndex<SchedulePlan>(db, "schedules", "by-date", todayKey);
-  const dayTypes = plan?.dayTypes ?? (plan?.dayType ? [plan.dayType] : []);
+  const dayTypes = plan?.dayTypes ?? [];
   if (dayTypes.length === 0) return db.close();
 
   const labels = dayTypes.map((t) => TYPE_LABELS[t] ?? t).join(" + ");
