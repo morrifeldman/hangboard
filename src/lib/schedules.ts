@@ -53,7 +53,10 @@ export function normalizeDayTypes(
 ): ScheduleDayType[] {
   if (!r) return [];
   if (r.dayTypes) return r.dayTypes;
-  return r.dayType ? [r.dayType] : [];
+  // This is the one sanctioned reader of the legacy single-type field; alias
+  // it locally so the public `@deprecated` marker still warns everywhere else.
+  const legacy = (r as { dayType?: ScheduleDayType }).dayType;
+  return legacy ? [legacy] : [];
 }
 
 export type Adherence =
