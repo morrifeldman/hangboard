@@ -7,6 +7,8 @@ test.describe("Workout Flow", () => {
     await page.goto("/?test");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+    await page.getByTestId("tab-workout").click();
+    await page.getByTestId("workout-pill-hangboard").click();
     await page.getByTestId("workout-tab-test").click();
   });
 

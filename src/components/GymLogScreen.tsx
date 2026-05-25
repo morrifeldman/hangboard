@@ -7,13 +7,17 @@ import { V_GRADES, YDS_GRADES } from "../lib/gradeUtils";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { Audio, initAudio } from "../lib/audio";
 import { Haptics } from "../lib/haptics";
-import { BackChevronIcon, NoteIcon, ClockIcon } from "./icons";
+import { BackChevronIcon, NoteIcon, ClockIcon, DumbbellIcon, GearIcon } from "./icons";
+import { HangboardSetup } from "./HangboardSetup";
 
 type Props = {
   onBack: () => void;
   onSaved: () => void;
   initialRecord?: SessionRecord;
   onDeleted?: () => void;
+  /** "tab" = Workout tab (no back button, hangboard pill, gear); "edit" = drill-in editor. */
+  mode?: "tab" | "edit";
+  onShowSettings?: () => void;
 };
 
 function todayString(): string {
@@ -291,8 +295,11 @@ function CampusRestTimer() {
   );
 }
 
-export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
+export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, onShowSettings }: Props) {
   const editing = initialRecord !== undefined;
+  const tabMode = (mode ?? (editing ? "edit" : "tab")) === "tab";
+  // The Workout tab opens on a gym type (ARC by default); the Hangboard pill switches in.
+  const [hangboardMode, setHangboardMode] = useState(false);
   const gymDefaults = useWorkoutStore((s) => s.gymDefaults);
   const setGymDefaults = useWorkoutStore((s) => s.setGymDefaults);
 
@@ -417,6 +424,13 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   // Otherwise stage the switch behind a confirm that auto-resets so it can't get stuck.
   const requestWorkoutType = (t: GymWorkoutType) => {
     if (editing) return;
+    // Leaving the hangboard setup for a gym type — nothing entered to lose.
+    if (hangboardMode) {
+      setHangboardMode(false);
+      applyWorkoutType(t);
+      setPickerOpen(false);
+      return;
+    }
     if (t === workoutType) {
       setPickerOpen(false);
       return;
@@ -431,6 +445,13 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     // Auto-reset so the confirm can never get stuck; timing out simply keeps the
     // current type (the safe default). Generous enough to read the two-button prompt.
     switchTimerRef.current = setTimeout(() => setPendingType(null), 6000);
+  };
+
+  // The Hangboard pill — drop straight into the hangboard setup, collapse the picker.
+  const selectHangboard = () => {
+    cancelSwitch();
+    setHangboardMode(true);
+    setPickerOpen(false);
   };
 
   const confirmSwitch = () => {
@@ -578,37 +599,51 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   };
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col">
+    <div className="h-full bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
-          aria-label="Back"
-        >
-          <BackChevronIcon />
-        </button>
+        {!tabMode && (
+          <button
+            onClick={onBack}
+            className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
+            aria-label="Back"
+          >
+            <BackChevronIcon />
+          </button>
+        )}
         <h1 className="text-white font-bold text-lg">
-          {editing ? "Edit Gym Session" : "Log Gym Session"}
+          {tabMode ? "Workout" : "Edit Gym Session"}
         </h1>
+        {tabMode && onShowSettings && (
+          <button
+            onClick={onShowSettings}
+            aria-label="Open settings"
+            data-testid="open-settings"
+            className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
+          >
+            <GearIcon size={22} />
+          </button>
+        )}
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-8 flex flex-col gap-5">
         {/* Date + Time */}
-        <div className="flex items-center gap-3">
-          <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
-          <input
-            type="date"
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-            className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
-          />
-          <input
-            type="time"
-            value={timeValue}
-            onChange={(e) => setTimeValue(e.target.value)}
-            className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
-          />
-        </div>
+        {!hangboardMode && (
+          <div className="flex items-center gap-3">
+            <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
+            <input
+              type="date"
+              value={dateValue}
+              onChange={(e) => setDateValue(e.target.value)}
+              className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+            />
+            <input
+              type="time"
+              value={timeValue}
+              onChange={(e) => setTimeValue(e.target.value)}
+              className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+            />
+          </div>
+        )}
 
         {/* Workout type pill picker — collapses to the selected type once chosen */}
         <div>
@@ -620,7 +655,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                   key={w.id}
                   onClick={() => requestWorkoutType(w.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
-                    workoutType === w.id
+                    workoutType === w.id && !hangboardMode
                       ? "bg-orange-500 text-white"
                       : "bg-gray-800 text-gray-400 border border-gray-700"
                   }`}
@@ -628,15 +663,31 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                   {w.label}
                 </button>
               ))}
+              {/* Hangboard — last in the list; launches the guided timer rather than a log form */}
+              <button
+                onClick={selectHangboard}
+                data-testid="workout-pill-hangboard"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${
+                  hangboardMode
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-800 text-green-400 border border-green-600/50"
+                }`}
+              >
+                <DumbbellIcon size={13} />
+                Hangboard
+              </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => !editing && setPickerOpen(true)}
               disabled={editing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-500 text-white disabled:cursor-default"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white disabled:cursor-default ${
+                hangboardMode ? "bg-green-600" : "bg-orange-500"
+              }`}
             >
-              {def.label}
+              {hangboardMode && <DumbbellIcon size={13} />}
+              {hangboardMode ? "Hangboard" : def.label}
               {!editing && <span className="text-white/70 text-[0.65rem]">▾ change</span>}
             </button>
           )}
@@ -661,13 +712,16 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               </button>
             </div>
           )}
-          {def && (
+          {def && !hangboardMode && (
             <p className="text-gray-600 text-xs mt-2">{def.description}</p>
           )}
         </div>
 
+        {/* Hangboard setup — subtype + weights + Start (guided timer) */}
+        {hangboardMode && <HangboardSetup />}
+
         {/* Dynamic fields */}
-        {workoutType === "freeform" ? (
+        {!hangboardMode && (workoutType === "freeform" ? (
           <div className="flex flex-col gap-3">
             <input
               type="text"
@@ -984,19 +1038,22 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               );
             })}
           </div>
-        )}
+        ))}
 
         {/* Session notes */}
-        <textarea
-          value={sessionNotes}
-          onChange={(e) => setSessionNotes(e.target.value)}
-          rows={4}
-          placeholder="Session notes (optional)"
-          className="w-full shrink-0 min-h-[6rem] bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-y border border-gray-700 focus:outline-none focus:border-gray-500"
-        />
+        {!hangboardMode && (
+          <textarea
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            rows={4}
+            placeholder="Session notes (optional)"
+            className="w-full shrink-0 min-h-[6rem] bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-y border border-gray-700 focus:outline-none focus:border-gray-500"
+          />
+        )}
       </div>
 
       {/* Bottom actions */}
+      {!hangboardMode && (
       <div className="px-4 pb-6 pt-3 flex flex-col gap-3 shrink-0 border-t border-gray-800">
         <button
           onClick={handleSave}
@@ -1017,6 +1074,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,18 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Weight persistence", () => {
+  // The hangboard weight list now lives behind the Workout tab, under the
+  // Hangboard pill; tab/pill state resets on reload, so re-open after every reload.
+  const openWorkout = async (page: import("@playwright/test").Page) => {
+    await page.getByTestId("tab-workout").click();
+    await page.getByTestId("workout-pill-hangboard").click();
+  };
+
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+    await openWorkout(page);
   });
 
   test("Custom weight persists after reload", async ({ page }) => {
@@ -27,6 +35,7 @@ test.describe("Weight persistence", () => {
       localStorage.setItem("hangboard-weights", JSON.stringify(data));
     });
     await page.reload();
+    await openWorkout(page);
     await expect(page.getByTestId("weight-mr-shallow-set1")).toHaveText("-30");
   });
 
@@ -34,6 +43,7 @@ test.describe("Weight persistence", () => {
     await expect(page.getByTestId("weight-sloper-set1")).toHaveText("-17.5");
     await expect(page.getByTestId("weight-sloper-set2")).toHaveText("-7.5");
     await page.reload();
+    await openWorkout(page);
     await expect(page.getByTestId("weight-sloper-set1")).toHaveText("-17.5");
   });
 });

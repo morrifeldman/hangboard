@@ -8,15 +8,14 @@ import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
-import { BackChevronIcon, ClockIcon } from "./icons";
+import { ClockIcon, GearIcon } from "./icons";
 
 type Props = {
-  onBack: () => void;
   onImport: () => void;
-  onImportGym: () => void;
   onAddNote: () => void;
   onEdit: (record: SessionRecord) => void;
   onEditNote: (note: NoteRecord) => void;
+  onShowSettings: () => void;
 };
 
 type TimelineFilter = "all" | "workouts" | "climbs" | "notes";
@@ -342,7 +341,7 @@ const ALL_VALID_TYPES = new Set([
   "cardio", "stretching", "freeform",
 ]);
 
-export function HistoryScreen({ onBack, onImport, onImportGym, onAddNote, onEdit, onEditNote }: Props) {
+export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowSettings }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
@@ -425,16 +424,10 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onAddNote, onEdit
   };
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col">
+    <div className="h-full bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
-          aria-label="Back"
-        >
-          <BackChevronIcon />
-        </button>
         <ClockIcon className="text-white" aria-label="Workout History" />
+        <h1 className="text-white font-bold text-lg">History</h1>
         <button
           onClick={() => fileInputRef.current?.click()}
           className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
@@ -478,12 +471,6 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onAddNote, onEdit
                 Hangboard
               </button>
               <button
-                onClick={() => { setAddMenuOpen(false); onImportGym(); }}
-                className="w-full text-left px-4 py-3 text-sm text-orange-400 hover:bg-gray-600 transition-colors border-t border-gray-600"
-              >
-                Gym Session
-              </button>
-              <button
                 onClick={() => { setAddMenuOpen(false); onAddNote(); }}
                 className="w-full text-left px-4 py-3 text-sm text-purple-300 hover:bg-gray-600 transition-colors border-t border-gray-600"
               >
@@ -492,6 +479,14 @@ export function HistoryScreen({ onBack, onImport, onImportGym, onAddNote, onEdit
             </div>
           )}
         </div>
+        <button
+          onClick={onShowSettings}
+          aria-label="Open settings"
+          data-testid="open-settings"
+          className="text-gray-400 hover:text-white transition-colors p-1"
+        >
+          <GearIcon size={22} />
+        </button>
       </header>
       {importStatus && (
         <div className="bg-gray-800 border-t border-gray-700 px-4 py-2 text-sm text-gray-300">

@@ -6,6 +6,9 @@ test.describe("Home Screen", () => {
     await page.goto("/");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
+    // Hangboard setup now lives behind the Workout tab, under the Hangboard pill.
+    await page.getByTestId("tab-workout").click();
+    await page.getByTestId("workout-pill-hangboard").click();
   });
 
   test("renders all holds", async ({ page }) => {

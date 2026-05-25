@@ -25,6 +25,14 @@ export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, o
             <BackChevronIcon />
           </button>
           <PyramidIcon className="text-white" aria-label="Climbing Pyramid" />
+          <button
+            onClick={onShowScrolling}
+            className="ml-1 bg-indigo-600 text-white px-2.5 py-1.5 rounded-xl flex items-center text-sm hover:bg-indigo-700 transition-colors"
+            title="Scrolling Pyramids"
+            aria-label="Scrolling Pyramids"
+          >
+            <Layers size={16} />
+          </button>
         </div>
         <div className="flex gap-2">
           <button
@@ -69,14 +77,6 @@ export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, o
             aria-label="Toggle session vs climb counts"
           >
             {showSessionCounts ? <CalendarDays size={16} /> : <Repeat size={16} />}
-          </button>
-          <button
-            onClick={onShowScrolling}
-            className="bg-indigo-600 text-white px-2.5 py-1.5 rounded-xl flex items-center text-sm hover:bg-indigo-700 transition-colors"
-            title="Scrolling Pyramids"
-            aria-label="Scrolling Pyramids"
-          >
-            <Layers size={16} />
           </button>
           <button
             onClick={onImport}

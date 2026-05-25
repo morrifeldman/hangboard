@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { BackChevronIcon, CalendarIcon, NoteIcon } from "./icons";
+import { CalendarIcon, GearIcon, NoteIcon } from "./icons";
 import {
   addDays,
   buildScheduleWeeks,
@@ -32,9 +32,9 @@ function weekTitle(offset: number, weekStart: Date): string {
   return `Week of ${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()}`;
 }
 
-type Props = { onBack: () => void };
+type Props = { onShowSettings: () => void };
 
-export function ScheduleScreen({ onBack }: Props) {
+export function ScheduleScreen({ onShowSettings }: Props) {
   const [schedules, setSchedules] = useState<ScheduleRecord[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
@@ -86,17 +86,18 @@ export function ScheduleScreen({ onBack }: Props) {
     : null;
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col" data-testid="schedule-screen">
+    <div className="h-full bg-gray-900 flex flex-col" data-testid="schedule-screen">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
-          aria-label="Back"
-          data-testid="schedule-back"
-        >
-          <BackChevronIcon />
-        </button>
         <CalendarIcon className="text-white" aria-label="Schedule" />
+        <h1 className="text-white font-bold text-lg">Schedule</h1>
+        <button
+          onClick={onShowSettings}
+          aria-label="Open settings"
+          data-testid="open-settings"
+          className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
+        >
+          <GearIcon size={22} />
+        </button>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">

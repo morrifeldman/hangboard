@@ -15,7 +15,7 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
-import { BackChevronIcon, BarChartIcon } from "./icons";
+import { BarChartIcon, GearIcon, PyramidIcon } from "./icons";
 import {
   buildTrend,
   buildCalendar,
@@ -27,10 +27,22 @@ import type { Granularity } from "../lib/gradeTrends";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
+import {
+  getSchedule,
+  normalizeDayTypes,
+  SCHEDULE_TYPE_META,
+  toLocalDateString,
+} from "../lib/schedules";
+import type { ScheduleDayType } from "../lib/schedules";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Props = { onBack: () => void; onEditSession: (record: SessionRecord) => void };
+type Props = {
+  onEditSession: (record: SessionRecord) => void;
+  onShowSettings: () => void;
+  onShowPyramid: () => void;
+  onShowSchedule: () => void;
+};
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
 
@@ -107,11 +119,13 @@ function colorFor(t: CalendarDay["workoutType"]): string {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ProgressScreen({ onBack, onEditSession }: Props) {
+export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, onShowSchedule }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [todayTypes, setTodayTypes] = useState<ScheduleDayType[]>([]);
+  const [loggedToday, setLoggedToday] = useState(false);
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
   const [holdIndex, setHoldIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -124,6 +138,21 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
     Promise.all([getSessions(), getClimbs(), getNotes()])
       .then(([s, c, n]) => { setSessions(s); setClimbs(c); setNotes(n); })
       .finally(() => setLoading(false));
+  }, []);
+
+  // Today's planned day + whether anything's been logged yet (home-screen nudge).
+  useEffect(() => {
+    const todayKey = toLocalDateString(new Date());
+    Promise.all([getSchedule(todayKey), getSessions(), getClimbs()])
+      .then(([plan, sess, cl]) => {
+        setTodayTypes(normalizeDayTypes(plan));
+        const hasSession = sess.some(
+          (s) => toLocalDateString(new Date(s.startedAt)) === todayKey,
+        );
+        const hasClimb = cl.some((c) => c.date === todayKey);
+        setLoggedToday(hasSession || hasClimb);
+      })
+      .catch(() => {});
   }, []);
 
   // Reset hold picker when switching workout type
@@ -224,18 +253,30 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
   const dayNotes = selectedDate ? notes.filter((n) => n.date === selectedDate) : [];
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-full bg-gray-900 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="bg-gray-800 px-4 py-4 flex items-center gap-3">
+        <h1 className="text-white font-bold text-2xl">Cairn</h1>
+        <BarChartIcon className="text-white ml-1" aria-label="Progress" />
         <button
-          onClick={onBack}
-          aria-label="Back"
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
+          onClick={onShowSettings}
+          aria-label="Open settings"
+          data-testid="open-settings"
+          className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
         >
-          <BackChevronIcon />
+          <GearIcon size={22} />
         </button>
-        <BarChartIcon className="text-white" aria-label="Progress" />
       </header>
+
+      {todayTypes.length > 0 && !loggedToday && (
+        <button
+          onClick={onShowSchedule}
+          data-testid="today-banner"
+          className={`mx-4 mt-3 px-3 py-2 rounded-xl text-white text-sm font-medium text-left ${SCHEDULE_TYPE_META[todayTypes[0]].bg}`}
+        >
+          Today: {todayTypes.map((t) => SCHEDULE_TYPE_META[t].label).join(" + ")} day
+        </button>
+      )}
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -427,7 +468,17 @@ export function ProgressScreen({ onBack, onEditSession }: Props) {
 
           {/* ── Route grades (outdoor sport) ── */}
           <section>
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Route Grades · Outdoor Sport</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-gray-500 text-xs uppercase tracking-wider">Route Grades · Outdoor Sport</p>
+              <button
+                onClick={onShowPyramid}
+                data-testid="open-pyramid"
+                className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-xs font-medium"
+              >
+                <PyramidIcon size={14} />
+                Pyramid
+              </button>
+            </div>
             <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-4">
               {/* Granularity slider */}
               <div>
