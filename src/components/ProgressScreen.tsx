@@ -473,7 +473,7 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
               <button
                 onClick={onShowPyramid}
                 data-testid="open-pyramid"
-                className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors text-xs font-medium"
+                className="flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-1 text-xs font-semibold text-teal-300 ring-1 ring-inset ring-teal-400/30 transition-colors hover:bg-teal-500/25 hover:text-teal-200"
               >
                 <PyramidIcon size={14} />
                 Pyramid

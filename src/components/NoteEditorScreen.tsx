@@ -15,11 +15,15 @@ function todayString(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Starter categories suggested as pills before any have been used. Free text,
+// so users can still type their own — these just seed the common ones.
+const SUGGESTED_CATEGORIES = ["Health", "Recovery", "Training", "Goals", "Resources"];
+
 export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
 
   const [dateValue, setDateValue] = useState(() => initialRecord?.date ?? todayString());
-  const [category, setCategory] = useState(() => initialRecord?.category ?? "injury");
+  const [category, setCategory] = useState(() => initialRecord?.category ?? "Health");
   const [text, setText] = useState(() => initialRecord?.text ?? "");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -34,6 +38,17 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
 
   const trimmedText = text.trim();
   const trimmedCategory = category.trim();
+
+  // Suggested starters first, then any other categories the user has used.
+  // "injury" is retired in favour of "Health" — don't resurface it as a pill,
+  // even if legacy notes still carry it.
+  const categoryOptions = useMemo(() => {
+    const seen = new Set(SUGGESTED_CATEGORIES.map((c) => c.toLowerCase()));
+    const extra = existingCategories.filter(
+      (c) => !seen.has(c.toLowerCase()) && c.toLowerCase() !== "injury",
+    );
+    return [...SUGGESTED_CATEGORIES, ...extra];
+  }, [existingCategories]);
 
   const hasChanges = useMemo(() => {
     if (!editing || !initialRecord) return true;
@@ -121,16 +136,16 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               list="note-categories"
-              placeholder="e.g. injury, training"
+              placeholder="e.g. Health, Training"
               className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 border border-gray-700 focus:outline-none focus:border-gray-500"
             />
             <datalist id="note-categories">
-              {existingCategories.map((c) => <option key={c} value={c} />)}
+              {categoryOptions.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
-          {existingCategories.length > 0 && (
+          {categoryOptions.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pl-[5.75rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {existingCategories.map((c) => (
+              {categoryOptions.map((c) => (
                 <button
                   key={c}
                   type="button"

@@ -186,7 +186,6 @@ export default function App() {
         )}
         {tab === "history" && (
           <HistoryScreen
-            onImport={() => go({ overlay: "import" })}
             onAddNote={() => go({ overlay: "note-add" })}
             onEdit={openEdit}
             onEditNote={(note) => go({ overlay: "note-edit", editNote: note })}

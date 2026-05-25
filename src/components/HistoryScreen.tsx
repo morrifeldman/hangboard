@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getSessions, addSession } from "../lib/history";
+import { useEffect, useMemo, useState } from "react";
+import { getSessions } from "../lib/history";
 import type { SessionRecord, GymData } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
@@ -8,10 +8,9 @@ import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
-import { ClockIcon, GearIcon } from "./icons";
+import { ClockIcon, GearIcon, NoteIcon } from "./icons";
 
 type Props = {
-  onImport: () => void;
   onAddNote: () => void;
   onEdit: (record: SessionRecord) => void;
   onEditNote: (note: NoteRecord) => void;
@@ -334,23 +333,24 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
   );
 }
 
-const ALL_VALID_TYPES = new Set([
-  "repeaters", "max-hang", "beginner",
-  "arc", "cir", "pe-route", "lbc", "wbl",
-  "performance", "hard-bouldering", "limit-bouldering", "injury",
-  "cardio", "stretching", "freeform",
-]);
-
-export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowSettings }: Props) {
+export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [filter, setFilter] = useState<TimelineFilter>("all");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [noteTag, setNoteTag] = useState<string | null>(null);
+
+  // Distinct note categories, most-used first, for the tag sub-filter.
+  const noteTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const n of notes) {
+      const c = n.category?.trim();
+      if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+  }, [notes]);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs(), getNotes()])
@@ -388,40 +388,10 @@ export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowS
     if (filter === "all") return all;
     if (filter === "workouts") return all.filter((i) => i.kind === "session");
     if (filter === "climbs") return all.filter((i) => i.kind === "climbs");
-    return all.filter((i) => i.kind === "note");
-  }, [sessions, climbs, notes, filter]);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setImportStatus("Importing…");
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (!Array.isArray(data)) throw new Error("Expected a JSON array");
-      let count = 0;
-      for (const item of data) {
-        if (
-          typeof item !== "object" || item === null ||
-          typeof item.id !== "string" ||
-          !ALL_VALID_TYPES.has(item.workoutType) ||
-          typeof item.startedAt !== "number" ||
-          !Array.isArray(item.holds)
-        ) {
-          throw new Error(`Invalid record: ${JSON.stringify(item).slice(0, 60)}`);
-        }
-        await addSession({ ...item, imported: true } as SessionRecord);
-        count++;
-      }
-      const refreshed = await getSessions();
-      setSessions(refreshed);
-      setImportStatus(`Imported ${count} session${count !== 1 ? "s" : ""}`);
-    } catch (err) {
-      setImportStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    setTimeout(() => setImportStatus(null), 4000);
-  };
+    return all.filter(
+      (i) => i.kind === "note" && (noteTag === null || i.record.category?.trim() === noteTag),
+    );
+  }, [sessions, climbs, notes, filter, noteTag]);
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
@@ -429,56 +399,13 @@ export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowS
         <ClockIcon className="text-white" aria-label="Workout History" />
         <h1 className="text-white font-bold text-lg">History</h1>
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={onAddNote}
           className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
-          aria-label="Import JSON"
-          title="Import JSON file"
+          aria-label="Add note"
+          title="Add note"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="12" y1="18" x2="12" y2="12"/>
-            <polyline points="9 15 12 12 15 15"/>
-          </svg>
+          <NoteIcon size={22} />
         </button>
-        <input
-          type="file"
-          accept=".json"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        {/* + button with inline menu */}
-        <div className="relative">
-          <button
-            onClick={() => setAddMenuOpen((v) => !v)}
-            className="text-gray-400 hover:text-white transition-colors p-1"
-            aria-label="Log workout"
-            title="Log workout"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14" /><path d="M5 12h14" />
-            </svg>
-          </button>
-          {addMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-gray-700 rounded-xl shadow-lg z-10 overflow-hidden min-w-[160px]">
-              <button
-                onClick={() => { setAddMenuOpen(false); onImport(); }}
-                className="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-gray-600 transition-colors"
-              >
-                Hangboard
-              </button>
-              <button
-                onClick={() => { setAddMenuOpen(false); onAddNote(); }}
-                className="w-full text-left px-4 py-3 text-sm text-purple-300 hover:bg-gray-600 transition-colors border-t border-gray-600"
-              >
-                Note
-              </button>
-            </div>
-          )}
-        </div>
         <button
           onClick={onShowSettings}
           aria-label="Open settings"
@@ -488,20 +415,15 @@ export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowS
           <GearIcon size={22} />
         </button>
       </header>
-      {importStatus && (
-        <div className="bg-gray-800 border-t border-gray-700 px-4 py-2 text-sm text-gray-300">
-          {importStatus}
-        </div>
-      )}
 
       {/* Filter pills */}
       {!loading && (sessions.length > 0 || climbs.length > 0 || notes.length > 0) && (
-        <div className="px-4 pt-3 shrink-0">
+        <div className="px-4 pt-3 shrink-0 flex flex-col gap-2">
           <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(["all", "workouts", "climbs", "notes"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => setFilter(f)}
+                onClick={() => { setFilter(f); if (f !== "notes") setNoteTag(null); }}
                 className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
                   filter === f
                     ? f === "notes" ? "bg-purple-600 text-white" : "bg-indigo-600 text-white"
@@ -512,6 +434,34 @@ export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowS
               </button>
             ))}
           </div>
+          {/* Note tag sub-filter */}
+          {filter === "notes" && noteTags.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <button
+                onClick={() => setNoteTag(null)}
+                className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
+                  noteTag === null
+                    ? "bg-purple-500/30 text-purple-200 ring-1 ring-inset ring-purple-400/40"
+                    : "bg-gray-800 text-gray-500 border border-gray-700"
+                }`}
+              >
+                All tags
+              </button>
+              {noteTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setNoteTag(tag)}
+                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
+                    noteTag === tag
+                      ? "bg-purple-500/30 text-purple-200 ring-1 ring-inset ring-purple-400/40"
+                      : "bg-gray-800 text-gray-500 border border-gray-700"
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -525,7 +475,9 @@ export function HistoryScreen({ onImport, onAddNote, onEdit, onEditNote, onShowS
             <p className="text-gray-600 text-sm">
               {filter === "all"
                 ? "Complete a session to see your history here."
-                : `Add a ${filter === "notes" ? "note" : filter.slice(0, -1)} from the + menu.`}
+                : filter === "notes"
+                  ? "Tap the note icon above to add one."
+                  : `Log a ${filter.slice(0, -1)} to see it here.`}
             </p>
           </div>
         )}
