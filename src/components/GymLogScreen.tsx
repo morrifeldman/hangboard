@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
 import type { SessionRecord, GymData, GymWorkoutType, FreeformSection, CampusSet } from "../lib/history";
-import { GYM_WORKOUTS, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES } from "../data/gymWorkouts";
+import { GYM_WORKOUTS, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES, sequenceShortLabel, shortCodeToSequence, ladderDisplayName, rungShortLabel } from "../data/gymWorkouts";
 import type { GymWorkoutDef } from "../data/gymWorkouts";
 import { V_GRADES, YDS_GRADES } from "../lib/gradeUtils";
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { BackChevronIcon } from "./icons";
+import { BackChevronIcon, NoteIcon } from "./icons";
 
 type Props = {
   onBack: () => void;
@@ -172,6 +172,12 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Workout-type picker: starts open on a new log; collapses to the selected pill once chosen.
+  const [pickerOpen, setPickerOpen] = useState(!editing);
+  // Pending type awaiting confirmation when the current type has unsaved entries.
+  const [pendingType, setPendingType] = useState<GymWorkoutType | null>(null);
+  const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const initialFreeform =
     initialRecord?.gymData?.type === "freeform" ? initialRecord.gymData : null;
   const [freeformTitle, setFreeformTitle] = useState(initialFreeform?.title ?? "");
@@ -190,6 +196,12 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     initialCampus ? initialCampus.sets.map((s) => ({ ...s })) : campusTemplateSets(),
   );
   const [campusSeqByName, setCampusSeqByName] = useState<Record<string, string[]>>({});
+  // Row indices whose fold-out note input is revealed (seeded from rows that already have a note).
+  const [noteOpen, setNoteOpen] = useState<Set<number>>(() =>
+    new Set((initialCampus?.sets ?? []).flatMap((s, i) => (s.note ? [i] : []))),
+  );
+  // Reveal the full B/L/R hand-sequence code under each compact row.
+  const [showCodes, setShowCodes] = useState(false);
 
   const [freeformKeys, setFreeformKeys] = useState<string[]>([]);
   const [freeformSectionNames, setFreeformSectionNames] = useState<string[]>([]);
@@ -226,12 +238,69 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const sequencesFor = (name: string): string[] =>
     Array.from(new Set([...(CAMPUS_SEQUENCES[name] ?? []), ...(campusSeqByName[name] ?? [])]));
 
-  const handleWorkoutTypeChange = (t: GymWorkoutType) => {
-    if (editing) return;
+  // Does the current type hold work that switching away would discard?
+  const currentTypeHasEntries = (): boolean => {
+    if (workoutType === "freeform") {
+      return (
+        freeformTitle.trim() !== "" ||
+        freeformSections.some((s) => s.entries.some((e) => e.key.trim() || e.value.trim()))
+      );
+    }
+    if (workoutType === "campus") {
+      return JSON.stringify(campusSets) !== JSON.stringify(campusTemplateSets());
+    }
+    return JSON.stringify(fields) !== JSON.stringify(gymDefaults[workoutType] ?? {});
+  };
+
+  const applyWorkoutType = (t: GymWorkoutType) => {
     setWorkoutType(t);
     setFields(gymDefaults[t] ?? {});
-    if (t === "campus") setCampusSets(campusTemplateSets());
+    if (t === "campus") {
+      setCampusSets(campusTemplateSets());
+      setNoteOpen(new Set());
+    }
   };
+
+  const clearSwitchTimer = () => {
+    if (switchTimerRef.current) {
+      clearTimeout(switchTimerRef.current);
+      switchTimerRef.current = null;
+    }
+  };
+
+  // Tapping a type pill. Same type → just collapse. No entries → switch outright.
+  // Otherwise stage the switch behind a confirm that auto-resets so it can't get stuck.
+  const requestWorkoutType = (t: GymWorkoutType) => {
+    if (editing) return;
+    if (t === workoutType) {
+      setPickerOpen(false);
+      return;
+    }
+    if (!currentTypeHasEntries()) {
+      applyWorkoutType(t);
+      setPickerOpen(false);
+      return;
+    }
+    setPendingType(t);
+    clearSwitchTimer();
+    // Auto-reset so the confirm can never get stuck; timing out simply keeps the
+    // current type (the safe default). Generous enough to read the two-button prompt.
+    switchTimerRef.current = setTimeout(() => setPendingType(null), 6000);
+  };
+
+  const confirmSwitch = () => {
+    if (pendingType) applyWorkoutType(pendingType);
+    clearSwitchTimer();
+    setPendingType(null);
+    setPickerOpen(false);
+  };
+
+  const cancelSwitch = () => {
+    clearSwitchTimer();
+    setPendingType(null);
+  };
+
+  useEffect(() => clearSwitchTimer, []);
 
   const useLastFreeform = () => {
     if (!lastFreeform || lastFreeform.gymData?.type !== "freeform") return;
@@ -278,8 +347,19 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     setCampusSets((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const addCampusRow = () =>
     setCampusSets((prev) => [...prev, { rung: "", name: "", sequence: "" }]);
-  const removeCampusRow = (i: number) =>
+  const removeCampusRow = (i: number) => {
     setCampusSets((prev) => prev.filter((_, j) => j !== i));
+    // Indices above the removed row shift down by one; drop i and renumber.
+    setNoteOpen((prev) => {
+      const next = new Set<number>();
+      prev.forEach((idx) => {
+        if (idx < i) next.add(idx);
+        else if (idx > i) next.add(idx - 1);
+      });
+      return next;
+    });
+  };
+  const openNote = (i: number) => setNoteOpen((prev) => new Set(prev).add(i));
   const resetCampusTemplate = () => setCampusSets(campusTemplateSets());
 
   const setField = (key: string, value: string) =>
@@ -367,7 +447,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         </h1>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-8 flex flex-col gap-5">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-8 flex flex-col gap-5">
         {/* Date + Time */}
         <div className="flex items-center gap-3">
           <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
@@ -385,25 +465,57 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           />
         </div>
 
-        {/* Workout type pill picker */}
+        {/* Workout type pill picker — collapses to the selected type once chosen */}
         <div>
           <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Workout Type</p>
-          <div className="flex flex-wrap gap-2">
-            {GYM_WORKOUTS.map((w) => (
+          {pickerOpen && !editing ? (
+            <div className="flex flex-wrap gap-2">
+              {GYM_WORKOUTS.map((w) => (
+                <button
+                  key={w.id}
+                  onClick={() => requestWorkoutType(w.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
+                    workoutType === w.id
+                      ? "bg-orange-500 text-white"
+                      : "bg-gray-800 text-gray-400 border border-gray-700"
+                  }`}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => !editing && setPickerOpen(true)}
+              disabled={editing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-500 text-white disabled:cursor-default"
+            >
+              {def.label}
+              {!editing && <span className="text-white/70 text-[0.65rem]">▾ change</span>}
+            </button>
+          )}
+          {pendingType && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg bg-gray-800 border border-orange-500/40 px-3 py-2">
+              <p className="flex-1 text-xs text-gray-300">
+                Switch to {GYM_WORKOUTS.find((w) => w.id === pendingType)?.label}? Current entries will be cleared.
+              </p>
               <button
-                key={w.id}
-                onClick={() => handleWorkoutTypeChange(w.id)}
-                disabled={editing}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
-                  workoutType === w.id
-                    ? "bg-orange-500 text-white"
-                    : "bg-gray-800 text-gray-400 border border-gray-700"
-                } disabled:opacity-60 disabled:cursor-default`}
+                type="button"
+                onClick={confirmSwitch}
+                className="text-xs font-semibold text-white bg-orange-500 rounded-full px-3 py-1"
               >
-                {w.label}
+                Switch
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                onClick={cancelSwitch}
+                className="text-xs font-semibold text-gray-400 hover:text-white px-2 py-1"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
           {def && (
             <p className="text-gray-600 text-xs mt-2">{def.description}</p>
           )}
@@ -504,15 +616,6 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           </div>
         ) : isCampus ? (
           <div className="flex flex-col gap-3">
-            {!editing && (
-              <button
-                type="button"
-                onClick={resetCampusTemplate}
-                className="self-start text-xs font-semibold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-full border border-orange-500/40 bg-orange-500/10"
-              >
-                ↺ Reset to routine
-              </button>
-            )}
             {campusSets.map((row, i) => {
               // Presets ∪ previously-saved ∪ sequences already used by same-Name rows
               // in this form — so a custom entry is instantly reusable across sibling sets.
@@ -531,71 +634,123 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                 ]),
               );
               return (
-                <div key={i} className="bg-gray-800 rounded-xl p-2 flex items-center gap-1.5">
-                  <select
-                    value={row.rung}
-                    onChange={(e) => setCampusRow(i, { rung: e.target.value })}
-                    aria-label="Rung size"
-                    className="shrink-0 bg-gray-700 text-white rounded-lg px-1.5 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                  >
-                    <option value="" disabled hidden>Rung</option>
-                    {CAMPUS_RUNGS.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                  <select
-                    value={row.name}
-                    onChange={(e) => setCampusRow(i, { name: e.target.value })}
-                    aria-label="Ladder name"
-                    className="shrink-0 max-w-[7rem] bg-gray-700 text-white rounded-lg px-1.5 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                  >
-                    <option value="" disabled hidden>Name</option>
-                    {nameOptions.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                  <select
-                    value={row.sequence}
-                    onChange={(e) => {
-                      if (e.target.value === "__custom__") {
-                        const v = window.prompt(
-                          "Hand sequence (B=both, L=left, R=right; number = rung)",
-                          row.sequence,
-                        );
-                        if (v != null) setCampusRow(i, { sequence: v.trim() });
-                      } else {
-                        setCampusRow(i, { sequence: e.target.value });
-                      }
-                    }}
-                    aria-label="Hand sequence"
-                    className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg px-1.5 py-1.5 text-xs font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                  >
-                    <option value="" disabled hidden>Sequence</option>
-                    {seqOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                    <option value="__custom__">+ Custom…</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={row.note ?? ""}
-                    onChange={(e) => setCampusRow(i, { note: e.target.value })}
-                    placeholder="Note"
-                    aria-label="Set note"
-                    className="flex-1 min-w-0 bg-gray-700/60 text-white rounded-lg px-1.5 py-1.5 text-xs placeholder-gray-500 border border-gray-700 focus:outline-none focus:border-orange-500/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeCampusRow(i)}
-                    aria-label="Remove set"
-                    className="shrink-0 text-gray-500 hover:text-red-400 text-lg leading-none w-6 h-7 flex items-center justify-center"
-                  >
-                    ×
-                  </button>
+                <div key={i} className="bg-gray-800 rounded-xl p-2 flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={row.rung}
+                      onChange={(e) => setCampusRow(i, { rung: e.target.value })}
+                      aria-label="Rung size"
+                      title="Rung size"
+                      className="shrink-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs font-semibold border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                    >
+                      <option value="" disabled hidden>·</option>
+                      {CAMPUS_RUNGS.map((r) => <option key={r} value={r}>{rungShortLabel(r)}</option>)}
+                    </select>
+                    <select
+                      value={row.name}
+                      onChange={(e) => setCampusRow(i, { name: e.target.value })}
+                      aria-label="Ladder name"
+                      className="shrink-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                    >
+                      <option value="" disabled hidden>Name</option>
+                      {nameOptions.map((n) => <option key={n} value={n}>{ladderDisplayName(n)}</option>)}
+                    </select>
+                    <select
+                      value={row.sequence}
+                      onChange={(e) => {
+                        if (e.target.value === "__custom__") {
+                          const v = window.prompt(
+                            "Hand sequence — full code (B1-L2-R2-…) or short code (e.g. R+1+2, L4)",
+                            row.sequence,
+                          );
+                          if (v != null) {
+                            const trimmed = v.trim();
+                            setCampusRow(i, { sequence: shortCodeToSequence(trimmed) ?? trimmed });
+                          }
+                        } else {
+                          setCampusRow(i, { sequence: e.target.value });
+                        }
+                      }}
+                      aria-label="Hand sequence"
+                      title={row.sequence || "Hand sequence"}
+                      className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                    >
+                      <option value="" disabled hidden>Seq</option>
+                      {seqOptions.map((s) => <option key={s} value={s}>{sequenceShortLabel(s)}</option>)}
+                      <option value="__custom__">+ Custom…</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => (noteOpen.has(i) ? setNoteOpen((p) => { const n = new Set(p); n.delete(i); return n; }) : openNote(i))}
+                      aria-label={row.note ? "Edit set note" : "Add set note"}
+                      title="Note"
+                      className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
+                        row.note || noteOpen.has(i)
+                          ? "text-orange-400 bg-orange-500/10"
+                          : "text-gray-500 hover:text-gray-300"
+                      }`}
+                    >
+                      <NoteIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeCampusRow(i)}
+                      aria-label="Remove set"
+                      className="shrink-0 text-gray-500 hover:text-red-400 text-lg leading-none w-6 h-7 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {showCodes && row.sequence && (
+                    <p className="font-mono text-[0.7rem] text-gray-500 px-1 -mt-0.5 break-all">
+                      {row.sequence}
+                    </p>
+                  )}
+                  {noteOpen.has(i) && (
+                    <input
+                      type="text"
+                      value={row.note ?? ""}
+                      onChange={(e) => setCampusRow(i, { note: e.target.value })}
+                      placeholder="Note"
+                      aria-label="Set note"
+                      autoFocus
+                      className="w-full bg-gray-700/60 text-white rounded-lg px-2 py-1.5 text-xs placeholder-gray-500 border border-gray-700 focus:outline-none focus:border-orange-500/50"
+                    />
+                  )}
                 </div>
               );
             })}
-            <button
-              type="button"
-              onClick={addCampusRow}
-              className="self-start text-xs font-semibold text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800"
-            >
-              + Add set
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={addCampusRow}
+                className="text-xs font-semibold text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 bg-gray-800"
+              >
+                + Add set
+              </button>
+              <div className="flex-1" />
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={resetCampusTemplate}
+                  className="text-xs font-semibold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-full border border-orange-500/40 bg-orange-500/10"
+                >
+                  ↺ Reset to routine
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowCodes((v) => !v)}
+                aria-pressed={showCodes}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                  showCodes
+                    ? "text-white bg-gray-700 border-gray-600"
+                    : "text-gray-400 hover:text-white border-gray-700 bg-gray-800"
+                }`}
+              >
+                {showCodes ? "Hide codes" : "Show codes"}
+              </button>
+            </div>
           </div>
         ) : def && def.fieldDefs.length > 0 && (
           <div className="bg-gray-800 rounded-xl overflow-hidden">
@@ -689,9 +844,9 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         <textarea
           value={sessionNotes}
           onChange={(e) => setSessionNotes(e.target.value)}
-          rows={2}
+          rows={4}
           placeholder="Session notes (optional)"
-          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+          className="w-full shrink-0 min-h-[6rem] bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-y border border-gray-700 focus:outline-none focus:border-gray-500"
         />
       </div>
 

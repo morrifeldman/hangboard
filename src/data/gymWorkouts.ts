@@ -188,3 +188,78 @@ export const CAMPUS_TEMPLATE: CampusSet[] = [
   { rung: "Medium", name: "Max Ladder",      sequence: "B1-L3-R5-B5" },
   { rung: "Medium", name: "Max Ladder",      sequence: "B1-R3-L5-B5" },
 ];
+
+/** Display the ladder name without the trailing "Ladder" word (stored value keeps it). */
+export function ladderDisplayName(name: string): string {
+  return name.replace(/\s*Ladder$/i, "");
+}
+
+/** One-letter rung label for the compact campus row (stored value keeps "Large" etc.). */
+export function rungShortLabel(rung: string): string {
+  return rung ? rung.charAt(0).toUpperCase() : "";
+}
+
+/**
+ * Compact, meaningful label for a hand sequence.
+ * Consecutive ladders show lead hand + top rung (how high they go):
+ *   B1-L2-R2-L3-R3-L4-B4  → "L4"       (matching ladder to rung 4)
+ *   B1-R2-L3-R4-L5-R6-B6  → "R6"       (basic ladder to rung 6)
+ * Ladders with skips show lead hand + every gap (kept verbatim, including zeros):
+ *   B1-L3-R4-B4           → "L+1+0"    (lead left, skip a rung then adjacent)
+ *   B1-L3-R5-B5           → "L+1+1"    (lead left, skip then skip)
+ * Non-ladder / unparseable sequences fall back to the raw string.
+ */
+export function sequenceShortLabel(seq: string): string {
+  const tokens = seq.split("-").map((t) => t.trim()).filter(Boolean);
+  const parsed = tokens
+    .map((t) => /^([BLR])(\d+)$/i.exec(t))
+    .filter((m): m is RegExpExecArray => m !== null);
+  if (parsed.length !== tokens.length || tokens.length === 0) return seq;
+
+  const lead = parsed.find((m) => m[1].toUpperCase() !== "B");
+  if (!lead) return seq;
+  const hand = lead[1].toUpperCase();
+
+  const rungs = Array.from(new Set(parsed.map((m) => Number(m[2])))).sort((a, b) => a - b);
+  const skips: number[] = [];
+  for (let i = 1; i < rungs.length; i++) skips.push(rungs[i] - rungs[i - 1] - 1);
+  // Consecutive ladder (no rung ever skipped) → report top rung; otherwise list every gap.
+  return skips.every((s) => s === 0)
+    ? `${hand}${rungs[rungs.length - 1]}`
+    : hand + skips.map((s) => `+${s}`).join("");
+}
+
+/**
+ * Expand a short code typed into "+ Custom…" back into a full B/L/R sequence.
+ * Inverse of {@link sequenceShortLabel} for the two short forms:
+ *   "R+1+2" → "B1-R3-L6-B6"   (lead right, skip 1 then skip 2)
+ *   "L4"    → "B1-L2-R3-L4-B4" (lead left, consecutive ladder to rung 4)
+ * Returns null if the string isn't a recognized short code (caller then keeps it verbatim).
+ */
+export function shortCodeToSequence(code: string): string | null {
+  const t = code.trim();
+  let rungs: number[];
+  let m: RegExpExecArray | null;
+  if ((m = /^([LR])((?:\+\d+)+)$/i.exec(t))) {
+    const skips = m[2].split("+").filter(Boolean).map(Number);
+    rungs = [1];
+    for (const s of skips) rungs.push(rungs[rungs.length - 1] + s + 1);
+  } else if ((m = /^([LR])(\d+)$/i.exec(t))) {
+    const top = Number(m[2]);
+    if (top < 2) return null;
+    rungs = Array.from({ length: top }, (_, k) => k + 1);
+  } else {
+    return null;
+  }
+  if (rungs.length < 2) return null;
+
+  const lead = m[1].toUpperCase();
+  const tokens = [`B${rungs[0]}`];
+  let hand = lead;
+  for (let k = 1; k < rungs.length; k++) {
+    tokens.push(`${hand}${rungs[k]}`);
+    hand = hand === "L" ? "R" : "L";
+  }
+  tokens.push(`B${rungs[rungs.length - 1]}`);
+  return tokens.join("-");
+}
