@@ -11,6 +11,7 @@ export type ScheduleDayType =
   | "outdoor"
   | "bouldering"
   | "stretching"
+  | "cardio"
   | "rest";
 
 export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: string; dot: string }> = {
@@ -20,6 +21,7 @@ export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: st
   outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
   bouldering: { label: "Bouldering", bg: "bg-amber-600", dot: "bg-amber-400" },
   stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
+  cardio: { label: "Cardio", bg: "bg-emerald-600", dot: "bg-emerald-400" },
   rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
 };
 
@@ -30,6 +32,7 @@ export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
   "outdoor",
   "bouldering",
   "stretching",
+  "cardio",
   "rest",
 ];
 
@@ -83,7 +86,7 @@ export type ScheduleDay = {
 /**
  * Generously decide whether anything logged on a day could be construed as
  * satisfying a planned type. `rest` is special: it is "matched" when nothing
- * was logged, or when the only thing logged was stretching (stretching is
+ * was logged, or when the only thing logged was stretching or cardio (both are
  * compatible with a rest day).
  */
 export function typeMatches(
@@ -114,9 +117,14 @@ export function typeMatches(
       return climbs.some((c) => c.setting === "outdoor");
     case "stretching":
       return has("stretching");
+    case "cardio":
+      return has("cardio");
     case "rest":
-      // Resting — or only stretching — keeps a rest day satisfied.
-      return climbs.length === 0 && sessions.every((s) => s.workoutType === "stretching");
+      // Resting — or only stretching / cardio — keeps a rest day satisfied.
+      return (
+        climbs.length === 0 &&
+        sessions.every((s) => s.workoutType === "stretching" || s.workoutType === "cardio")
+      );
   }
 }
 

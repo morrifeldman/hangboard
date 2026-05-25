@@ -144,9 +144,13 @@ describe("typeMatches (generous)", () => {
     expect(typeMatches("stretching", [makeSessionOn(day, "repeaters")], [])).toBe(false);
   });
 
-  it("rest matches when nothing — or only stretching — was logged", () => {
+  it("rest matches when nothing — or only stretching / cardio — was logged", () => {
     expect(typeMatches("rest", [], [])).toBe(true);
     expect(typeMatches("rest", [makeSessionOn(day, "stretching")], [])).toBe(true);
+    expect(typeMatches("rest", [makeSessionOn(day, "cardio")], [])).toBe(true);
+    expect(
+      typeMatches("rest", [makeSessionOn(day, "stretching"), makeSessionOn(day, "cardio", "s2")], []),
+    ).toBe(true);
     expect(typeMatches("rest", [makeSessionOn(day)], [])).toBe(false);
     // stretching plus anything else (a session or a climb) breaks the rest day
     expect(
