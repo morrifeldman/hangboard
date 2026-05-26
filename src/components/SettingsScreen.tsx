@@ -10,6 +10,15 @@ import { getSessions } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import {
+  backupToDrive,
+  disconnectDrive,
+  getDriveState,
+  isDriveConfigured,
+  KEEP_DRIVE_BACKUPS,
+} from "../lib/driveBackup";
+import type { DriveBackupState } from "../lib/driveBackup";
+import { daysSince } from "../lib/driveBackupCore";
+import {
   getPrefs,
   periodicReminderStatus,
   permissionStatus,
@@ -25,6 +34,14 @@ import { BackChevronIcon, GearIcon } from "./icons";
 type Props = {
   onBack: () => void;
 };
+
+/** "today", "yesterday", "3 days ago" — for the last-Drive-backup line. */
+function lastBackupLabel(lastBackupAt: number | null): string {
+  if (lastBackupAt === null) return "never backed up to Drive";
+  const days = daysSince(lastBackupAt, Date.now()) ?? 0;
+  const when = days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+  return `last backed up ${when}`;
+}
 
 type RestorePending = {
   file: BackupFile;
@@ -47,6 +64,11 @@ export function SettingsScreen({ onBack }: Props) {
   );
   const [bgStatus, setBgStatus] = useState<PeriodicReminderSupport>("unsupported");
   const [notifTest, setNotifTest] = useState<string | null>(null);
+  const [driveState, setDriveState] = useState<DriveBackupState>(() => getDriveState());
+  const [driveBusy, setDriveBusy] = useState(false);
+  const [driveMsg, setDriveMsg] = useState<string | null>(null);
+  const [driveErr, setDriveErr] = useState<string | null>(null);
+  const driveConfigured = isDriveConfigured();
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs(), getNotes()])
@@ -91,6 +113,32 @@ export function SettingsScreen({ onBack }: Props) {
   const clearMessages = () => {
     setStatus(null);
     setError(null);
+  };
+
+  const handleDriveBackup = async () => {
+    setDriveBusy(true);
+    setDriveMsg(null);
+    setDriveErr(null);
+    try {
+      const { fileName, pruned } = await backupToDrive(true);
+      setDriveState(getDriveState());
+      setDriveMsg(
+        pruned > 0
+          ? `Uploaded ${fileName}. Pruned ${pruned} old backup${pruned === 1 ? "" : "s"}.`
+          : `Uploaded ${fileName} to Drive.`,
+      );
+    } catch (err) {
+      setDriveErr(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDriveBusy(false);
+    }
+  };
+
+  const handleDriveDisconnect = () => {
+    disconnectDrive();
+    setDriveState(getDriveState());
+    setDriveMsg(null);
+    setDriveErr(null);
   };
 
   const handleBackup = async () => {
@@ -225,6 +273,56 @@ export function SettingsScreen({ onBack }: Props) {
           )}
           {error && (
             <p className="text-red-400 text-sm" data-testid="settings-error">{error}</p>
+          )}
+        </section>
+
+        <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3" data-testid="settings-drive">
+          <h2 className="text-white font-semibold text-base">Cloud backup · Google Drive</h2>
+          {!driveConfigured ? (
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Not configured for this build. To enable one-tap backup to Drive,
+              set <span className="font-mono text-gray-300">VITE_GOOGLE_CLIENT_ID</span> to a
+              Google OAuth client ID (Web application, with this site as an
+              authorized JavaScript origin) and redeploy.
+            </p>
+          ) : (
+            <>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Upload a full backup to a private Drive folder only Cairn can
+                see. Keeps the last {KEEP_DRIVE_BACKUPS} and prunes older ones.
+                Tap to back up — browsers can&apos;t upload on a schedule, so
+                you&apos;ll get a nudge when it&apos;s been a while.
+              </p>
+              <p className="text-gray-500 text-xs" data-testid="settings-drive-status">
+                {lastBackupLabel(driveState.lastBackupAt)}
+                {driveState.lastFileName ? ` · ${driveState.lastFileName}` : ""}
+              </p>
+              <div className="flex flex-col gap-2 pt-1">
+                <button
+                  onClick={handleDriveBackup}
+                  disabled={driveBusy || restoring}
+                  className="w-full py-3 rounded-xl bg-blue-600 active:bg-blue-500 disabled:opacity-50 text-white font-semibold text-base"
+                  data-testid="settings-drive-backup"
+                >
+                  {driveBusy ? "Backing up…" : "Back up to Drive"}
+                </button>
+                {driveState.connected && (
+                  <button
+                    onClick={handleDriveDisconnect}
+                    disabled={driveBusy}
+                    className="self-start px-3 py-1.5 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white text-xs font-semibold"
+                  >
+                    Disconnect Drive
+                  </button>
+                )}
+              </div>
+              {driveMsg && (
+                <p className="text-green-400 text-sm" data-testid="settings-drive-msg">{driveMsg}</p>
+              )}
+              {driveErr && (
+                <p className="text-red-400 text-sm" data-testid="settings-drive-err">{driveErr}</p>
+              )}
+            </>
           )}
         </section>
 

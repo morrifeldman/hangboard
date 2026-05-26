@@ -27,6 +27,8 @@ import type { Granularity } from "../lib/gradeTrends";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
+import { getDriveState, isDriveConfigured } from "../lib/driveBackup";
+import { isBackupStale } from "../lib/driveBackupCore";
 import {
   getSchedule,
   normalizeDayTypes,
@@ -134,6 +136,9 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
   const [rangeStart, setRangeStart] = useState(0);
   const [rangeEnd, setRangeEnd] = useState(0);
 
+  // One-shot read of the Drive backup state for the staleness nudge.
+  const driveBackupState = useMemo(() => getDriveState(), []);
+
   useEffect(() => {
     Promise.all([getSessions(), getClimbs(), getNotes()])
       .then(([s, c, n]) => { setSessions(s); setClimbs(c); setNotes(n); })
@@ -240,6 +245,11 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
   const lineColor = isTrendingUp ? "#22c55e" : "#6366f1";
 
   const hasSessions = sessions.length > 0;
+  // Nudge to back up only once there's real data worth losing.
+  const backupNudge =
+    isDriveConfigured() &&
+    hasSessions &&
+    isBackupStale(driveBackupState.lastBackupAt, Date.now());
   const workoutLabel = workoutType === "repeaters" ? "Repeaters" : "Max Hang";
 
   const dayClimbs = selectedDate ? climbs.filter((c) => c.date === selectedDate) : [];
@@ -275,6 +285,18 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
           className={`mx-4 mt-3 px-3 py-2 rounded-xl text-white text-sm font-medium text-left ${SCHEDULE_TYPE_META[todayTypes[0]].bg}`}
         >
           Today: {todayTypes.map((t) => SCHEDULE_TYPE_META[t].label).join(" + ")} day
+        </button>
+      )}
+
+      {backupNudge && (
+        <button
+          onClick={onShowSettings}
+          data-testid="backup-nudge"
+          className="mx-4 mt-3 px-3 py-2 rounded-xl bg-amber-600/90 active:bg-amber-500 text-white text-sm font-medium text-left"
+        >
+          {driveBackupState.lastBackupAt === null
+            ? "Back up your data to Drive →"
+            : "It's been a while — back up to Drive →"}
         </button>
       )}
 
