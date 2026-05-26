@@ -143,7 +143,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     category: "performance",
     fieldDefs: [
       { key: "stretches", label: "Stretches", type: "multi-select",
-        options: ["Hamstrings", "Quads", "Adductors", "IT band", "Calves"], optional: true },
+        options: ["Hamstrings", "Quads", "Adductors", "IT band", "Calves", "Forearms"], optional: true },
       { key: "reps", label: "Reps per stretch", type: "number", optional: true },
       { key: "holdSec", label: "Hold time", type: "number", unit: "sec", optional: true },
     ],
