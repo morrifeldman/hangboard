@@ -4,6 +4,8 @@ import { getClimbs, replaceAllClimbs } from "./climbs";
 import type { ClimbRecord } from "./climbs";
 import { getSchedules, replaceAllSchedules } from "./schedules";
 import type { ScheduleRecord } from "./schedules";
+import { getNotes, replaceAllNotes } from "./notes";
+import type { NoteRecord } from "./notes";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { StoredWeights } from "../store/useWorkoutStore";
 
@@ -13,6 +15,7 @@ export type BackupData = {
   sessions: SessionRecord[];
   climbs: ClimbRecord[];
   schedules: ScheduleRecord[];
+  notes: NoteRecord[];
   weights: StoredWeights;
   weightsB: StoredWeights;
   selectedWorkout: BackupSelectedWorkout;
@@ -33,6 +36,7 @@ export type BuildBackupArgs = {
   sessions: SessionRecord[];
   climbs: ClimbRecord[];
   schedules: ScheduleRecord[];
+  notes: NoteRecord[];
   weights: StoredWeights;
   weightsB: StoredWeights;
   selectedWorkout: BackupSelectedWorkout;
@@ -50,6 +54,7 @@ export function buildBackup(args: BuildBackupArgs): BackupFile {
       sessions: args.sessions,
       climbs: args.climbs,
       schedules: args.schedules,
+      notes: args.notes,
       weights: args.weights,
       weightsB: args.weightsB,
       selectedWorkout: args.selectedWorkout,
@@ -88,6 +93,12 @@ export function validateBackup(parsed: unknown): ValidateResult {
   } else if (!Array.isArray(data.schedules)) {
     return { ok: false, error: "data.schedules must be an array." };
   }
+  // Notes were added after v1 of the backup format; older files may omit them.
+  if (data.notes === undefined) {
+    data.notes = [];
+  } else if (!Array.isArray(data.notes)) {
+    return { ok: false, error: "data.notes must be an array." };
+  }
   if (!isObject(data.weights)) return { ok: false, error: "data.weights must be an object." };
   if (!isObject(data.weightsB)) return { ok: false, error: "data.weightsB must be an object." };
   if (data.selectedWorkout !== "repeaters" && data.selectedWorkout !== "max-hang") {
@@ -101,10 +112,11 @@ export function validateBackup(parsed: unknown): ValidateResult {
 }
 
 export async function exportBackup(): Promise<BackupFile> {
-  const [sessions, climbs, schedules] = await Promise.all([
+  const [sessions, climbs, schedules, notes] = await Promise.all([
     getSessions(),
     getClimbs(),
     getSchedules(),
+    getNotes(),
   ]);
   const s = useWorkoutStore.getState();
   const selected: BackupSelectedWorkout = s.selectedWorkout === "max-hang" ? "max-hang" : "repeaters";
@@ -112,6 +124,7 @@ export async function exportBackup(): Promise<BackupFile> {
     sessions,
     climbs,
     schedules,
+    notes,
     weights: s.weights,
     weightsB: s.weightsB,
     selectedWorkout: selected,
@@ -125,6 +138,7 @@ export async function restoreBackup(file: BackupFile): Promise<void> {
   await replaceAllSessions(data.sessions);
   await replaceAllClimbs(data.climbs);
   await replaceAllSchedules(data.schedules);
+  await replaceAllNotes(data.notes);
   useWorkoutStore.setState({
     weights: data.weights,
     weightsB: data.weightsB,

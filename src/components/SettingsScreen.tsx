@@ -8,6 +8,7 @@ import {
 import type { BackupFile } from "../lib/backup";
 import { getSessions } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
+import { getNotes } from "../lib/notes";
 import {
   getPrefs,
   periodicReminderStatus,
@@ -29,12 +30,13 @@ type RestorePending = {
   file: BackupFile;
   sessionCount: number;
   climbCount: number;
+  noteCount: number;
   fileName: string;
 };
 
 export function SettingsScreen({ onBack }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [counts, setCounts] = useState<{ sessions: number; climbs: number } | null>(null);
+  const [counts, setCounts] = useState<{ sessions: number; climbs: number; notes: number } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<RestorePending | null>(null);
@@ -47,9 +49,9 @@ export function SettingsScreen({ onBack }: Props) {
   const [notifTest, setNotifTest] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getSessions(), getClimbs()])
-      .then(([s, c]) => setCounts({ sessions: s.length, climbs: c.length }))
-      .catch(() => setCounts({ sessions: 0, climbs: 0 }));
+    Promise.all([getSessions(), getClimbs(), getNotes()])
+      .then(([s, c, n]) => setCounts({ sessions: s.length, climbs: c.length, notes: n.length }))
+      .catch(() => setCounts({ sessions: 0, climbs: 0, notes: 0 }));
   }, []);
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export function SettingsScreen({ onBack }: Props) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setStatus(
-        `Downloaded ${a.download} — ${file.data.sessions.length} sessions, ${file.data.climbs.length} climbs.`
+        `Downloaded ${a.download} — ${file.data.sessions.length} sessions, ${file.data.climbs.length} climbs, ${file.data.notes.length} notes.`
       );
     } catch (err) {
       setError(`Backup failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -137,6 +139,7 @@ export function SettingsScreen({ onBack }: Props) {
         file: result.file,
         sessionCount: result.file.data.sessions.length,
         climbCount: result.file.data.climbs.length,
+        noteCount: result.file.data.notes.length,
         fileName: file.name,
       });
     } catch (err) {
@@ -182,7 +185,8 @@ export function SettingsScreen({ onBack }: Props) {
           {counts && (
             <p className="text-gray-500 text-xs">
               Current: {counts.sessions} session{counts.sessions === 1 ? "" : "s"} ·{" "}
-              {counts.climbs} climb{counts.climbs === 1 ? "" : "s"}
+              {counts.climbs} climb{counts.climbs === 1 ? "" : "s"} ·{" "}
+              {counts.notes} note{counts.notes === 1 ? "" : "s"}
             </p>
           )}
 
@@ -298,8 +302,9 @@ export function SettingsScreen({ onBack }: Props) {
             <p className="text-red-100 text-sm leading-relaxed">
               This will <strong>replace</strong> everything currently stored on this device with
               the contents of <span className="font-mono">{pending.fileName}</span>:
-              {" "}{pending.sessionCount} session{pending.sessionCount === 1 ? "" : "s"} and{" "}
-              {pending.climbCount} climb{pending.climbCount === 1 ? "" : "s"}.
+              {" "}{pending.sessionCount} session{pending.sessionCount === 1 ? "" : "s"},{" "}
+              {pending.climbCount} climb{pending.climbCount === 1 ? "" : "s"}, and{" "}
+              {pending.noteCount} note{pending.noteCount === 1 ? "" : "s"}.
             </p>
             <p className="text-red-200 text-xs">
               Tip: download a backup of your current data first if you might want it back.

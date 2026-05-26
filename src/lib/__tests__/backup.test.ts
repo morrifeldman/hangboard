@@ -4,6 +4,7 @@ import type { BackupFile } from "../backup";
 import type { SessionRecord } from "../history";
 import type { ClimbRecord } from "../climbs";
 import type { ScheduleRecord } from "../schedules";
+import type { NoteRecord } from "../notes";
 
 const SAMPLE_SESSION: SessionRecord = {
   id: "s1",
@@ -42,10 +43,19 @@ const SAMPLE_SCHEDULE: ScheduleRecord = {
   updatedAt: 1_700_000_000_000,
 };
 
+const SAMPLE_NOTE: NoteRecord = {
+  id: "n1",
+  date: "2026-05-20",
+  text: "Tweaked A2 pulley on left ring finger — taking a week off crimps.",
+  category: "injury",
+  createdAt: 1_700_000_000_000,
+};
+
 const FULL_INPUT = {
   sessions: [SAMPLE_SESSION],
   climbs: [SAMPLE_CLIMB],
   schedules: [SAMPLE_SCHEDULE],
+  notes: [SAMPLE_NOTE],
   weights: { jug: { set1: 0, set2: 0 } },
   weightsB: { "b-hc": { set1: 50, set2: 55 } },
   selectedWorkout: "repeaters" as const,
@@ -91,6 +101,7 @@ describe("validateBackup", () => {
       sessions: [],
       climbs: [],
       schedules: [],
+      notes: [],
       weights: {},
       weightsB: {},
       selectedWorkout: "max-hang",
@@ -126,6 +137,32 @@ describe("validateBackup", () => {
     const result = validateBackup(parsed);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/schedules/);
+  });
+
+  it("round-trips notes", () => {
+    const f = buildBackup(FULL_INPUT);
+    const parsed = JSON.parse(JSON.stringify(f));
+    const result = validateBackup(parsed);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.file.data.notes).toEqual([SAMPLE_NOTE]);
+  });
+
+  it("treats a missing notes field as an empty array (legacy backups)", () => {
+    const f = buildBackup(FULL_INPUT);
+    const parsed = JSON.parse(JSON.stringify(f));
+    delete parsed.data.notes;
+    const result = validateBackup(parsed);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.file.data.notes).toEqual([]);
+  });
+
+  it("rejects a non-array notes field", () => {
+    const f = buildBackup(FULL_INPUT);
+    const parsed = JSON.parse(JSON.stringify(f));
+    parsed.data.notes = "nope";
+    const result = validateBackup(parsed);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/notes/);
   });
 
   it("rejects null", () => {
