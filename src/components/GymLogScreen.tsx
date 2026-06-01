@@ -420,24 +420,24 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     }
   };
 
-  // Tapping a type pill. Same type → just collapse. No entries → switch outright.
-  // Otherwise stage the switch behind a confirm that auto-resets so it can't get stuck.
+  // Tapping a type pill. First tap selects (the picker stays open so the other pills
+  // remain visible); tapping the already-selected pill again collapses the picker.
+  // Switching away from a type with entries stages a confirm that auto-resets.
   const requestWorkoutType = (t: GymWorkoutType) => {
     if (editing) return;
-    // Leaving the hangboard setup for a gym type — nothing entered to lose.
+    // Leaving the hangboard setup for a gym type — nothing entered to lose. Select, stay open.
     if (hangboardMode) {
       setHangboardMode(false);
       applyWorkoutType(t);
-      setPickerOpen(false);
       return;
     }
     if (t === workoutType) {
+      // Second tap on the selected pill → collapse to just this one.
       setPickerOpen(false);
       return;
     }
     if (!currentTypeHasEntries()) {
       applyWorkoutType(t);
-      setPickerOpen(false);
       return;
     }
     setPendingType(t);
@@ -447,18 +447,21 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     switchTimerRef.current = setTimeout(() => setPendingType(null), 6000);
   };
 
-  // The Hangboard pill — drop straight into the hangboard setup, collapse the picker.
+  // The Hangboard pill — first tap drops into the hangboard setup (picker stays open);
+  // a second tap on the now-selected pill collapses the picker.
   const selectHangboard = () => {
     cancelSwitch();
+    if (hangboardMode) {
+      setPickerOpen(false);
+      return;
+    }
     setHangboardMode(true);
-    setPickerOpen(false);
   };
 
   const confirmSwitch = () => {
     if (pendingType) applyWorkoutType(pendingType);
     clearSwitchTimer();
     setPendingType(null);
-    setPickerOpen(false);
   };
 
   const cancelSwitch = () => {
