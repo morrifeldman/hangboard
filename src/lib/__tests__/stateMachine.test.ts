@@ -82,10 +82,10 @@ describe('advancePhase — workout A (numSets=2 default)', () => {
     expect(next.phase).toBe('break');
   });
 
-  it('hanging last rep set2, last hold → break (for feedback)', () => {
+  it('hanging last rep set2, last hold → done (skips pointless final break)', () => {
     const s = state({ repIndex: SET2 - 1, setNumber: 2, holdIndex: lastHoldIndex });
     const next = advancePhase(s, HOLDS, SET1, SET2);
-    expect(next.phase).toBe('break');
+    expect(next.phase).toBe('done');
   });
 
   it('resting → hanging, increments repIndex', () => {
@@ -165,6 +165,12 @@ describe('advancePhase — numSets=3, repsPerSet=1', () => {
     const next = advancePhase(s, holds3, SET1, SET2);
     expect(next.phase).toBe('done');
   });
+
+  it('hanging set3 (last set, last hold) → done (skips final break)', () => {
+    const s = state({ phase: 'hanging', setNumber: 3, repIndex: 0, holdIndex: 1 });
+    const next = advancePhase(s, holds3, SET1, SET2);
+    expect(next.phase).toBe('done');
+  });
 });
 
 // ── numSets=1 (warmup single hangs) ──────────────────────────────────────
@@ -220,6 +226,12 @@ describe('advancePhase — HOLDS_B smoke tests', () => {
   it('Open set3 (last hold, last set) → done', () => {
     // holdIndex 8 = b-open (numSets:3) after merging jug/pullup pairs
     const s = state({ phase: 'break', setNumber: 3, holdIndex: 8 });
+    const next = advancePhase(s, HOLDS_B, 1, 1);
+    expect(next.phase).toBe('done');
+  });
+
+  it('Open set3 final hang → done (no trailing break)', () => {
+    const s = state({ phase: 'hanging', setNumber: 3, repIndex: 0, holdIndex: 8 });
     const next = advancePhase(s, HOLDS_B, 1, 1);
     expect(next.phase).toBe('done');
   });

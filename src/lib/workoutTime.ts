@@ -13,7 +13,13 @@ function repsFor(h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: 
 
 type PhaseStep = { phase: WorkoutPhase; repIndex: number; secs: number };
 
-function setPhaseSequence(h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number): PhaseStep[] {
+// `omitTrailingBreak` drops the break that normally follows a set. Used for the
+// last set of the last hold, which the state machine sends straight to `done`
+// (rest-only holds keep their break — there the break IS the work).
+function setPhaseSequence(
+  h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number,
+  omitTrailingBreak = false,
+): PhaseStep[] {
   const out: PhaseStep[] = [];
   out.push({ phase: "prep", repIndex: 0, secs: prepFor(h) });
   if (h.isRestOnly) {
@@ -28,12 +34,15 @@ function setPhaseSequence(h: HoldDefinition, setNum: number, set1Reps: number, s
       if (h.prepBetweenReps) out.push({ phase: "prep", repIndex: r + 1, secs: prepFor(h) });
     }
   }
-  out.push({ phase: "break", repIndex: Math.max(0, reps - 1), secs: breakFor(h) });
+  if (!omitTrailingBreak) out.push({ phase: "break", repIndex: Math.max(0, reps - 1), secs: breakFor(h) });
   return out;
 }
 
-function setDurationSecs(h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number): number {
-  return setPhaseSequence(h, setNum, set1Reps, set2Reps).reduce((acc, s) => acc + s.secs, 0);
+function setDurationSecs(
+  h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number,
+  omitTrailingBreak = false,
+): number {
+  return setPhaseSequence(h, setNum, set1Reps, set2Reps, omitTrailingBreak).reduce((acc, s) => acc + s.secs, 0);
 }
 
 export function totalWorkoutSecs(
@@ -42,9 +51,14 @@ export function totalWorkoutSecs(
   set2Reps: number,
 ): number {
   let total = 0;
-  for (const h of holds) {
+  for (let i = 0; i < holds.length; i++) {
+    const h = holds[i];
     const numSets = h.numSets ?? 2;
-    for (let s = 1; s <= numSets; s++) total += setDurationSecs(h, s, set1Reps, set2Reps);
+    const isLastHold = i === holds.length - 1;
+    for (let s = 1; s <= numSets; s++) {
+      const omitBreak = isLastHold && s === numSets;
+      total += setDurationSecs(h, s, set1Reps, set2Reps, omitBreak);
+    }
   }
   return total;
 }
@@ -71,8 +85,11 @@ function findPhaseIndex(seq: PhaseStep[], phase: WorkoutPhase, repIndex: number)
   return fallback;
 }
 
-function remainingInCurrentSet(state: SessionState, h: HoldDefinition, set1Reps: number, set2Reps: number): number {
-  const seq = setPhaseSequence(h, state.setNumber, set1Reps, set2Reps);
+function remainingInCurrentSet(
+  state: SessionState, h: HoldDefinition, set1Reps: number, set2Reps: number,
+  omitTrailingBreak: boolean,
+): number {
+  const seq = setPhaseSequence(h, state.setNumber, set1Reps, set2Reps, omitTrailingBreak);
   const idx = findPhaseIndex(seq, state.phase, state.repIndex);
   if (idx < 0) return 0;
   let rem = 0;
@@ -93,17 +110,25 @@ export function remainingWorkoutSecs(
   const h = holds[state.holdIndex];
   if (!h) return rem;
 
-  rem += remainingInCurrentSet(state, h, set1Reps, set2Reps);
-
   const numSets = h.numSets ?? 2;
+  const isLastHold = state.holdIndex === holds.length - 1;
+
+  rem += remainingInCurrentSet(
+    state, h, set1Reps, set2Reps,
+    isLastHold && state.setNumber === numSets,
+  );
+
   for (let s = state.setNumber + 1; s <= numSets; s++) {
-    rem += setDurationSecs(h, s, set1Reps, set2Reps);
+    rem += setDurationSecs(h, s, set1Reps, set2Reps, isLastHold && s === numSets);
   }
 
   for (let i = state.holdIndex + 1; i < holds.length; i++) {
     const hh = holds[i];
     const ns = hh.numSets ?? 2;
-    for (let s = 1; s <= ns; s++) rem += setDurationSecs(hh, s, set1Reps, set2Reps);
+    const isLastH = i === holds.length - 1;
+    for (let s = 1; s <= ns; s++) {
+      rem += setDurationSecs(hh, s, set1Reps, set2Reps, isLastH && s === ns);
+    }
   }
   return rem;
 }

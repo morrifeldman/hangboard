@@ -32,7 +32,8 @@ describe("totalWorkoutSecs", () => {
     //   set1 = PREP + 7*HANG + 6*REST + BREAK = 10 + 49 + 18 + 180 = 257
     //   set2 = PREP + 6*HANG + 5*REST + BREAK = 10 + 42 + 15 + 180 = 247
     // Per hold = 257 + 247 = 504. Workout A has 8 holds → 504 * 8 = 4032.
-    expect(totalWorkoutSecs(HOLDS, S1, S2)).toBe(504 * 8);
+    // The last set of the last hold drops its trailing break (180): 4032 - 180.
+    expect(totalWorkoutSecs(HOLDS, S1, S2)).toBe(504 * 8 - BREAK);
   });
 
   it("handles isRestOnly holds (prep + break only per set)", () => {
@@ -47,8 +48,9 @@ describe("totalWorkoutSecs", () => {
       numSets: 1, repsPerSet: 3, prepBetweenReps: true,
       hangSecs: 10, restSecs: 30, breakSecs: 30,
     });
-    // 10 + 10 + (30 + 10 + 10) + (30 + 10 + 10) + 30 = 150
-    expect(totalWorkoutSecs([h], S1, S2)).toBe(150);
+    // 10 + 10 + (30 + 10 + 10) + (30 + 10 + 10) = 120
+    // (last set of the only hold → trailing break of 30 is dropped)
+    expect(totalWorkoutSecs([h], S1, S2)).toBe(120);
   });
 
   it("respects per-hold timer overrides", () => {
@@ -56,15 +58,18 @@ describe("totalWorkoutSecs", () => {
       numSets: 1, repsPerSet: 1,
       prepSecs: 5, hangSecs: 12, breakSecs: 100,
     });
-    // 1 set, 1 rep: prep + hang + break = 5 + 12 + 100 = 117 (no rest, only 1 rep)
-    expect(totalWorkoutSecs([h], S1, S2)).toBe(117);
+    // 1 set, 1 rep: prep + hang = 5 + 12 = 17
+    // (last set of the only hold → trailing break of 100 is dropped)
+    expect(totalWorkoutSecs([h], S1, S2)).toBe(17);
   });
 
   it("matches a hand-rolled Workout B total", () => {
     // Spot-check: walk HOLDS_B and verify totalWorkoutSecs matches a manual sum.
     let manual = 0;
-    for (const h of HOLDS_B) {
+    for (let i = 0; i < HOLDS_B.length; i++) {
+      const h = HOLDS_B[i];
       const numSets = h.numSets ?? 2;
+      const isLastHold = i === HOLDS_B.length - 1;
       for (let s = 1; s <= numSets; s++) {
         const prep = h.prepSecs ?? PREP;
         const brk  = h.breakSecs ?? BREAK;
@@ -78,7 +83,8 @@ describe("totalWorkoutSecs", () => {
             if (h.prepBetweenReps) setSecs += prep;
           }
         }
-        setSecs += brk;
+        // Last set of the last hold drops its trailing break.
+        if (!(isLastHold && s === numSets)) setSecs += brk;
         manual += setSecs;
       }
     }
@@ -128,12 +134,12 @@ describe("remainingWorkoutSecs", () => {
     expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 0)).toBe(0);
   });
 
-  it("on the last hang of the last rep of the last set of the last hold, equals hang remaining + final break", () => {
+  it("on the last hang of the last rep of the last set of the last hold, equals just the hang remaining (no trailing break)", () => {
     // Workout A, hold 7 (med-pinch), set 2, rep 5 (last of 6), phase hanging.
     const s: SessionState = { phase: "hanging", holdIndex: 7, setNumber: 2, repIndex: 5 };
-    // Remaining = currentPhaseRemaining + final break
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, HANG)).toBe(HANG + BREAK);
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 0)).toBe(BREAK);
+    // The final break is gone — once this hang ends the workout is done.
+    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, HANG)).toBe(HANG);
+    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 0)).toBe(0);
   });
 
   it("drops by exactly one set's worth between consecutive holds (start of next hold)", () => {
@@ -153,7 +159,7 @@ describe("remainingWorkoutSecs", () => {
     //   Actually after rep 3 hang: rest, hang, rest, hang, rest, hang, break = 3 rests + 3 hangs + break
     //   = 3*REST + 3*HANG + BREAK = 9 + 21 + 180 = 210
     // Plus set 2 (247) plus 7 more holds (7 * 504 = 3528) = 210 + 247 + 3528 = 3985
-    // Plus currentPhaseRemaining = 5.
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 5)).toBe(5 + 210 + 247 + 7 * 504);
+    // Plus currentPhaseRemaining = 5. Minus the dropped final break of the last hold (180).
+    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 5)).toBe(5 + 210 + 247 + 7 * 504 - BREAK);
   });
 });

@@ -33,6 +33,8 @@ export function advancePhase(
     case 'hanging':
       if (!isLastRep) return { ...s, phase: 'resting' };
       if (!isLastSet) return { ...s, phase: 'break' };
+      // Final hang of the whole workout: skip the pointless trailing break and finish.
+      if (isLastHold) return { ...s, phase: 'done' };
       return { ...s, phase: 'break' };
     case 'resting':
       if (hold.prepBetweenReps) return { ...s, phase: 'prep', repIndex: s.repIndex + 1 };
