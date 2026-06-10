@@ -965,10 +965,21 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                 const selected = new Set((fields[fd.key] ?? "").split(",").map((s) => s.trim()).filter(Boolean));
                 return (
                   <div key={fd.key} className={`px-4 py-3 ${borderCls}`}>
-                    <label className="text-gray-400 text-sm block mb-2">
-                      {fd.label}
-                      {fd.optional && <span className="text-gray-600 ml-1 text-xs">(opt)</span>}
-                    </label>
+                    <div className="flex items-center mb-2">
+                      <label className="text-gray-400 text-sm flex-1">
+                        {fd.label}
+                        {fd.optional && <span className="text-gray-600 ml-1 text-xs">(opt)</span>}
+                      </label>
+                      {fd.optional && selected.size > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setField(fd.key, "")}
+                          className="text-xs font-semibold text-gray-500 hover:text-red-400"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
                       {fd.options?.map((o) => (
                         <button
@@ -1036,6 +1047,19 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                       />
                     )}
                     {fd.unit && <span className="text-gray-500 text-xs w-7">{fd.unit}</span>}
+                    {fd.optional ? (
+                      <button
+                        type="button"
+                        onClick={() => setField(fd.key, "")}
+                        disabled={!(fields[fd.key] ?? "").trim()}
+                        aria-label={`Clear ${fd.label}`}
+                        className="shrink-0 w-6 h-6 flex items-center justify-center text-base leading-none text-gray-500 hover:text-red-400 disabled:opacity-0 disabled:pointer-events-none"
+                      >
+                        ×
+                      </button>
+                    ) : (
+                      <span className="w-6 shrink-0" />
+                    )}
                   </div>
                 </div>
               );
