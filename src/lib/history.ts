@@ -36,12 +36,20 @@ export type SessionSetRecord = {
   notes?: string;
 };
 
+/** The target weights that the *next* session of this hold will start from. */
+export type SessionNextTarget = {
+  set1: number;
+  set2: number | null;
+  set3?: number | null;
+};
+
 export type SessionHoldRecord = {
   holdId: string;
   holdName: string;
   set1: SessionSetRecord;
   set2: SessionSetRecord | null; // null when hold.numSets === 1
   set3?: SessionSetRecord | null; // max-hang 3rd set
+  next?: SessionNextTarget; // weights queued for next session (captured at save time)
   notes?: string;
 };
 
@@ -162,6 +170,8 @@ type BuildArgs = {
   setNumber: number;
   holds: readonly HoldDefinition[];
   effectiveWeight: (holdId: string, setNum: number) => number;
+  /** Persisted target weight for next session; when provided, captured per hold as `next`. */
+  nextWeight?: (holdId: string, setNum: number) => number;
   notes?: string;
   holdNotes?: Record<string, string>;
   setNotes?: Record<string, { set1?: string; set2?: string; set3?: string }>;
@@ -177,6 +187,7 @@ export function buildSessionRecord({
   setNumber,
   holds,
   effectiveWeight,
+  nextWeight,
   notes,
   holdNotes,
   setNotes,
@@ -240,12 +251,22 @@ export function buildSessionRecord({
           }
         : null;
 
+    const next: SessionNextTarget | undefined =
+      nextWeight && !hold.isRestOnly && !hold.skipProgression
+        ? {
+            set1: nextWeight(hold.id, 1),
+            set2: numSets >= 2 ? nextWeight(hold.id, 2) : null,
+            ...(numSets >= 3 ? { set3: nextWeight(hold.id, 3) } : {}),
+          }
+        : undefined;
+
     return {
       holdId: hold.id,
       holdName: hold.name,
       set1,
       set2,
       ...(set3 !== null ? { set3 } : {}),
+      ...(next !== undefined ? { next } : {}),
       ...(holdNotes?.[hold.id] ? { notes: holdNotes[hold.id] } : {}),
     };
   });

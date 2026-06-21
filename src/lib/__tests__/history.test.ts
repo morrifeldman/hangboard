@@ -49,6 +49,27 @@ describe('buildSessionRecord', () => {
     expect(rec.holds[2].set1.weight).toBe(-10);
   });
 
+  it('omits next target when nextWeight is not provided', () => {
+    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 2, setNumber: 2 });
+    expect(rec.holds[1].next).toBeUndefined();
+  });
+
+  it('captures next-session target from nextWeight (independent of done weights)', () => {
+    const rec = buildSessionRecord({
+      ...BASE,
+      bailed: false,
+      holdIndex: 2,
+      setNumber: 2,
+      // Next session is +5 on every set, while effectiveWeight (done) stays at base.
+      nextWeight: (id, setNum) => weights(id, setNum) + 5,
+    });
+    // Done weight unchanged…
+    expect(rec.holds[1].set1.weight).toBe(5);
+    expect(rec.holds[1].set2!.weight).toBe(10);
+    // …next target reflects the bump.
+    expect(rec.holds[1].next).toEqual({ set1: 10, set2: 15 });
+  });
+
   it('captures reps from hold definition', () => {
     const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 0, setNumber: 1 });
     expect(rec.holds[0].set1.reps).toBe(7);

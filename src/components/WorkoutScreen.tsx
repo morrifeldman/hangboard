@@ -31,6 +31,7 @@ export function WorkoutScreen() {
   const startedAt = useWorkoutStore((s) => s.startedAt);
   const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
+  const nextSessionWeight = useWorkoutStore((s) => s.nextSessionWeight);
   const totalScheduledSecs = useWorkoutStore((s) => s.totalScheduledSecs);
 
   const [confirming, setConfirming] = useState(false);
@@ -69,6 +70,7 @@ export function WorkoutScreen() {
       setNumber,
       holds,
       effectiveWeight: (holdId, setNum) => effectiveWeight(holdId, setNum),
+      nextWeight: (holdId, setNum) => nextSessionWeight(holdId, setNum),
       notes: notes || undefined,
       holdNotes,
       setNotes: setNotesLive,

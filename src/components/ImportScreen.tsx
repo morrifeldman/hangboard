@@ -4,6 +4,7 @@ import { HOLDS_B } from "../data/workout-b";
 import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
+import { formatWeight } from "../lib/format";
 import { BackChevronIcon } from "./icons";
 
 /** Small tap target to toggle set completion. */
@@ -421,6 +422,15 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             const noteOpen = expandedNoteHolds.has(hold.id);
             const numSets = hold.numSets ?? 2;
             const co = completionOverrides[hold.id];
+            const origHold = origHoldMap.get(hold.id);
+            const next = origHold?.next;
+            const nextLabel = next
+              ? numSets >= 3
+                ? `${formatWeight(next.set1)} / ${formatWeight(next.set2 ?? next.set1)} / ${formatWeight(next.set3 ?? next.set1)}`
+                : numSets >= 2
+                  ? `${formatWeight(next.set1)} → ${formatWeight(next.set2 ?? next.set1)}`
+                  : formatWeight(next.set1)
+              : null;
             const isCompleted = co?.set1 ?? (!editing || (origHoldMap.get(hold.id)?.set1.completed ?? true));
             const set2Completed = co?.set2 ?? (!editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true));
             const set3Completed = co?.set3 ?? (!editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true));
@@ -497,6 +507,12 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                     </div>
                   )}
                 </div>
+                {/* Next-session target captured when the workout was saved */}
+                {editing && nextLabel && (
+                  <p className="text-gray-500 text-xs font-mono text-right mt-1">
+                    Next: {nextLabel}
+                  </p>
+                )}
                 {/* Note fields — slide open when toggled (completed holds only) */}
                 {editing && noteOpen && (
                   <div className="mt-2 flex flex-col gap-1.5">

@@ -11,6 +11,7 @@ export function PrepTimer() {
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
+  const lastSessionWeights = useWorkoutStore((s) => s.lastSessionWeights);
   const paused = useWorkoutStore((s) => s.paused);
   const currentHold = useWorkoutStore((s) => s.currentHold);
 
@@ -21,6 +22,18 @@ export function PrepTimer() {
   const weight = effectiveWeight(hold.id, setNumber);
   const audio = useAudio();
   const prepDuration = hold.prepSecs ?? PREP_SECS;
+
+  // "vs last time" cue: compare this set's weight to the same set in the most recent session.
+  const last = lastSessionWeights[hold.id];
+  const prevWeight = last
+    ? setNumber <= 1
+      ? last.set1
+      : setNumber === 2
+        ? last.set2
+        : (last.set3 ?? last.set2)
+    : undefined;
+  const diff =
+    prevWeight !== undefined && !hold.isRestOnly ? weight - prevWeight : 0;
 
   useEffect(() => { audio.prepStart(); }, []);
 
@@ -47,9 +60,21 @@ export function PrepTimer() {
         onClick={paused ? resumeWorkout : pauseWorkout}
         paused={paused}
       />
-      <p className="text-gray-300 text-lg font-semibold tabular-nums">
-        {formatWeight(weight)}
-      </p>
+      <div className="flex items-center gap-2">
+        <p className="text-gray-300 text-lg font-semibold tabular-nums">
+          {formatWeight(weight)}
+        </p>
+        {diff !== 0 && (
+          <span
+            className={`text-sm font-bold tabular-nums ${
+              diff > 0 ? "text-green-400" : "text-red-400"
+            }`}
+            data-testid="weight-vs-last"
+          >
+            {diff > 0 ? "↑" : "↓"} {Math.abs(diff)} vs last
+          </span>
+        )}
+      </div>
       {(hold.numSets ?? 2) > 1 && (
         <p className="text-gray-500 text-sm">Set {setNumber} of {hold.numSets ?? 2}</p>
       )}

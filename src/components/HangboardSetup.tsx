@@ -121,7 +121,22 @@ export function HangboardSetup() {
   const handleStart = () => {
     setEditing(null);
     initAudio();
-    startWorkout();
+    // Most recent hangboard session of this type (any completion state) — baseline for the
+    // in-session "vs last time" weight cue.
+    const last = sessions.find((s) => s.workoutType === selectedWorkout && !s.gymData);
+    const lastWeights = last
+      ? Object.fromEntries(
+          last.holds.map((h) => [
+            h.holdId,
+            {
+              set1: h.set1.weight,
+              set2: h.set2?.weight ?? h.set1.weight,
+              ...(h.set3 ? { set3: h.set3.weight } : {}),
+            },
+          ]),
+        )
+      : undefined;
+    startWorkout(lastWeights);
   };
 
   const handleSelectWorkout = (id: WorkoutId) => {
