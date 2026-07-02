@@ -73,7 +73,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         {upNextLabel && (
           <div className="text-right">
             <p className="text-gray-500 text-xs uppercase tracking-wide">Up next</p>
-            <p className="text-white font-semibold">{upNextLabel}</p>
+            <p className="text-white font-bold text-2xl leading-tight">{upNextLabel}</p>
           </div>
         )}
       </div>

@@ -65,7 +65,12 @@ function defaultWeights(holds: readonly HoldDefinition[]): number[] {
 }
 
 function offsetFromRecord(record: SessionRecord): number {
+  // Jug (and any rest-only hold) sits at bodyweight for both sets, so its
+  // set2−set1 is 0 — using it would wrongly report a 0 offset. Skip those and
+  // infer the offset from the first real progressing hold instead.
+  const skipIds = new Set(HOLDS.filter((h) => h.skipProgression || h.isRestOnly).map((h) => h.id));
   for (const h of record.holds) {
+    if (skipIds.has(h.holdId)) continue;
     if (h.set1.completed && h.set2?.completed) return h.set2.weight - h.set1.weight;
   }
   return 10;

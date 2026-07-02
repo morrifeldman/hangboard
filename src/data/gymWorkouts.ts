@@ -9,6 +9,8 @@ export type FieldDef = {
   unit?: string;
   optional?: boolean;
   options?: string[];
+  /** Stepper increment for `number` fields (default 1). Time/duration fields use 5. */
+  step?: number;
 };
 
 export type GymWorkoutDef = {
@@ -26,10 +28,10 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     description: "Aerobic Restoration & Capillarity — continuous climbing",
     category: "endurance",
     fieldDefs: [
-      { key: "climbMin",   label: "Climbing time", type: "number", unit: "min" },
+      { key: "climbMin",   label: "Climbing time", type: "number", unit: "min", step: 5 },
       { key: "routes",    label: "Routes",        type: "number", optional: true },
       { key: "downclimb", label: "Downclimb",     type: "select", options: ["Yes", "No"], optional: true },
-      { key: "wallMin",   label: "Session time",  type: "number", unit: "min", optional: true },
+      { key: "wallMin",   label: "Session time",  type: "number", unit: "min", optional: true, step: 5 },
       { key: "maxGrade",  label: "Max grade",     type: "grade-yds", optional: true },
     ],
   },
@@ -41,7 +43,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     fieldDefs: [
       { key: "repeats",     label: "Repeats",        type: "number" },
       { key: "climbRating", label: "Climb rating",   type: "grade-yds", optional: true },
-      { key: "avgRestSec",  label: "Avg rest",        type: "number", unit: "sec" },
+      { key: "avgRestSec",  label: "Avg rest",        type: "number", unit: "sec", step: 5 },
     ],
   },
   {
@@ -50,7 +52,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     description: "High intensity power endurance training. Target ~1 letter grade above current onsight grade",
     category: "power",
     fieldDefs: [
-      { key: "climbSec",  label: "Climb time",  type: "number", unit: "sec" },
+      { key: "climbSec",  label: "Climb time",  type: "number", unit: "sec", step: 5 },
       { key: "dutyCycle", label: "Duty cycle",    type: "select", options: ["1:1", "1:1.5", "1:2"] },
       { key: "reps",      label: "Reps",         type: "number" },
     ],
@@ -61,7 +63,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     description: "Linked Boulder Circuit — high intensity power endurance training",
     category: "power",
     fieldDefs: [
-      { key: "climbSec",      label: "Climb time",     type: "number", unit: "sec" },
+      { key: "climbSec",      label: "Climb time",     type: "number", unit: "sec", step: 5 },
       { key: "dutyCycle",     label: "Duty cycle",       type: "select", options: ["1:1", "1:1.5", "1:2"] },
       { key: "sets", label: "Sets", type: "number" },
     ],
@@ -84,7 +86,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     category: "performance",
     fieldDefs: [
       { key: "topV",        label: "Top grade",    type: "grade-v" },
-      { key: "durationMin", label: "Duration",     type: "number", unit: "min" },
+      { key: "durationMin", label: "Duration",     type: "number", unit: "min", step: 5 },
     ],
   },
   {
@@ -94,7 +96,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     category: "performance",
     fieldDefs: [
       { key: "level",       label: "Level",    type: "grade-v" },
-      { key: "durationMin", label: "Duration", type: "number", unit: "min" },
+      { key: "durationMin", label: "Duration", type: "number", unit: "min", step: 5 },
     ],
   },
   {
@@ -104,7 +106,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     category: "performance",
     fieldDefs: [
       { key: "level",       label: "Level",    type: "grade-v" },
-      { key: "durationMin", label: "Duration", type: "number", unit: "min" },
+      { key: "durationMin", label: "Duration", type: "number", unit: "min", step: 5 },
     ],
   },
   {
@@ -132,7 +134,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     category: "endurance",
     fieldDefs: [
       { key: "mode",        label: "Mode",      type: "select", options: ["Bike", "Run", "Elliptical"] },
-      { key: "durationMin", label: "Duration",  type: "number", unit: "min" },
+      { key: "durationMin", label: "Duration",  type: "number", unit: "min", step: 5 },
       { key: "intensity",   label: "Intensity", type: "select", options: ["Easy", "Moderate", "Hard"], optional: true },
     ],
   },
@@ -145,7 +147,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
       { key: "stretches", label: "Stretches", type: "multi-select",
         options: ["Hamstrings", "Quads", "Adductors", "IT band", "Calves", "Forearms", "Glutes"], optional: true },
       { key: "reps", label: "Reps per stretch", type: "number", optional: true },
-      { key: "holdSec", label: "Hold time", type: "number", unit: "sec", optional: true },
+      { key: "holdSec", label: "Hold time", type: "number", unit: "sec", optional: true, step: 5 },
     ],
   },
   {

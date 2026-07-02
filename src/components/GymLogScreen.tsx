@@ -534,6 +534,17 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   const setField = (key: string, value: string) =>
     setFields((prev) => ({ ...prev, [key]: value }));
 
+  // Stepper for number fields — bumps the current value (blank counts as 0),
+  // clamped at 0 so counts/durations never go negative. Uses the functional
+  // updater so rapid taps accumulate instead of reading a stale render value.
+  const stepField = (key: string, delta: number) => {
+    setFields((prev) => {
+      const cur = parseFloat(prev[key] ?? "");
+      const base = Number.isFinite(cur) ? cur : 0;
+      return { ...prev, [key]: String(Math.max(0, base + delta)) };
+    });
+  };
+
   const toggleMultiSelect = (key: string, opt: string) => {
     const current = (fields[key] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     const next = current.includes(opt)
@@ -1036,15 +1047,34 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                         {fd.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : (
-                      <input
-                        type="number"
-                        step="1"
-                        autoComplete="off"
-                        value={fields[fd.key] ?? ""}
-                        onChange={(e) => setField(fd.key, e.target.value)}
-                        placeholder="0"
-                        className="w-20 bg-gray-700 text-white text-right rounded-lg px-3 py-1.5 text-sm font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => stepField(fd.key, -(fd.step ?? 1))}
+                          aria-label={`Decrease ${fd.label}`}
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          step={fd.step ?? 1}
+                          autoComplete="off"
+                          value={fields[fd.key] ?? ""}
+                          onChange={(e) => setField(fd.key, e.target.value)}
+                          placeholder="0"
+                          className="w-14 bg-gray-700 text-white text-center rounded-lg px-2 py-1.5 text-sm font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => stepField(fd.key, fd.step ?? 1)}
+                          aria-label={`Increase ${fd.label}`}
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
+                        >
+                          +
+                        </button>
+                      </div>
                     )}
                     {fd.unit && <span className="text-gray-500 text-xs w-7">{fd.unit}</span>}
                     {fd.optional ? (

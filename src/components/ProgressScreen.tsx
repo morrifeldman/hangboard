@@ -15,7 +15,8 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
-import { BarChartIcon, GearIcon, PyramidIcon } from "./icons";
+import { BarChartIcon, GearIcon } from "./icons";
+import { PyramidPreview } from "./pyramid/PyramidPreview";
 import {
   buildTrend,
   buildCalendar,
@@ -358,8 +359,8 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
             </div>
           </section>
 
-          {/* ── Weight trends ── */}
-          <section>
+          {/* ── Weight trends (order-2 → renders below the sport section) ── */}
+          <section className="order-2">
             <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Weight Trends</p>
             <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-3">
               {/* A / B toggle */}
@@ -466,19 +467,10 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
             </div>
           </section>
 
-          {/* ── Route grades (outdoor sport) ── */}
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-gray-500 text-xs uppercase tracking-wider">Route Grades · Outdoor Sport</p>
-              <button
-                onClick={onShowPyramid}
-                data-testid="open-pyramid"
-                className="flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-1 text-xs font-semibold text-teal-300 ring-1 ring-inset ring-teal-400/30 transition-colors hover:bg-teal-500/25 hover:text-teal-200"
-              >
-                <PyramidIcon size={14} />
-                Pyramid
-              </button>
-            </div>
+          {/* ── Route grades (outdoor sport) — order-1 puts it above Weight Trends (order-2) ── */}
+          <section className="order-1 flex flex-col gap-3">
+            <p className="text-gray-500 text-xs uppercase tracking-wider">Route Grades · Outdoor Sport</p>
+            <PyramidPreview climbs={climbs} onOpen={onShowPyramid} />
             <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-4">
               {/* Granularity slider */}
               <div>
@@ -557,8 +549,8 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
             </div>
           </section>
 
-          {/* bottom padding */}
-          <div className="h-4" />
+          {/* bottom padding (order-last keeps it beneath the reordered sections) */}
+          <div className="order-last h-4" />
         </div>
       )}
 
