@@ -12,11 +12,23 @@ export type TrendPoint = {
   sessionId: string;
 };
 
+export type WorkoutBucket = "gym" | "cardio" | "stretching";
+
 export type CalendarDay = {
   date: Date;
-  workoutType: "repeaters" | "max-hang" | "gym" | "gym+hangboard" | null;
+  /**
+   * Highest-priority bucket present that day (gym > cardio > stretching), or
+   * null if none. Handy as a summary, but the calendar renders every flagged
+   * bucket as its own slice rather than picking one.
+   * - "gym": any board (repeaters/max-hang/beginner) or gym session that isn't
+   *   cardio or stretching — hangboarding counts as gym.
+   * - "cardio" / "stretching": their own buckets so recovery work stands apart.
+   */
+  workoutType: WorkoutBucket | null;
+  gym: boolean;
+  cardio: boolean;
+  stretching: boolean;
   outdoor: boolean;
-  note: boolean;
 };
 
 // ─── buildTrend ───────────────────────────────────────────────────────────────
@@ -85,6 +97,16 @@ export function buildTrend(
 // ─── buildCalendar ────────────────────────────────────────────────────────────
 
 /**
+ * Collapse a session into one of the three calendar buckets. Board work and
+ * most gym workouts read as "gym"; cardio and stretching get their own bucket.
+ */
+function sessionCategory(s: SessionRecord): WorkoutBucket {
+  if (s.gymData?.type === "cardio") return "cardio";
+  if (s.gymData?.type === "stretching") return "stretching";
+  return "gym";
+}
+
+/**
  * Returns a 12×7 grid of CalendarDay objects covering 12 ISO weeks ending with
  * the current week.  Outer index = week (0 = oldest), inner index = day (0 =
  * Monday, 6 = Sunday).
@@ -92,21 +114,14 @@ export function buildTrend(
 export function buildCalendar(
   sessions: SessionRecord[],
   climbDates?: Set<string>,
-  noteDates?: Set<string>,
 ): CalendarDay[][] {
-  // Build a lookup keyed by ISO date string "YYYY-MM-DD"
-  // "beginner" sessions are mapped to "repeaters" for calendar coloring (green)
-  // gym sessions are tracked separately
-  const dayMap = new Map<string, Set<string>>();
+  // Build a lookup keyed by ISO date string "YYYY-MM-DD" → set of buckets.
+  const dayMap = new Map<string, Set<WorkoutBucket>>();
   for (const s of sessions) {
     const d = new Date(s.startedAt);
     const key = isoDate(d);
     if (!dayMap.has(key)) dayMap.set(key, new Set());
-    if (s.gymData !== undefined) {
-      dayMap.get(key)!.add("gym");
-    } else {
-      dayMap.get(key)!.add(s.workoutType === "beginner" ? "repeaters" : s.workoutType);
-    }
+    dayMap.get(key)!.add(sessionCategory(s));
   }
 
   // Find the Monday of the current ISO week
@@ -130,21 +145,24 @@ export function buildCalendar(
       date.setDate(startMonday.getDate() + w * 7 + d);
       const key = isoDate(date);
       const types = dayMap.get(key);
-      let workoutType: CalendarDay["workoutType"] = null;
-      if (types) {
-        const hasA = types.has("repeaters");
-        const hasB = types.has("max-hang");
-        const hasGym = types.has("gym");
-        const hasHangboard = hasA || hasB;
-        if (hasGym && hasHangboard) workoutType = "gym+hangboard";
-        else if (hasGym) workoutType = "gym";
-        else workoutType = hasA ? "repeaters" : "max-hang";
-      }
+      const gym = types?.has("gym") ?? false;
+      const cardio = types?.has("cardio") ?? false;
+      const stretching = types?.has("stretching") ?? false;
+      // Priority for the fill color: gym (the main effort) over recovery work.
+      const workoutType: CalendarDay["workoutType"] = gym
+        ? "gym"
+        : cardio
+          ? "cardio"
+          : stretching
+            ? "stretching"
+            : null;
       week.push({
         date: new Date(date),
         workoutType,
+        gym,
+        cardio,
+        stretching,
         outdoor: climbDates?.has(key) ?? false,
-        note: noteDates?.has(key) ?? false,
       });
     }
     weeks.push(week);

@@ -1,6 +1,8 @@
 // Dev/test-only seeding helpers. Exposes:
 //   window.__seedSyntheticClimbs("default" | "wide" | "seasons" | "attempts")
 //   window.__clearSyntheticClimbs()
+//   window.__seedSyntheticSessions()   // gym / cardio / stretching calendar buckets
+//   window.__clearSyntheticSessions()
 //   window.__seedSyntheticSchedule(weeks?)
 //   window.__clearSyntheticSchedule()
 //
@@ -11,6 +13,7 @@ import { addClimb, deleteClimb, getClimbs } from "./climbs";
 import type { ClimbRecord } from "./climbs";
 import type { ClimbStyle } from "../constants/climbGrades";
 import { getDB } from "./history";
+import type { SessionRecord } from "./history";
 import {
   addDays,
   startOfWeek,
@@ -160,6 +163,66 @@ async function seed(scenario: Scenario = "default"): Promise<number> {
   return seeds.length;
 }
 
+// ─── Session seeding (calendar buckets) ──────────────────────────────────────
+
+/** Days-ago → local ISO midnight timestamp, for placing seeds in the calendar. */
+function daysAgoTs(days: number): number {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d.getTime();
+}
+
+/**
+ * Seed one of each calendar bucket into the last two weeks so the Overview
+ * legend (Gym / Cardio / Stretching / Outdoor) can be eyeballed:
+ *   - a board session (gym, amber)
+ *   - a cardio session (rose)
+ *   - a stretching session (violet)
+ *   - a day with board + cardio to confirm gym wins the cell color
+ */
+async function seedSessions(): Promise<number> {
+  await clearSyntheticSessions();
+  const db = await getDB();
+
+  const boardHolds: SessionRecord["holds"] = [
+    { holdId: "jug", holdName: "Jug", set1: { weight: 0, reps: 7, completed: true }, set2: { weight: 0, reps: 6, completed: true } },
+  ];
+
+  const seeds: SessionRecord[] = [
+    { id: "synthetic-sess-1", workoutType: "repeaters", startedAt: daysAgoTs(11), completedAt: daysAgoTs(11) + 1.8e6, bailed: false, holds: boardHolds },
+    { id: "synthetic-sess-2", workoutType: "cardio", startedAt: daysAgoTs(8), completedAt: daysAgoTs(8) + 1.8e6, bailed: false, holds: [], gymData: { type: "cardio", mode: "Bike", durationMin: 40, intensity: "Moderate" } },
+    { id: "synthetic-sess-3", workoutType: "stretching", startedAt: daysAgoTs(5), completedAt: daysAgoTs(5) + 9e5, bailed: false, holds: [], gymData: { type: "stretching", stretches: ["Hamstrings", "Forearms"], reps: 3, holdSec: 30 } },
+    // Same day: board + cardio + stretch → cell renders gym (amber) with
+    // rose + violet corner dots so the losing buckets stay visible.
+    { id: "synthetic-sess-4a", workoutType: "max-hang", startedAt: daysAgoTs(2), completedAt: daysAgoTs(2) + 1.8e6, bailed: false, holds: boardHolds },
+    { id: "synthetic-sess-4b", workoutType: "cardio", startedAt: daysAgoTs(2) + 3.6e6, completedAt: daysAgoTs(2) + 5.4e6, bailed: false, holds: [], gymData: { type: "cardio", mode: "Run", durationMin: 25 } },
+    { id: "synthetic-sess-4c", workoutType: "stretching", startedAt: daysAgoTs(2) + 7.2e6, completedAt: daysAgoTs(2) + 8.1e6, bailed: false, holds: [], gymData: { type: "stretching", reps: 2, holdSec: 20 } },
+  ];
+
+  const tx = db.transaction("sessions", "readwrite");
+  for (const s of seeds) await tx.store.put(s);
+  await tx.done;
+  // eslint-disable-next-line no-console
+  console.log(`[devSeed] Seeded ${seeds.length} sessions (gym / cardio / stretching)`);
+  return seeds.length;
+}
+
+async function clearSyntheticSessions(): Promise<number> {
+  const db = await getDB();
+  const all = (await db.getAll("sessions")) as SessionRecord[];
+  const tx = db.transaction("sessions", "readwrite");
+  let deleted = 0;
+  for (const s of all) {
+    if (s.id.startsWith("synthetic-sess-")) {
+      await tx.store.delete(s.id);
+      deleted++;
+    }
+  }
+  await tx.done;
+  return deleted;
+}
+
 // ─── Schedule seeding ────────────────────────────────────────────────────────
 
 const SAMPLE_WEEK: ScheduleDayType[] = [
@@ -223,6 +286,8 @@ if (
   const w = window as unknown as Record<string, unknown>;
   w.__seedSyntheticClimbs = seed;
   w.__clearSyntheticClimbs = clearSynthetic;
+  w.__seedSyntheticSessions = seedSessions;
+  w.__clearSyntheticSessions = clearSyntheticSessions;
   w.__seedSyntheticSchedule = seedSyntheticSchedule;
   w.__clearSyntheticSchedule = clearSyntheticSchedule;
 }

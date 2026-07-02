@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import {
   LineChart,
@@ -110,12 +110,51 @@ function CustomDot({ cx, cy, payload, onClick }: DotProps) {
 
 // ─── Calendar helpers ─────────────────────────────────────────────────────────
 
-function colorFor(t: CalendarDay["workoutType"]): string {
-  if (t === "repeaters") return "bg-green-600";
-  if (t === "max-hang") return "bg-blue-500";
-  if (t === "gym") return "bg-orange-500";
-  if (t === "gym+hangboard") return "bg-amber-400";
-  return "bg-gray-800";
+/**
+ * One heatmap cell. Each activity bucket present that day contributes an equal
+ * slice: 1 → solid, 2 → halves, 3 → thirds, 4 → quarters (2×2). This keeps every
+ * bucket visible on shared days instead of one masking the others.
+ */
+function CalendarCell({ day, onSelect }: { day: CalendarDay; onSelect: () => void }) {
+  const segments: { key: string; color: string; label: string }[] = [];
+  if (day.gym) segments.push({ key: "gym", color: "bg-amber-500", label: "gym" });
+  if (day.cardio) segments.push({ key: "cardio", color: "bg-rose-500", label: "cardio" });
+  if (day.stretching) segments.push({ key: "stretching", color: "bg-violet-500", label: "stretching" });
+  if (day.outdoor) segments.push({ key: "outdoor", color: "bg-teal-600", label: "outdoor" });
+
+  const active = segments.length > 0;
+  const title = active
+    ? `${day.date.toLocaleDateString()}: ${segments.map((s) => s.label).join(" + ")}`
+    : undefined;
+
+  let inner: ReactNode = null;
+  if (segments.length === 4) {
+    inner = (
+      <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+        {segments.map((s) => (
+          <div key={s.key} className={s.color} />
+        ))}
+      </div>
+    );
+  } else if (segments.length > 0) {
+    inner = (
+      <div className="flex w-full h-full">
+        {segments.map((s) => (
+          <div key={s.key} className={`flex-1 ${s.color}`} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`w-3 h-3 rounded-sm overflow-hidden ${active ? "cursor-pointer" : "bg-gray-800"}`}
+      onClick={active ? onSelect : undefined}
+      title={title}
+    >
+      {inner}
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -196,13 +235,9 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
     () => new Set(climbs.map((c) => c.date)),
     [climbs],
   );
-  const noteDateSet = useMemo(
-    () => new Set(notes.map((n) => n.date)),
-    [notes],
-  );
   const calendarWeeks = useMemo(
-    () => buildCalendar(sessions, climbDateSet, noteDateSet),
-    [sessions, climbDateSet, noteDateSet],
+    () => buildCalendar(sessions, climbDateSet),
+    [sessions, climbDateSet],
   );
   const monthLabels = useMemo(() => calendarMonthLabels(calendarWeeks), [calendarWeeks]);
   const isTrendingUp =
@@ -315,46 +350,23 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
                 </div>
                 {calendarWeeks.map((week, wi) => (
                   <div key={wi} className="flex flex-col gap-1">
-                    {week.map((day, di) => {
-                      const active = !!(day.workoutType || day.outdoor || day.note);
-                      const cellColor =
-                        day.workoutType
-                          ? colorFor(day.workoutType)
-                          : day.outdoor
-                            ? "bg-teal-600"
-                            : day.note
-                              ? "bg-purple-600"
-                              : "bg-gray-800";
-                      const titleParts = [day.workoutType, day.outdoor ? "outdoor" : "", day.note ? "note" : ""].filter(Boolean);
-                      const showNoteDot = day.note && (day.workoutType || day.outdoor);
-                      return (
-                        <div
-                          key={di}
-                          className={`w-3 h-3 rounded-sm relative ${cellColor} ${active ? "cursor-pointer" : ""}`}
-                          onClick={active ? () => setSelectedDate(day.date.toISOString().slice(0, 10)) : undefined}
-                          title={active ? `${day.date.toLocaleDateString()}: ${titleParts.join(" + ")}` : undefined}
-                        >
-                          {day.outdoor && day.workoutType && (
-                            <div className="absolute bottom-0 right-0 w-1 h-1 rounded-full bg-teal-400" />
-                          )}
-                          {showNoteDot && (
-                            <div className="absolute top-0 right-0 w-1 h-1 rounded-full bg-purple-300" />
-                          )}
-                        </div>
-                      );
-                    })}
+                    {week.map((day, di) => (
+                      <CalendarCell
+                        key={di}
+                        day={day}
+                        onSelect={() => setSelectedDate(day.date.toISOString().slice(0, 10))}
+                      />
+                    ))}
                   </div>
                 ))}
               </div>
 
               {/* Legend */}
               <div className="flex gap-3 mt-3 flex-wrap">
-                <LegendItem color="bg-green-600" label="Repeaters" />
-                <LegendItem color="bg-blue-500" label="Max Hang" />
-                <LegendItem color="bg-orange-500" label="Gym" />
-                <LegendItem color="bg-amber-400" label="Gym + Board" />
                 <LegendItem color="bg-teal-600" label="Outdoor" />
-                <LegendItem color="bg-purple-600" label="Note" />
+                <LegendItem color="bg-amber-500" label="Gym" />
+                <LegendItem color="bg-rose-500" label="Cardio" />
+                <LegendItem color="bg-violet-500" label="Stretching" />
               </div>
             </div>
           </section>

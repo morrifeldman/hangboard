@@ -204,24 +204,63 @@ describe("buildCalendar", () => {
     }
   });
 
-  it("marks a workout-a day with 'a'", () => {
+  it("marks a board session as 'gym'", () => {
     // Use a day guaranteed to be in the last 12 weeks
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 7);
     const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
     const grid = buildCalendar([s]);
     const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("repeaters");
+    expect(found?.workoutType).toBe("gym");
   });
 
-  it("falls back to 'repeaters' when a day has both hangboard types (rare in practice)", () => {
+  it("collapses both hangboard types on the same day to 'gym'", () => {
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 5);
     const sa = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
     const sb = makeSession({ id: "2", workoutType: "max-hang", startedAt: recentDate.getTime() + 3600000 });
     const grid = buildCalendar([sa, sb]);
     const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("repeaters");
+    expect(found?.workoutType).toBe("gym");
+  });
+
+  it("buckets cardio and stretching separately", () => {
+    const cardioDate = new Date();
+    cardioDate.setDate(cardioDate.getDate() - 4);
+    const stretchDate = new Date();
+    stretchDate.setDate(stretchDate.getDate() - 6);
+    const cardio = makeSession({
+      id: "1", workoutType: "cardio", startedAt: cardioDate.getTime(), holds: [],
+      gymData: { type: "cardio", mode: "Bike", durationMin: 30 },
+    });
+    const stretch = makeSession({
+      id: "2", workoutType: "stretching", startedAt: stretchDate.getTime(), holds: [],
+      gymData: { type: "stretching", reps: 3, holdSec: 30 },
+    });
+    const grid = buildCalendar([cardio, stretch]);
+    const marked = grid.flat().filter((d) => d.workoutType !== null);
+    expect(marked.map((d) => d.workoutType).sort()).toEqual(["cardio", "stretching"]);
+  });
+
+  it("prioritizes 'gym' for the fill but keeps the other buckets' flags", () => {
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 3);
+    const board = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
+    const cardio = makeSession({
+      id: "2", workoutType: "cardio", startedAt: recentDate.getTime() + 3600000, holds: [],
+      gymData: { type: "cardio", mode: "Run", durationMin: 20 },
+    });
+    const stretch = makeSession({
+      id: "3", workoutType: "stretching", startedAt: recentDate.getTime() + 7200000, holds: [],
+      gymData: { type: "stretching", reps: 3, holdSec: 30 },
+    });
+    const grid = buildCalendar([board, cardio, stretch]);
+    const found = grid.flat().find((d) => d.workoutType !== null);
+    expect(found?.workoutType).toBe("gym");
+    // Losing buckets stay flagged so the calendar can dot them.
+    expect(found?.gym).toBe(true);
+    expect(found?.cardio).toBe(true);
+    expect(found?.stretching).toBe(true);
   });
 
   it("week array is in Monday→Sunday order (day 0 is Mon)", () => {
@@ -241,45 +280,25 @@ describe("buildCalendar", () => {
     expect(anyMarked).toBe(false);
   });
 
-  it("marks note: false by default on every day", () => {
-    const grid = buildCalendar([]);
-    for (const week of grid) {
-      for (const day of week) {
-        expect(day.note).toBe(false);
-      }
-    }
-  });
-
-  it("marks note: true on days present in noteDates", () => {
+  it("marks outdoor days from climbDates", () => {
     const recent = new Date();
     recent.setDate(recent.getDate() - 3);
     const key = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, "0")}-${String(recent.getDate()).padStart(2, "0")}`;
-    const grid = buildCalendar([], undefined, new Set([key]));
-    const noteDays = grid.flat().filter((d) => d.note);
-    expect(noteDays).toHaveLength(1);
-    expect(noteDays[0].workoutType).toBeNull();
-    expect(noteDays[0].outdoor).toBe(false);
+    const grid = buildCalendar([], new Set([key]));
+    const outdoorDays = grid.flat().filter((d) => d.outdoor);
+    expect(outdoorDays).toHaveLength(1);
+    expect(outdoorDays[0].workoutType).toBeNull();
   });
 
-  it("note flag is independent of workout/outdoor flags", () => {
+  it("outdoor flag is independent of the workout bucket", () => {
     const recent = new Date();
     recent.setDate(recent.getDate() - 3);
     const key = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, "0")}-${String(recent.getDate()).padStart(2, "0")}`;
     const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: recent.getTime() });
-    const grid = buildCalendar([s], new Set([key]), new Set([key]));
-    const day = grid.flat().find((d) => d.note);
-    expect(day?.workoutType).toBe("repeaters");
+    const grid = buildCalendar([s], new Set([key]));
+    const day = grid.flat().find((d) => d.outdoor);
+    expect(day?.workoutType).toBe("gym");
     expect(day?.outdoor).toBe(true);
-    expect(day?.note).toBe(true);
-  });
-
-  it("ignores notes outside the 12-week window", () => {
-    const oldDate = new Date();
-    oldDate.setDate(oldDate.getDate() - 90);
-    const key = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, "0")}-${String(oldDate.getDate()).padStart(2, "0")}`;
-    const grid = buildCalendar([], undefined, new Set([key]));
-    const anyMarked = grid.flat().some((d) => d.note);
-    expect(anyMarked).toBe(false);
   });
 });
 
