@@ -401,7 +401,15 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     if (workoutType === "campus") {
       return JSON.stringify(campusSets) !== JSON.stringify(campusTemplateSets());
     }
-    return JSON.stringify(fields) !== JSON.stringify(gymDefaults[workoutType] ?? {});
+    // Compare only non-blank values (cleared/backspaced fields leave "" behind,
+    // and saved defaults can contain "" too), independent of key order.
+    const meaningful = (m: Record<string, string>) =>
+      JSON.stringify(
+        Object.entries(m)
+          .filter(([, v]) => v.trim() !== "")
+          .sort(([a], [b]) => a.localeCompare(b))
+      );
+    return meaningful(fields) !== meaningful(gymDefaults[workoutType] ?? {});
   };
 
   const applyWorkoutType = (t: GymWorkoutType) => {
@@ -542,6 +550,19 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       const cur = parseFloat(prev[key] ?? "");
       const base = Number.isFinite(cur) ? cur : 0;
       return { ...prev, [key]: String(Math.max(0, base + delta)) };
+    });
+  };
+
+  // Stepper for grade fields — moves one step through the grade scale, clamped
+  // at the ends. From empty (no default yet) it starts mid-scale.
+  const stepGrade = (key: string, grades: string[], delta: number) => {
+    setFields((prev) => {
+      const idx = grades.indexOf(prev[key] ?? "");
+      const next =
+        idx === -1
+          ? grades[Math.floor(grades.length / 2)]
+          : grades[Math.min(grades.length - 1, Math.max(0, idx + delta))];
+      return { ...prev, [key]: next };
     });
   };
 
@@ -967,7 +988,10 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
             </div>
           </div>
         ) : def && def.fieldDefs.length > 0 && (
-          <div className="bg-gray-800 rounded-xl overflow-hidden">
+          <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
+            {/* shrink-0 above is load-bearing: overflow-hidden zeroes the card's min
+                flex size, so without it the card compresses (clipping its last rows)
+                instead of the page scrolling */}
             {def.fieldDefs.map((fd, i) => {
               const isGrade = fd.type === "grade-v" || fd.type === "grade-yds";
               const grades = fd.type === "grade-v" ? V_GRADES : YDS_GRADES;
@@ -1021,14 +1045,32 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                   </label>
                   <div className="flex items-center gap-1.5">
                     {isGrade ? (
-                      <select
-                        value={fields[fd.key] ?? ""}
-                        onChange={(e) => setField(fd.key, e.target.value)}
-                        className="w-24 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                      >
-                        <option value="">{fd.type === "grade-v" ? "V?" : "5.?"}</option>
-                        {grades.map((g) => <option key={g} value={g}>{g}</option>)}
-                      </select>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => stepGrade(fd.key, grades, -1)}
+                          aria-label={`Decrease ${fd.label}`}
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
+                        >
+                          −
+                        </button>
+                        <select
+                          value={fields[fd.key] ?? ""}
+                          onChange={(e) => setField(fd.key, e.target.value)}
+                          className="w-20 bg-gray-700 text-white text-center rounded-lg px-2 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50 appearance-none"
+                        >
+                          <option value="">{fd.type === "grade-v" ? "V?" : "5.?"}</option>
+                          {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => stepGrade(fd.key, grades, 1)}
+                          aria-label={`Increase ${fd.label}`}
+                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
+                        >
+                          +
+                        </button>
+                      </div>
                     ) : fd.type === "text" ? (
                       <input
                         type="text"
