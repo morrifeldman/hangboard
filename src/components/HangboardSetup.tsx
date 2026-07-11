@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { WorkoutId } from "../store/useWorkoutStore";
 import type { HoldDefinition } from "../data/holds";
@@ -10,6 +10,7 @@ import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 import { buildTrend } from "../lib/progressData";
 import type { TrendPoint } from "../lib/progressData";
+import { overviewDelta } from "../lib/weightCues";
 
 type EditKey = { holdId: string; set: 1 | 2 } | null;
 
@@ -66,6 +67,19 @@ function SparkLine({ points }: { points: TrendPoint[] }) {
   );
 }
 
+/** "vs last workout" cue on the setup overview: ▲ advancing, ▼ backing off. */
+function DeltaChip({ delta }: { delta: number | null }) {
+  if (!delta) return null;
+  const up = delta > 0;
+  return (
+    <span
+      className={`text-[10px] font-semibold tabular-nums ${up ? "text-green-400" : "text-red-400"}`}
+    >
+      {up ? "▲" : "▼"}{formatOffset(delta)}
+    </span>
+  );
+}
+
 function repLabel(hold: HoldDefinition): string {
   const numSets = hold.numSets ?? 2;
   if (hold.isRestOnly) return numSets > 1 ? `× ${numSets} sets` : "";
@@ -118,15 +132,23 @@ export function HangboardSetup() {
   const holds = currentHolds();
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
 
+  // Most recent hangboard session of this type (any completion state) — baseline for the
+  // in-session "vs last time" cue and the per-hold ▲/▼ chips below.
+  const lastSession = useMemo(
+    () => sessions.find((s) => s.workoutType === selectedWorkout && !s.gymData),
+    [sessions, selectedWorkout],
+  );
+  const lastHoldMap = useMemo(
+    () => new Map(lastSession?.holds.map((h) => [h.holdId, h]) ?? []),
+    [lastSession],
+  );
+
   const handleStart = () => {
     setEditing(null);
     initAudio();
-    // Most recent hangboard session of this type (any completion state) — baseline for the
-    // in-session "vs last time" weight cue.
-    const last = sessions.find((s) => s.workoutType === selectedWorkout && !s.gymData);
-    const lastWeights = last
+    const lastWeights = lastSession
       ? Object.fromEntries(
-          last.holds.map((h) => [
+          lastSession.holds.map((h) => [
             h.holdId,
             {
               set1: h.set1.weight,
@@ -195,6 +217,9 @@ export function HangboardSetup() {
         const editingS1 = editing?.holdId === hold.id && editing.set === 1;
         const editingS2 = editing?.holdId === hold.id && editing.set === 2;
         const sparkPoints = buildTrend(sessions, hold.id, selectedWorkout === "max-hang" ? "max-hang" : "repeaters");
+        const lastHold = lastHoldMap.get(hold.id);
+        const delta1 = hold.isRestOnly || hold.skipProgression ? null : overviewDelta(stored.set1, lastHold, 1);
+        const delta2 = isMultiSet && !is3Set ? overviewDelta(stored.set2, lastHold, 2) : null;
 
         return (
           <div
@@ -221,11 +246,12 @@ export function HangboardSetup() {
                   <div className="flex flex-col items-end">
                     <button
                       onClick={() => toggleEdit(hold.id, 1)}
-                      className={`py-0.5 px-2 text-sm tabular-nums font-semibold transition-colors ${
+                      className={`py-0.5 px-2 text-sm tabular-nums font-semibold transition-colors flex items-center gap-1.5 ${
                         editingS1 ? "text-indigo-400" : "text-gray-200"
                       }`}
                       data-testid={`weight-${hold.id}-set1`}
                     >
+                      <DeltaChip delta={delta1} />
                       {is3Set
                         ? `${formatWeight(stored.set1)} → ${formatWeight(stored.set1 + inc)} → ${formatWeight(stored.set1 + inc * 2)}`
                         : formatWeight(stored.set1)}
@@ -233,11 +259,12 @@ export function HangboardSetup() {
                     {isMultiSet && !is3Set && (
                       <button
                         onClick={() => toggleEdit(hold.id, 2)}
-                        className={`py-0.5 px-2 text-sm tabular-nums transition-colors ${
+                        className={`py-0.5 px-2 text-sm tabular-nums transition-colors flex items-center gap-1.5 ${
                           editingS2 ? "text-indigo-400" : "text-gray-500"
                         }`}
                         data-testid={`weight-${hold.id}-set2`}
                       >
+                        <DeltaChip delta={delta2} />
                         {formatWeight(stored.set2)}
                       </button>
                     )}

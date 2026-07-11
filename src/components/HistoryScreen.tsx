@@ -6,6 +6,7 @@ import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
+import { sessionNextSummary } from "../lib/weightCues";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import { ClockIcon, GearIcon, NoteIcon } from "./icons";
@@ -285,6 +286,7 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
   const label = workoutLabel(record);
   const duration = formatDuration(record.startedAt, record.completedAt);
   const isGym = record.gymData !== undefined;
+  const nextSummary = isGym ? null : sessionNextSummary(record);
 
   return (
     <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
@@ -304,6 +306,12 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
               {label}
             </span>
             {!isGym && <span className="text-gray-400 text-xs">{duration}</span>}
+            {nextSummary && (nextSummary.up > 0 || nextSummary.down > 0) && (
+              <span className="text-xs font-medium tabular-nums flex items-center gap-1.5">
+                {nextSummary.up > 0 && <span className="text-green-400">↑{nextSummary.up}</span>}
+                {nextSummary.down > 0 && <span className="text-red-400">↓{nextSummary.down}</span>}
+              </span>
+            )}
             {record.bailed && <span className="text-yellow-400 text-xs font-medium">Bailed</span>}
             {record.imported && <span className="text-indigo-400 text-xs font-medium">Imported</span>}
             {record.notes && (
