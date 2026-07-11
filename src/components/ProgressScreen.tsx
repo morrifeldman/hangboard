@@ -125,7 +125,9 @@ function CalendarCell({ day, onSelect }: { day: CalendarDay; onSelect: () => voi
   const active = segments.length > 0;
   const title = active
     ? `${day.date.toLocaleDateString()}: ${segments.map((s) => s.label).join(" + ")}`
-    : undefined;
+    : day.isToday
+      ? "Today"
+      : undefined;
 
   let inner: ReactNode = null;
   if (segments.length === 4) {
@@ -148,7 +150,9 @@ function CalendarCell({ day, onSelect }: { day: CalendarDay; onSelect: () => voi
 
   return (
     <div
-      className={`w-3 h-3 rounded-sm overflow-hidden ${active ? "cursor-pointer" : "bg-gray-800"}`}
+      className={`w-3 h-3 rounded-sm overflow-hidden ${active ? "cursor-pointer" : "bg-gray-800"} ${
+        day.isToday ? "ring-1 ring-white ring-offset-1 ring-offset-gray-800" : ""
+      }`}
       onClick={active ? onSelect : undefined}
       title={title}
     >

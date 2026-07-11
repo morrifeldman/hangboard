@@ -162,7 +162,7 @@ export function SettingsScreen({ onBack }: Props) {
   };
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col">
+    <div className="h-full bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
         <button
           onClick={onBack}

@@ -300,6 +300,16 @@ describe("buildCalendar", () => {
     expect(day?.workoutType).toBe("gym");
     expect(day?.outdoor).toBe(true);
   });
+
+  it("flags exactly one day as today", () => {
+    const grid = buildCalendar([]);
+    const todays = grid.flat().filter((d) => d.isToday);
+    expect(todays).toHaveLength(1);
+    const now = new Date();
+    expect(todays[0].date.getFullYear()).toBe(now.getFullYear());
+    expect(todays[0].date.getMonth()).toBe(now.getMonth());
+    expect(todays[0].date.getDate()).toBe(now.getDate());
+  });
 });
 
 // ─── calendarMonthLabels ──────────────────────────────────────────────────────

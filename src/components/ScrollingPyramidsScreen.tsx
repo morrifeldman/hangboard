@@ -64,7 +64,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
   }, [windowSource, kind, newestFirst]);
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-full bg-gray-900 flex flex-col overflow-hidden">
       <header className="bg-gray-800 px-4 py-4 flex items-center gap-3">
         <button
           onClick={onBack}

@@ -106,7 +106,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   };
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col">
+    <div className="h-full bg-gray-900 flex flex-col">
       <PyramidHeader
         onImport={() => setShowImportForm(true)}
         onRefresh={handleRefresh}

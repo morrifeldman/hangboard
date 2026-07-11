@@ -7,12 +7,20 @@
   touch-action: manipulation;
 }
 
+html,
 body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
   background-color: #111827; /* gray-900 */
-  min-height: 100vh;
 }
 
+/* Fixed inset (rather than min-height) keeps the shell glued to the visible
+   viewport on mobile: after a reload Chrome Android can restore a stale
+   document scroll offset / dvh measurement that leaves an in-flow bottom bar
+   below the fold. A fixed root can never scroll the tab bar off-screen. */
 #root {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }

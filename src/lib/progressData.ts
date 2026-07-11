@@ -29,6 +29,7 @@ export type CalendarDay = {
   cardio: boolean;
   stretching: boolean;
   outdoor: boolean;
+  isToday: boolean;
 };
 
 // ─── buildTrend ───────────────────────────────────────────────────────────────
@@ -126,6 +127,7 @@ export function buildCalendar(
 
   // Find the Monday of the current ISO week
   const today = new Date();
+  const todayKey = isoDate(today);
   const dayOfWeek = today.getDay(); // 0=Sun … 6=Sat
   const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const thisMonday = new Date(today);
@@ -163,6 +165,7 @@ export function buildCalendar(
         cardio,
         stretching,
         outdoor: climbDates?.has(key) ?? false,
+        isToday: key === todayKey,
       });
     }
     weeks.push(week);

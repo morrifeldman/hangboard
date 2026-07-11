@@ -136,7 +136,7 @@ export default function App() {
   }
   if (overlay === "gym-edit" && gymEditRecord) {
     return (
-      <div className="h-dvh">
+      <div className="h-full">
         <GymLogScreen
           mode="edit"
           onBack={back}
@@ -165,7 +165,7 @@ export default function App() {
   const showSettings = () => go({ overlay: "settings" });
 
   return (
-    <div className="h-dvh flex flex-col">
+    <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0">
         {tab === "home" && (
           <ProgressScreen

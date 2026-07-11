@@ -4,6 +4,7 @@ import { PrepTimer } from "./PrepTimer";
 import { HangTimer } from "./HangTimer";
 import { BreakTimer } from "./BreakTimer";
 import { addSession, buildSessionRecord } from "../lib/history";
+import { WeightAdjuster } from "./WeightAdjuster";
 import { currentPhaseFullSecs, remainingWorkoutSecs } from "../lib/workoutTime";
 import { SET1_REPS, SET2_REPS } from "../data/workout";
 
@@ -32,6 +33,10 @@ export function WorkoutScreen() {
   const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
   const nextSessionWeight = useWorkoutStore((s) => s.nextSessionWeight);
+  const adjustNextWeight = useWorkoutStore((s) => s.adjustNextWeight);
+  // Subscribed so the done-screen adjuster re-renders when a tap changes the persisted target.
+  useWorkoutStore((s) => s.weights);
+  useWorkoutStore((s) => s.weightsB);
   const totalScheduledSecs = useWorkoutStore((s) => s.totalScheduledSecs);
 
   const [confirming, setConfirming] = useState(false);
@@ -203,6 +208,22 @@ export function WorkoutScreen() {
               <p className="text-4xl font-bold text-white">Done!</p>
               <p className="text-gray-400 mt-1">Great work.</p>
             </div>
+            {/* The final hang jumps straight here (no trailing break), so this is the
+                only place to adjust the last hold's next-workout weight. */}
+            {currentHoldDef && !currentHoldDef.skipProgression && !currentHoldDef.isRestOnly && (
+              <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">
+                <p className="text-gray-400 text-sm text-center">
+                  Next workout — {currentHoldDef.name}
+                </p>
+                <WeightAdjuster
+                  value={nextSessionWeight(currentHoldDef.id, 1)}
+                  onDelta={(d) => {
+                    adjustNextWeight(currentHoldDef.id, 1, d);
+                    adjustNextWeight(currentHoldDef.id, 2, d);
+                  }}
+                />
+              </div>
+            )}
             <textarea
               value={sessionNotes}
               onChange={(e) => setSessionNotes(e.target.value)}
@@ -248,7 +269,7 @@ export function WorkoutScreen() {
   };
 
   return (
-    <div className="h-dvh bg-gray-900 flex flex-col">
+    <div className="h-full bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 pt-3 pb-2">
         <div className="flex items-center justify-between mb-2">
           <div>
