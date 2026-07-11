@@ -9,7 +9,6 @@ export type ScheduleDayType =
   | "endurance"
   | "hangboard"
   | "outdoor"
-  | "bouldering"
   | "stretching"
   | "cardio"
   | "rest";
@@ -19,7 +18,6 @@ export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: st
   endurance: { label: "Endurance", bg: "bg-blue-600", dot: "bg-blue-400" },
   hangboard: { label: "Hangboard", bg: "bg-indigo-600", dot: "bg-indigo-400" },
   outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
-  bouldering: { label: "Bouldering", bg: "bg-amber-600", dot: "bg-amber-400" },
   stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
   cardio: { label: "Cardio", bg: "bg-emerald-600", dot: "bg-emerald-400" },
   rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
@@ -30,7 +28,6 @@ export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
   "endurance",
   "hangboard",
   "outdoor",
-  "bouldering",
   "stretching",
   "cardio",
   "rest",
@@ -107,8 +104,6 @@ export function typeMatches(
       );
     case "endurance":
       return has("repeaters", "arc", "cir", "pe-route", "lbc") || anySport;
-    case "bouldering":
-      return anyBoulder || has("hard-bouldering", "limit-bouldering", "wbl");
     case "outdoor":
       return climbs.some((c) => c.setting === "outdoor");
     case "stretching":

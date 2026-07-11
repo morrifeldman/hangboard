@@ -139,7 +139,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
 
         <p className="text-gray-600 text-xs leading-relaxed">
           Tap a day to plan one or more of Power, Endurance, Hangboard, Outdoor,
-          Bouldering, Stretching, or Rest. Each plan shows a colored dot — it
+          Stretching, Cardio, or Rest. Each plan shows a colored dot — it
           turns into a checkmark once you log something that fits, or a struck
           dot if a past day went unlogged.
         </p>

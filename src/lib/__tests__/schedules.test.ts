@@ -119,13 +119,6 @@ describe("typeMatches (generous)", () => {
     expect(typeMatches("endurance", [makeSessionOn(day, "max-hang")], [])).toBe(false);
   });
 
-  it("bouldering matches any boulder climb or bouldering gym types", () => {
-    expect(typeMatches("bouldering", [], [makeClimb("2026-05-19", { type: "boulder" })])).toBe(true);
-    expect(typeMatches("bouldering", [makeSessionOn(day, "hard-bouldering")], [])).toBe(true);
-    expect(typeMatches("bouldering", [makeSessionOn(day, "wbl")], [])).toBe(true);
-    expect(typeMatches("bouldering", [], [makeClimb("2026-05-19", { type: "sport" })])).toBe(false);
-  });
-
   it("outdoor matches any outdoor climb", () => {
     expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "outdoor" })])).toBe(true);
     expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "indoor" })])).toBe(false);
