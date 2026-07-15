@@ -7,6 +7,15 @@ import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { sessionNextSummary } from "../lib/weightCues";
+import {
+  workoutLabel,
+  workoutTypeLabel,
+  workoutTypeGroups,
+  normalizeQuery,
+  sessionMatchesQuery,
+  climbMatchesQuery,
+  noteMatchesQuery,
+} from "../lib/historyFilter";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import { ClockIcon, GearIcon, NoteIcon } from "./icons";
@@ -19,28 +28,6 @@ type Props = {
 };
 
 type TimelineFilter = "all" | "workouts" | "climbs" | "notes";
-
-const GYM_LABELS: Record<string, string> = {
-  "arc":              "ARC",
-  "cir":              "CIR",
-  "pe-route":         "PE Route Intervals",
-  "lbc":              "LBC",
-  "performance":      "Performance",
-  "wbl":              "WBL",
-  "hard-bouldering":  "Hard Bouldering",
-  "limit-bouldering": "Limit Bouldering",
-  "injury":           "Injury",
-  "cardio":           "Cardio",
-  "stretching":       "Stretching",
-  "freeform":         "Freeform",
-};
-
-function workoutLabel(record: SessionRecord): string {
-  if (record.workoutType === "max-hang") return "Max Hang";
-  if (record.workoutType === "beginner") return "Beginner";
-  if (record.workoutType === "repeaters") return "Repeaters";
-  return GYM_LABELS[record.workoutType] ?? record.workoutType;
-}
 
 function gymSummary(data: GymData): string {
   switch (data.type) {
@@ -169,7 +156,11 @@ const STYLE_COLORS: Record<string, string> = {
 
 // ─── ClimbDayCard ─────────────────────────────────────────────────────────────
 
-function ClimbDayCard({ climbs, onRouteClick }: { climbs: ClimbRecord[]; onRouteClick: (routeName: string) => void }) {
+function ClimbDayCard({ climbs, onRouteClick, defaultExpanded = false }: {
+  climbs: ClimbRecord[];
+  onRouteClick: (routeName: string) => void;
+  defaultExpanded?: boolean;
+}) {
   const ts = new Date(`${climbs[0].date}T12:00:00`).getTime();
   const hasOutdoor = climbs.some((c) => c.setting === "outdoor");
   const locations = [...new Set(
@@ -178,7 +169,7 @@ function ClimbDayCard({ climbs, onRouteClick }: { climbs: ClimbRecord[]; onRoute
       .filter(Boolean)
   )];
   const summary = climbDaySummary(climbs);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
     <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
@@ -348,7 +339,24 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
   const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [filter, setFilter] = useState<TimelineFilter>("all");
-  const [noteTag, setNoteTag] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [workoutTypes, setWorkoutTypes] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+
+  // Workout type chips: only types present in history, hangboard group first.
+  const typeGroups = useMemo(() => workoutTypeGroups(sessions), [sessions]);
+
+  const toggleIn = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) =>
+    (t: string) => {
+      setter((prev) => {
+        const next = new Set(prev);
+        if (next.has(t)) next.delete(t);
+        else next.add(t);
+        return next;
+      });
+    };
+  const toggleWorkoutType = toggleIn(setWorkoutTypes);
+  const toggleTag = toggleIn(setSelectedTags);
 
   // Distinct note categories, most-used first, for the tag sub-filter.
   const noteTags = useMemo(() => {
@@ -392,14 +400,35 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
       // Anchor to noon on the date; offset by createdAt within the day so multiple notes order stably
       ts: new Date(`${record.date}T12:00:00`).getTime() + (record.createdAt % 86_400_000) / 1000,
     }));
-    const all = [...sessionItems, ...climbItems, ...noteItems].sort((a, b) => b.ts - a.ts);
-    if (filter === "all") return all;
-    if (filter === "workouts") return all.filter((i) => i.kind === "session");
-    if (filter === "climbs") return all.filter((i) => i.kind === "climbs");
-    return all.filter(
-      (i) => i.kind === "note" && (noteTag === null || i.record.category?.trim() === noteTag),
-    );
-  }, [sessions, climbs, notes, filter, noteTag]);
+    let all = [...sessionItems, ...climbItems, ...noteItems].sort((a, b) => b.ts - a.ts);
+
+    if (filter === "workouts") {
+      all = all.filter(
+        (i) => i.kind === "session" &&
+          (workoutTypes.size === 0 || workoutTypes.has(i.record.workoutType)),
+      );
+    } else if (filter === "climbs") {
+      all = all.filter((i) => i.kind === "climbs");
+    } else if (filter === "notes") {
+      all = all.filter(
+        (i) => i.kind === "note" &&
+          (selectedTags.size === 0 || selectedTags.has(i.record.category?.trim() ?? "")),
+      );
+    }
+
+    const q = normalizeQuery(query);
+    if (q !== "") {
+      all = all.flatMap((i): TimelineItem[] => {
+        if (i.kind === "session") return sessionMatchesQuery(i.record, q) ? [i] : [];
+        if (i.kind === "note") return noteMatchesQuery(i.record, q) ? [i] : [];
+        const matching = i.climbs.filter((c) => climbMatchesQuery(c, q));
+        return matching.length > 0 ? [{ ...i, climbs: matching }] : [];
+      });
+    }
+    return all;
+  }, [sessions, climbs, notes, filter, selectedTags, workoutTypes, query]);
+
+  const searching = normalizeQuery(query) !== "";
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
@@ -424,14 +453,39 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
         </button>
       </header>
 
-      {/* Filter pills */}
+      {/* Search + filter pills */}
       {!loading && (sessions.length > 0 || climbs.length > 0 || notes.length > 0) && (
         <div className="px-4 pt-3 shrink-0 flex flex-col gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search history"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            />
+            {query !== "" && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors p-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(["all", "workouts", "climbs", "notes"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => { setFilter(f); if (f !== "notes") setNoteTag(null); }}
+                onClick={() => {
+                  setFilter(f);
+                  if (f !== "notes") setSelectedTags(new Set());
+                  if (f !== "workouts") setWorkoutTypes(new Set());
+                }}
                 className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
                   filter === f
                     ? f === "notes" ? "bg-purple-600 text-white" : "bg-indigo-600 text-white"
@@ -442,25 +496,57 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
               </button>
             ))}
           </div>
+          {/* Workout type sub-filter */}
+          {filter === "workouts" && (typeGroups.hangboard.length > 0 || typeGroups.gym.length > 0) && (
+            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {typeGroups.hangboard.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => toggleWorkoutType(t)}
+                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
+                    workoutTypes.has(t)
+                      ? "bg-indigo-500/30 text-indigo-200 ring-1 ring-inset ring-indigo-400/40"
+                      : "bg-gray-800 text-gray-500 border border-gray-700"
+                  }`}
+                >
+                  {workoutTypeLabel(t)}
+                </button>
+              ))}
+              {typeGroups.hangboard.length > 0 && typeGroups.gym.length > 0 && (
+                <div className="shrink-0 w-px self-stretch bg-gray-700 mx-0.5" />
+              )}
+              {typeGroups.gym.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => toggleWorkoutType(t)}
+                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
+                    workoutTypes.has(t)
+                      ? "bg-indigo-500/30 text-indigo-200 ring-1 ring-inset ring-indigo-400/40"
+                      : "bg-gray-800 text-gray-500 border border-gray-700"
+                  }`}
+                >
+                  {workoutTypeLabel(t)}
+                </button>
+              ))}
+              {workoutTypes.size > 0 && (
+                <button
+                  onClick={() => setWorkoutTypes(new Set())}
+                  className="shrink-0 text-gray-500 hover:text-gray-300 text-[11px] font-medium transition-colors whitespace-nowrap px-1"
+                >
+                  clear
+                </button>
+              )}
+            </div>
+          )}
           {/* Note tag sub-filter */}
           {filter === "notes" && noteTags.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <button
-                onClick={() => setNoteTag(null)}
-                className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  noteTag === null
-                    ? "bg-purple-500/30 text-purple-200 ring-1 ring-inset ring-purple-400/40"
-                    : "bg-gray-800 text-gray-500 border border-gray-700"
-                }`}
-              >
-                All tags
-              </button>
+            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {noteTags.map((tag) => (
                 <button
                   key={tag}
-                  onClick={() => setNoteTag(tag)}
+                  onClick={() => toggleTag(tag)}
                   className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
-                    noteTag === tag
+                    selectedTags.has(tag)
                       ? "bg-purple-500/30 text-purple-200 ring-1 ring-inset ring-purple-400/40"
                       : "bg-gray-800 text-gray-500 border border-gray-700"
                   }`}
@@ -468,6 +554,14 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
                   {tag}
                 </button>
               ))}
+              {selectedTags.size > 0 && (
+                <button
+                  onClick={() => setSelectedTags(new Set())}
+                  className="shrink-0 text-gray-500 hover:text-gray-300 text-[11px] font-medium transition-colors whitespace-nowrap px-1"
+                >
+                  clear
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -477,23 +571,36 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
         {loading && <p className="text-gray-500 text-center py-12">Loading…</p>}
         {!loading && timeline.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16 text-center">
-            <p className="text-gray-400 text-base font-medium">
-              {filter === "all" ? "No workouts yet" : `No ${filter} yet`}
-            </p>
-            <p className="text-gray-600 text-sm">
-              {filter === "all"
-                ? "Complete a session to see your history here."
-                : filter === "notes"
-                  ? "Tap the note icon above to add one."
-                  : `Log a ${filter.slice(0, -1)} to see it here.`}
-            </p>
+            {searching ? (
+              <p className="text-gray-400 text-base font-medium">
+                No results for "{query.trim()}"
+              </p>
+            ) : (
+              <>
+                <p className="text-gray-400 text-base font-medium">
+                  {filter === "all" ? "No workouts yet" : `No ${filter} yet`}
+                </p>
+                <p className="text-gray-600 text-sm">
+                  {filter === "all"
+                    ? "Complete a session to see your history here."
+                    : filter === "notes"
+                      ? "Tap the note icon above to add one."
+                      : `Log a ${filter.slice(0, -1)} to see it here.`}
+                </p>
+              </>
+            )}
           </div>
         )}
         {timeline.map((item) =>
           item.kind === "session" ? (
             <SessionCard key={item.record.id} record={item.record} onEdit={onEdit} />
           ) : item.kind === "climbs" ? (
-            <ClimbDayCard key={item.date} climbs={item.climbs} onRouteClick={setSelectedRoute} />
+            <ClimbDayCard
+              key={`${item.date}-${searching}`}
+              climbs={item.climbs}
+              onRouteClick={setSelectedRoute}
+              defaultExpanded={searching}
+            />
           ) : (
             <NoteCard key={item.record.id} record={item.record} onEdit={onEditNote} />
           )
