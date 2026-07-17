@@ -24,6 +24,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
   const adjustNextWeight = useWorkoutStore((s) => s.adjustNextWeight);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
+  const lastSessionWeights = useWorkoutStore((s) => s.lastSessionWeights);
   const setSessionOverride = useWorkoutStore((s) => s.setSessionOverride);
   const currentHolds = useWorkoutStore((s) => s.currentHolds);
   const weights = useWorkoutStore((s) => s.weights);
@@ -56,6 +57,15 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const lastLabel = betweenSets ? `${hold.name} Set ${setNumber}` : hold.name;
   const upNextLabel = betweenSets ? `${hold.name} Set ${setNumber + 1}` : (nextHold?.name ?? null);
 
+  // "vs last time" cue for the upcoming hold — compares the weight you're about
+  // to lift this session to the same set in the most recent session. Moved here
+  // from the prep screen so the heads-up lands during the break between holds.
+  const nextLast = betweenHolds && nextHold ? lastSessionWeights[nextHold.id] : undefined;
+  const upNextDiff =
+    betweenHolds && nextHold && !nextHold.isRestOnly && nextLast
+      ? effectiveWeight(nextHold.id, 1) - nextLast.set1
+      : 0;
+
   // For isRestOnly holds the label becomes the exercise name
   const barLabel = hold.isRestOnly ? hold.name.toUpperCase() : "BREAK";
 
@@ -74,6 +84,16 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
           <div className="text-right">
             <p className="text-gray-500 text-xs uppercase tracking-wide">Up next</p>
             <p className="text-white font-bold text-2xl leading-tight">{upNextLabel}</p>
+            {upNextDiff !== 0 && (
+              <span
+                className={`text-sm font-bold tabular-nums ${
+                  upNextDiff > 0 ? "text-green-400" : "text-red-400"
+                }`}
+                data-testid="weight-vs-last"
+              >
+                {upNextDiff > 0 ? "↑" : "↓"} {Math.abs(upNextDiff)} vs last
+              </span>
+            )}
           </div>
         )}
       </div>

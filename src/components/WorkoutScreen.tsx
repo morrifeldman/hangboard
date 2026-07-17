@@ -47,6 +47,8 @@ export function WorkoutScreen() {
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sessionNotes, setSessionNotes] = useState("");
+  const [lastHoldNotesOpen, setLastHoldNotesOpen] = useState(false);
+  const [workoutNotesOpen, setWorkoutNotesOpen] = useState(false);
 
   // Track fullscreen state
   useEffect(() => {
@@ -100,6 +102,8 @@ export function WorkoutScreen() {
   useEffect(() => {
     if (phase !== "done") return;
     setSessionNotes("");
+    setLastHoldNotesOpen(false);
+    setWorkoutNotesOpen(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -208,8 +212,8 @@ export function WorkoutScreen() {
               <p className="text-4xl font-bold text-white">Done!</p>
               <p className="text-gray-400 mt-1">Great work.</p>
             </div>
-            {/* The final hang jumps straight here (no trailing break), so this is the
-                only place to adjust the last hold's next-workout weight. */}
+            {/* The final hang jumps straight here (no trailing break), so this screen
+                mirrors the between-holds break: weight → failed → notes. */}
             {currentHoldDef && !currentHoldDef.skipProgression && !currentHoldDef.isRestOnly && (
               <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">
                 <p className="text-gray-400 text-sm text-center">
@@ -224,13 +228,81 @@ export function WorkoutScreen() {
                 />
               </div>
             )}
-            <textarea
-              value={sessionNotes}
-              onChange={(e) => setSessionNotes(e.target.value)}
-              placeholder="Any notes? (optional)"
-              rows={3}
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
-            />
+            {currentHoldDef && !currentHoldDef.isRestOnly && (() => {
+              const hid = currentHoldDef.id;
+              const setKey = `set${setNumber}` as "set1" | "set2" | "set3";
+              const isFailed = failedSets[hid]?.[setKey] ?? false;
+              const setNoteVal = setNotesLive[hid]?.[setKey] ?? "";
+              const holdNoteVal = holdNotes[hid] ?? "";
+              const hasLastHoldNotes = setNoteVal !== "" || holdNoteVal !== "";
+              return (
+                <>
+                  <button
+                    onClick={() =>
+                      setFailedSets((prev) => ({
+                        ...prev,
+                        [hid]: { ...prev[hid], [setKey]: !(prev[hid]?.[setKey]) },
+                      }))
+                    }
+                    className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                      isFailed
+                        ? "bg-red-900/50 text-red-400 border border-red-700/50"
+                        : "bg-gray-800 text-gray-600 border border-gray-700"
+                    }`}
+                  >
+                    Failed last set
+                  </button>
+                  {lastHoldNotesOpen || hasLastHoldNotes ? (
+                    <>
+                      <textarea
+                        value={setNoteVal}
+                        onChange={(e) =>
+                          setSetNotesLive((prev) => ({
+                            ...prev,
+                            [hid]: { ...prev[hid], [setKey]: e.target.value },
+                          }))
+                        }
+                        placeholder={`Set ${setNumber} note… (optional)`}
+                        rows={1}
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+                      />
+                      <textarea
+                        value={holdNoteVal}
+                        onChange={(e) =>
+                          setHoldNotes((prev) => ({ ...prev, [hid]: e.target.value }))
+                        }
+                        placeholder={`Notes on ${currentHoldDef.name} (optional)`}
+                        rows={1}
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+                      />
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setLastHoldNotesOpen(true)}
+                      className="w-full py-1.5 text-sm text-gray-500 bg-gray-800 rounded-lg border border-gray-700"
+                    >
+                      Add notes on last hold…
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+            {workoutNotesOpen || sessionNotes !== "" ? (
+              <textarea
+                value={sessionNotes}
+                onChange={(e) => setSessionNotes(e.target.value)}
+                placeholder="Notes on workout… (optional)"
+                rows={3}
+                className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+              />
+            ) : (
+              <button
+                onClick={() => setWorkoutNotesOpen(true)}
+                className="w-full py-1.5 text-sm text-gray-500 bg-gray-800 rounded-lg border border-gray-700"
+              >
+                Add notes on workout…
+              </button>
+            )}
             <button
               onClick={() => {
                 saveSession(false, sessionNotes);

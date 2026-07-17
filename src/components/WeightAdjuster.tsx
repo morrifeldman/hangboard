@@ -16,9 +16,6 @@ export function WeightAdjuster({ value, onDelta, label, disabled = false, format
     <div className="flex flex-col items-center gap-2">
       {label && <span className="text-gray-400 text-sm">{label}</span>}
       <div className="flex items-center gap-2">
-        <button className={btnClass} onClick={() => onDelta(-5)} disabled={disabled}>
-          −5
-        </button>
         <button className={btnClass} onClick={() => onDelta(-2.5)} disabled={disabled}>
           −2.5
         </button>
@@ -27,9 +24,6 @@ export function WeightAdjuster({ value, onDelta, label, disabled = false, format
         </span>
         <button className={btnClass} onClick={() => onDelta(2.5)} disabled={disabled}>
           +2.5
-        </button>
-        <button className={btnClass} onClick={() => onDelta(5)} disabled={disabled}>
-          +5
         </button>
       </div>
     </div>
