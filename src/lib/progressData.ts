@@ -38,7 +38,8 @@ export type CalendarDay = {
  * Returns up to 20 trend points (oldest→newest) for a given hold in a given
  * workout type.  Only sessions that contain the hold and match the workout type
  * are included.  Sessions whose bailed flag is set are still included so the
- * user can see where they fell short; isPR marks the highest-weight point.
+ * user can see where they fell short; isPR marks the first session to reach the
+ * highest weight — hitting that same weight again later is not a new PR.
  *
  * sessions is newest-first (as returned by getSessions()).
  */
@@ -58,8 +59,11 @@ export function buildTrend(
 
   // Find max weight to mark PR — only count sessions where all sets completed
   let maxWeight = -Infinity;
-  for (const s of sliced) {
-    const hr = s.holds.find((h) => h.holdId === holdId);
+  // Index (in sliced, oldest→newest) of the first session to reach maxWeight —
+  // repeating a PR weight later isn't a new PR, so only that one gets the badge.
+  let prIndex = -1;
+  for (let i = 0; i < sliced.length; i++) {
+    const hr = sliced[i].holds.find((h) => h.holdId === holdId);
     if (hr
       && (hr.set2 === null || hr.set2 === undefined || hr.set2.completed)
       && (hr.set3 === null || hr.set3 === undefined || hr.set3.completed)
@@ -69,11 +73,14 @@ export function buildTrend(
         hr.set2?.weight ?? -Infinity,
         hr.set3?.weight ?? -Infinity,
       );
-      maxWeight = Math.max(maxWeight, w);
+      if (w > maxWeight) {
+        maxWeight = w;
+        prIndex = i;
+      }
     }
   }
 
-  return sliced.map((s) => {
+  return sliced.map((s, i) => {
     const hr = s.holds.find((h) => h.holdId === holdId)!;
     const weight = Math.max(
       hr.set1.weight,
@@ -87,7 +94,7 @@ export function buildTrend(
       weight,
       date: new Date(s.startedAt),
       bailed: s.bailed,
-      isPR: !setFailed && weight === maxWeight,
+      isPR: i === prIndex,
       setFailed,
       isBeginner: s.workoutType === "beginner",
       sessionId: s.id,
