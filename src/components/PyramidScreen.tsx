@@ -8,9 +8,8 @@ import { Legend } from "./pyramid/Legend";
 import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
 import { EditClimbModal } from "./pyramid/modals/EditClimbModal";
 import { AddClimbModal } from "./pyramid/modals/AddClimbModal";
-import { ImportClimbsModal } from "./pyramid/modals/ImportClimbsModal";
-import { getClimbs, addClimb, updateClimb, deleteClimb, replaceAllClimbs } from "../lib/climbs";
-import { importMountainProjectCSV } from "../lib/mountainProjectImport";
+import { getClimbs, addClimb, updateClimb, deleteClimb } from "../lib/climbs";
+import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
 import type { ClimbRecord } from "../lib/climbs";
 import type { ViewKey } from "../constants/climbGrades";
 
@@ -38,13 +37,11 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [selectedClimb, setSelectedClimb] = useState<ClimbRecord | null>(null);
   const [editingClimb, setEditingClimb] = useState<ClimbRecord | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showImportForm, setShowImportForm] = useState(false);
   const [newClimb, setNewClimb] = useState<NewClimbData>(INITIAL_CLIMB);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCounts, setShowCounts] = useState(false);
   const [showSessionCounts, setShowSessionCounts] = useState(false);
-
-  const mpUrl = localStorage.getItem("mountainProjectUrl") || "";
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setClimbs(await getClimbs());
@@ -76,30 +73,20 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
     await reload();
   };
 
-  const handleImportComplete = async (imported: ClimbRecord[], replaceAll: boolean) => {
-    if (replaceAll) {
-      await replaceAllClimbs(imported);
-    } else {
-      for (const c of imported) await addClimb(c);
-    }
-    await reload();
-  };
-
   const handleRefresh = async () => {
-    if (!mpUrl) return;
+    const mpUrl = getMountainProjectUrl();
+    if (!mpUrl) {
+      setRefreshNote("Add your Mountain Project tick-export URL in Settings first.");
+      return;
+    }
+    setRefreshNote(null);
     setIsRefreshing(true);
     try {
-      const apiUrl = `/api/fetch-mp-csv?url=${encodeURIComponent(mpUrl)}`;
-      const response = await fetch(apiUrl);
-      if (!response.ok) throw new Error(response.statusText);
-      const csvText = await response.text();
-      const blob = new Blob([csvText], { type: "text/csv" });
-      const file = new File([blob], "mp-refresh.csv", { type: "text/csv" });
-      const imported = await importMountainProjectCSV(file);
-      await replaceAllClimbs(imported);
+      const count = await refreshFromMountainProject(mpUrl);
       await reload();
+      setRefreshNote(`Imported ${count} climb${count === 1 ? "" : "s"}.`);
     } catch (err) {
-      console.error("Refresh failed:", err);
+      setRefreshNote(`Refresh failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsRefreshing(false);
     }
@@ -108,9 +95,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   return (
     <div className="h-full bg-gray-900 flex flex-col">
       <PyramidHeader
-        onImport={() => setShowImportForm(true)}
         onRefresh={handleRefresh}
-        canRefresh={!!mpUrl}
         isRefreshing={isRefreshing}
         onBack={onBack}
         onShowScrolling={onShowScrollingPyramids}
@@ -121,6 +106,21 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         showSessionCounts={showSessionCounts}
         onToggleSessionCounts={() => setShowSessionCounts((v) => !v)}
       />
+
+      {refreshNote && (
+        <div className="px-4 pt-2">
+          <div className="flex items-start gap-2 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm text-gray-300">
+            <span className="flex-1">{refreshNote}</span>
+            <button
+              onClick={() => setRefreshNote(null)}
+              className="text-gray-500 hover:text-white transition-colors"
+              aria-label="Dismiss"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
 
       <ViewTabs
         currentView={currentView}
@@ -177,12 +177,6 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         newClimb={newClimb}
         setNewClimb={setNewClimb}
         onAddClimb={handleAdd}
-      />
-
-      <ImportClimbsModal
-        isOpen={showImportForm}
-        onClose={() => setShowImportForm(false)}
-        onImportComplete={handleImportComplete}
       />
     </div>
   );

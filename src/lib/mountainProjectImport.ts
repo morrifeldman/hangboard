@@ -48,10 +48,24 @@ function parseCsvLine(line: string): string[] {
   return values;
 }
 
-/** Import a Mountain Project CSV file and return ClimbRecords. */
-export async function importMountainProjectCSV(file: File): Promise<ClimbRecord[]> {
-  const csvContent = await file.text();
-  const lines = csvContent.split("\n");
+/**
+ * True when `csvText` starts with something that really looks like a Mountain
+ * Project tick export: a header row naming at least the Route and Rating
+ * columns the importer reads.
+ *
+ * This is the gate that stops an HTML error page, or a JavaScript file, from
+ * being parsed as "a CSV with zero climbs in it" and wiping the climb log.
+ */
+export function hasMountainProjectHeaders(csvText: string): boolean {
+  const firstLine = csvText.replace(/^\uFEFF/, "").split("\n", 1)[0] ?? "";
+  if (!firstLine.trim()) return false;
+  const headers = firstLine.split(",").map((h) => h.replace(/"/g, "").trim());
+  return headers.includes("Route") && headers.includes("Rating");
+}
+
+/** Parse Mountain Project CSV text and return ClimbRecords. */
+export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
+  const lines = csvContent.replace(/^\uFEFF/, "").split("\n");
   const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim());
 
   const climbs: ClimbRecord[] = [];
@@ -86,4 +100,9 @@ export async function importMountainProjectCSV(file: File): Promise<ClimbRecord[
   }
 
   return climbs;
+}
+
+/** Import a Mountain Project CSV file and return ClimbRecords. */
+export async function importMountainProjectCSV(file: File): Promise<ClimbRecord[]> {
+  return parseMountainProjectCSV(await file.text());
 }

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parsePitches, convertStyle, isIndoor, importMountainProjectCSV } from "../mountainProjectImport";
+import {
+  parsePitches,
+  convertStyle,
+  isIndoor,
+  importMountainProjectCSV,
+  hasMountainProjectHeaders,
+} from "../mountainProjectImport";
 
 describe("parsePitches", () => {
   it("returns 1 for empty/undefined", () => {
@@ -89,5 +95,47 @@ describe("importMountainProjectCSV", () => {
     const file = new File([csv], "t.csv", { type: "text/csv" });
     const climbs = await importMountainProjectCSV(file);
     expect(climbs).toHaveLength(0);
+  });
+});
+
+describe("hasMountainProjectHeaders", () => {
+  it("accepts a real Mountain Project header row", () => {
+    expect(
+      hasMountainProjectHeaders(
+        'Date,Route,Rating,Notes,URL,Pitches,Location,"Avg Stars","Your Stars","Style","Lead Style","Route Type","Your Rating","Length","Rating Code"\n2024-03-15,Power Surge,5.12a,,,,,,,,,,,,\n',
+      ),
+    ).toBe(true);
+  });
+
+  it("accepts a header row with a UTF-8 BOM and CRLF line endings", () => {
+    expect(hasMountainProjectHeaders("\uFEFFDate,Route,Rating,Location\r\n")).toBe(true);
+  });
+
+  it("rejects the JavaScript source of the serverless handler", () => {
+    // What Vite's dev server used to return for /api/fetch-mp-csv.
+    const js = [
+      "export default async function handler(req, res) {",
+      "  if (req.method !== 'GET') {",
+      "    return res.status(405).json({ error: 'Method not allowed' });",
+      "  }",
+      "}",
+    ].join("\n");
+    expect(hasMountainProjectHeaders(js)).toBe(false);
+  });
+
+  it("rejects an HTML error page", () => {
+    expect(
+      hasMountainProjectHeaders("<!DOCTYPE html>\n<html><body>404 Not Found</body></html>"),
+    ).toBe(false);
+  });
+
+  it("rejects an empty string", () => {
+    expect(hasMountainProjectHeaders("")).toBe(false);
+    expect(hasMountainProjectHeaders("   \n  ")).toBe(false);
+  });
+
+  it("rejects a CSV missing the columns the importer reads", () => {
+    expect(hasMountainProjectHeaders("Date,Location,Notes\n2024-01-01,Somewhere,\n")).toBe(false);
+    expect(hasMountainProjectHeaders("Date,Route,Location\n")).toBe(false);
   });
 });

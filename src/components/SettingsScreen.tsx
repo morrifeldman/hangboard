@@ -10,6 +10,12 @@ import { getSessions } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import {
+  clearMountainProjectUrl,
+  getMountainProjectUrl,
+  importClimbsFromFile,
+  refreshFromMountainProject,
+} from "../lib/mpRefresh";
+import {
   getPrefs,
   periodicReminderStatus,
   permissionStatus,
@@ -47,6 +53,11 @@ export function SettingsScreen({ onBack }: Props) {
   );
   const [bgStatus, setBgStatus] = useState<PeriodicReminderSupport>("unsupported");
   const [notifTest, setNotifTest] = useState<string | null>(null);
+  const mpFileInputRef = useRef<HTMLInputElement>(null);
+  const [mpUrl, setMpUrl] = useState(() => getMountainProjectUrl());
+  const [mpBusy, setMpBusy] = useState(false);
+  const [mpStatus, setMpStatus] = useState<string | null>(null);
+  const [mpError, setMpError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs(), getNotes()])
@@ -161,6 +172,61 @@ export function SettingsScreen({ onBack }: Props) {
     }
   };
 
+  // Keep the "Current: … climbs" line honest after an import replaces them.
+  const refreshClimbCount = async () => {
+    try {
+      const climbs = await getClimbs();
+      setCounts((c) => (c ? { ...c, climbs: climbs.length } : c));
+    } catch {
+      // A stale count is harmless; the import itself already succeeded.
+    }
+  };
+
+  const handleMpRefresh = async () => {
+    setMpStatus(null);
+    setMpError(null);
+    setMpBusy(true);
+    try {
+      const count = await refreshFromMountainProject(mpUrl);
+      setMpUrl(mpUrl.trim());
+      setMpStatus(`Imported ${count} climb${count === 1 ? "" : "s"}.`);
+      await refreshClimbCount();
+    } catch (err) {
+      setMpError(
+        `Import failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      setMpBusy(false);
+    }
+  };
+
+  const handleMpClear = () => {
+    clearMountainProjectUrl();
+    setMpUrl("");
+    setMpStatus(null);
+    setMpError(null);
+  };
+
+  const handleMpFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMpStatus(null);
+    setMpError(null);
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setMpBusy(true);
+    try {
+      const count = await importClimbsFromFile(file);
+      setMpStatus(`Imported ${count} climb${count === 1 ? "" : "s"}.`);
+      await refreshClimbCount();
+    } catch (err) {
+      setMpError(
+        `Import failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      setMpBusy(false);
+    }
+  };
+
   return (
     <div className="h-full bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
@@ -225,6 +291,83 @@ export function SettingsScreen({ onBack }: Props) {
           )}
           {error && (
             <p className="text-red-400 text-sm" data-testid="settings-error">{error}</p>
+          )}
+        </section>
+
+        <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3" data-testid="settings-mountain-project">
+          <h2 className="text-white font-semibold text-base">Mountain Project</h2>
+          <p className="text-gray-400 text-sm leading-relaxed">
+            Pull your ticks in from Mountain Project. Every import{" "}
+            <strong className="text-gray-300">replaces all stored climbs</strong> with
+            what the export contains.
+          </p>
+          <ol className="text-gray-500 text-xs leading-relaxed list-decimal list-inside">
+            <li>Mountain Project &rarr; Profile &rarr; Ticks</li>
+            <li>Make your ticks public</li>
+            <li>Copy the &ldquo;Export CSV&rdquo; URL and paste it below</li>
+          </ol>
+
+          <input
+            type="url"
+            value={mpUrl}
+            onChange={(e) => setMpUrl(e.target.value)}
+            placeholder="https://www.mountainproject.com/user/.../tick-export"
+            className="w-full px-3 py-2 rounded-lg bg-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            data-testid="settings-mp-url"
+          />
+
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              onClick={handleMpRefresh}
+              disabled={mpBusy || !mpUrl.trim()}
+              className="w-full py-3 rounded-xl bg-green-600 active:bg-green-500 disabled:opacity-50 text-white font-semibold text-base flex items-center justify-center gap-2"
+              data-testid="settings-mp-refresh"
+            >
+              {mpBusy && (
+                <svg
+                  className="animate-spin h-4 w-4 flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              )}
+              {mpBusy ? "Refreshing…" : "Refresh from Mountain Project"}
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => mpFileInputRef.current?.click()}
+                disabled={mpBusy}
+                className="flex-1 py-3 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white font-semibold text-base"
+                data-testid="settings-mp-file"
+              >
+                Upload CSV…
+              </button>
+              <button
+                onClick={handleMpClear}
+                disabled={mpBusy || !mpUrl}
+                className="px-4 py-3 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white font-semibold text-base"
+                data-testid="settings-mp-clear"
+              >
+                Clear
+              </button>
+            </div>
+            <input
+              ref={mpFileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleMpFile}
+              className="hidden"
+            />
+          </div>
+
+          {mpStatus && (
+            <p className="text-green-400 text-sm" data-testid="settings-mp-status">{mpStatus}</p>
+          )}
+          {mpError && (
+            <p className="text-red-400 text-sm" data-testid="settings-mp-error">{mpError}</p>
           )}
         </section>
 

@@ -1,10 +1,8 @@
-import { Upload, RefreshCw, Layers, BarChart2, Trophy, CalendarDays, Hash, ChevronRight } from "lucide-react";
+import { RefreshCw, Layers, BarChart2, Trophy, CalendarDays, Hash, ChevronRight } from "lucide-react";
 import { BackChevronIcon, PyramidIcon } from "../icons";
 
 type Props = {
-  onImport: () => void;
   onRefresh: () => void;
-  canRefresh: boolean;
   isRefreshing: boolean;
   onBack: () => void;
   onShowScrolling: () => void;
@@ -16,7 +14,7 @@ type Props = {
   onToggleSessionCounts: () => void;
 };
 
-export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
+export function PyramidHeader({ onRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
@@ -92,24 +90,14 @@ export function PyramidHeader({ onImport, onRefresh, canRefresh, isRefreshing, o
           <div className="w-px h-7 bg-gray-700" />
 
           <button
-            onClick={onImport}
-            className="bg-green-600 text-white px-2.5 py-1.5 rounded-xl flex items-center text-sm hover:bg-green-700 transition-colors"
-            title="Import from CSV"
-            aria-label="Import"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="bg-orange-600 text-white px-2.5 py-1.5 rounded-xl flex items-center text-sm hover:bg-orange-700 transition-colors disabled:opacity-70"
+            title="Refresh from Mountain Project"
+            aria-label="Refresh from Mountain Project"
           >
-            <Upload size={16} />
+            <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
           </button>
-          {canRefresh && (
-            <button
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="bg-orange-600 text-white px-2.5 py-1.5 rounded-xl flex items-center text-sm hover:bg-orange-700 transition-colors disabled:opacity-70"
-              title="Refresh from Mountain Project"
-              aria-label="Refresh from Mountain Project"
-            >
-              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-            </button>
-          )}
         </div>
       </div>
     </div>
