@@ -29,6 +29,12 @@ export async function getNotes(): Promise<NoteRecord[]> {
   });
 }
 
+/** One note by id, or undefined once it has been deleted. */
+export async function getNote(id: string): Promise<NoteRecord | undefined> {
+  const db = await getDB();
+  return (await db.get(STORE, id)) as NoteRecord | undefined;
+}
+
 export async function updateNote(record: NoteRecord): Promise<void> {
   const db = await getDB();
   await db.put(STORE, record);

@@ -16,6 +16,7 @@ import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { BarChartIcon, GearIcon } from "./icons";
+import { useScrollRestore } from "../hooks/useScrollRestore";
 import { PyramidPreview } from "./pyramid/PyramidPreview";
 import {
   buildTrend,
@@ -38,7 +39,16 @@ import type { ScheduleDayType } from "../lib/schedules";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Chart pickers that live in the URL, so a drill-in and back doesn't reset them. */
+export type ProgressView = {
+  workout: "repeaters" | "max-hang";
+  hold: number;
+  granularity: Granularity;
+};
+
 type Props = {
+  view: ProgressView;
+  onViewChange: (patch: Partial<ProgressView>) => void;
   onEditSession: (record: SessionRecord) => void;
   onShowSettings: () => void;
   onShowPyramid: () => void;
@@ -163,20 +173,29 @@ function CalendarCell({ day, onSelect }: { day: CalendarDay; onSelect: () => voi
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, onShowSchedule }: Props) {
+export function ProgressScreen({
+  view,
+  onViewChange,
+  onEditSession,
+  onShowSettings,
+  onShowPyramid,
+  onShowSchedule,
+}: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayTypes, setTodayTypes] = useState<ScheduleDayType[]>([]);
   const [loggedToday, setLoggedToday] = useState(false);
-  const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">("repeaters");
-  const [holdIndex, setHoldIndex] = useState(0);
+  const workoutType = view.workout;
+  const setHoldIndex = (i: number) => onViewChange({ hold: i });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
-  const [granularity, setGranularity] = useState<Granularity>("seasons");
+  const granularity = view.granularity;
+  const setGranularity = (g: Granularity) => onViewChange({ granularity: g });
   const [rangeStart, setRangeStart] = useState(0);
   const [rangeEnd, setRangeEnd] = useState(0);
+  const scrollRef = useScrollRestore<HTMLDivElement>("progress", !loading);
 
   useEffect(() => {
     Promise.all([getSessions(), getClimbs(), getNotes()])
@@ -200,10 +219,9 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
   }, []);
 
   // Reset hold picker when switching workout type
-  const handleWorkoutType = (t: "repeaters" | "max-hang") => {
-    setWorkoutType(t);
-    setHoldIndex(0);
-  };
+  // The two workouts have different hold lists, so the picker starts over.
+  const handleWorkoutType = (t: "repeaters" | "max-hang") =>
+    onViewChange({ workout: t, hold: 0 });
 
   // Extra holds from imported "a" sessions (e.g. "crimp") not in the standard HOLDS array
   const extraHolds = useMemo(() => {
@@ -227,6 +245,8 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
     workoutType === "repeaters"
       ? [...HOLDS.filter((h) => !h.skipProgression), ...extraHolds]
       : HOLDS_B.filter((h) => !h.skipProgression);
+  // A hand-edited or stale URL can point past the end of this workout's holds.
+  const holdIndex = Math.min(Math.max(view.hold, 0), Math.max(holds.length - 1, 0));
   const selectedHold = holds[holdIndex];
 
   const trend = useMemo(
@@ -327,7 +347,7 @@ export function ProgressScreen({ onEditSession, onShowSettings, onShowPyramid, o
           <p className="text-gray-500">Complete a session to see your progress.</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
 
 
           {/* ── Overview calendar ── */}

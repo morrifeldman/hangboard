@@ -19,8 +19,20 @@ import {
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import { ClockIcon, GearIcon, NoteIcon } from "./icons";
+import { useScrollRestore } from "../hooks/useScrollRestore";
+
+/** The parts of the timeline view that live in the URL, so they survive a
+ *  drill-in, a reload, and a back press. */
+export type HistoryView = {
+  filter: TimelineFilter;
+  query: string;
+  tags: string[];
+  types: string[];
+};
 
 type Props = {
+  view: HistoryView;
+  onViewChange: (patch: Partial<HistoryView>) => void;
   onAddNote: () => void;
   onEdit: (record: SessionRecord) => void;
   onEditNote: (note: NoteRecord) => void;
@@ -332,31 +344,39 @@ function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: Se
   );
 }
 
-export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }: Props) {
+export function HistoryScreen({
+  view,
+  onViewChange,
+  onAddNote,
+  onEdit,
+  onEditNote,
+  onShowSettings,
+}: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
-  const [filter, setFilter] = useState<TimelineFilter>("all");
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [workoutTypes, setWorkoutTypes] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState("");
+  const { filter, query } = view;
+  const selectedTags = useMemo(() => new Set(view.tags), [view.tags]);
+  const workoutTypes = useMemo(() => new Set(view.types), [view.types]);
+  const setQuery = (q: string) => onViewChange({ query: q });
+  const setSelectedTags = (next: Set<string>) => onViewChange({ tags: [...next] });
+  const setWorkoutTypes = (next: Set<string>) => onViewChange({ types: [...next] });
+  const scrollRef = useScrollRestore<HTMLElement>("history", !loading);
 
   // Workout type chips: only types present in history, hangboard group first.
   const typeGroups = useMemo(() => workoutTypeGroups(sessions), [sessions]);
 
-  const toggleIn = (setter: React.Dispatch<React.SetStateAction<Set<string>>>) =>
+  const toggleIn = (current: Set<string>, apply: (next: Set<string>) => void) =>
     (t: string) => {
-      setter((prev) => {
-        const next = new Set(prev);
-        if (next.has(t)) next.delete(t);
-        else next.add(t);
-        return next;
-      });
+      const next = new Set(current);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      apply(next);
     };
-  const toggleWorkoutType = toggleIn(setWorkoutTypes);
-  const toggleTag = toggleIn(setSelectedTags);
+  const toggleWorkoutType = toggleIn(workoutTypes, setWorkoutTypes);
+  const toggleTag = toggleIn(selectedTags, setSelectedTags);
 
   // Distinct note categories, most-used first, for the tag sub-filter.
   const noteTags = useMemo(() => {
@@ -481,11 +501,15 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
             {(["all", "workouts", "climbs", "notes"] as const).map((f) => (
               <button
                 key={f}
-                onClick={() => {
-                  setFilter(f);
-                  if (f !== "notes") setSelectedTags(new Set());
-                  if (f !== "workouts") setWorkoutTypes(new Set());
-                }}
+                onClick={() =>
+                  // One patch, not three: each call derives from the current
+                  // view, so separate ones would overwrite each other.
+                  onViewChange({
+                    filter: f,
+                    tags: f === "notes" ? view.tags : [],
+                    types: f === "workouts" ? view.types : [],
+                  })
+                }
                 className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
                   filter === f
                     ? f === "notes" ? "bg-purple-600 text-white" : "bg-indigo-600 text-white"
@@ -567,7 +591,10 @@ export function HistoryScreen({ onAddNote, onEdit, onEditNote, onShowSettings }:
         </div>
       )}
 
-      <main className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+      <main
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
+      >
         {loading && <p className="text-gray-500 text-center py-12">Loading…</p>}
         {!loading && timeline.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-16 text-center">

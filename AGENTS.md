@@ -41,6 +41,32 @@ jj git push --bookmark main
 
 ## Architecture
 
+### Routing (`src/router.tsx`)
+
+TanStack Router owns navigation. There is no `App.tsx` any more: the route tree
+is the shell.
+
+- Tabs are real paths: `/` (Progress), `/schedule`, `/workout`, `/history`. They
+  hang off a pathless `shellRoute` that draws the tab bar.
+- Drill-in screens are siblings of the shell, so they render full-screen with no
+  tab bar: `/settings`, `/pyramid`, `/pyramid/scrolling`, `/import`,
+  `/sessions/$sessionId/edit`, `/notes/new`, `/notes/$noteId/edit`.
+- Editors load their record by id in a route `loader` and redirect to `/history`
+  when it's gone, so a stale deep link can't render an empty form.
+- View state lives in search params: `/history?filter=&q=&tags=&types=` and
+  `/?workout=&hold=&granularity=`. Updates pass `replace: true`, otherwise every
+  keystroke in the search box would become its own back press. Defaults are
+  omitted so the plain screens stay at bare URLs.
+- `useGoBack(fallback)` backs the on-screen chevrons. It pops real history when
+  there is any, and navigates to the fallback when a screen was opened cold.
+- A running workout takes over the screen from `RootLayout`, and `useBlocker`
+  stops back from abandoning it. The End button is the only way out.
+- Scroll position of the inner scrollers is `src/hooks/useScrollRestore.ts`, not
+  the router. Screens scroll a child `div`, which the router's window-level
+  restoration can't see. Keys are per screen (`"history"`, `"progress"`, …);
+  `forgetScrollPosition(key)` drops one, which is what sends you to the top of
+  History after logging a workout.
+
 ### Core
 - `src/data/holds.ts` — `HoldDefinition` interface + `HOLDS` array (Workout A). No Vite env imports, safe to use in tests/Node.
 - `src/data/workout-b.ts` — `HOLDS_B` (Workout B: MacLeod Max Hang, 9 items, 3 sets, 5lb increments).
@@ -81,15 +107,17 @@ Two distinct "test modes" — don't confuse them:
 
 1. **`VITE_TEST_MODE=true` env var** — set by `playwright.config.ts`'s webServer command for the E2E suite. Shortens timers (HANG=1s, REST=1s, BREAK=5s, PREP=1s) and reps (SET1=3, SET2=2). Build-time switch.
 
-2. **`?test` query param** — runtime gate. Exposes `window.__store` and `window.__seedSyntheticClimbs` / `window.__clearSyntheticClimbs`. Selects an isolated **test workout** with 3 holds (`test-jug`, `test-large-edge`, `test-mr-shallow`) so weights don't bleed into real data. Does **not** isolate the gym session DB — gym entries logged while in `?test` write to the real `hangboard-history` store; clean up by filtering on `gymData.type`.
+2. **`?test` query param** — runtime gate, read **once at boot** into
+   `IS_TEST_MODE` (`src/lib/testMode.ts`). The router drops the query string on
+   the first navigation, so nothing may re-read `location.search` for this. It exposes `window.__store` and `window.__seedSyntheticClimbs` / `window.__clearSyntheticClimbs`. Selects an isolated **test workout** with 3 holds (`test-jug`, `test-large-edge`, `test-mr-shallow`) so weights don't bleed into real data. Does **not** isolate the gym session DB — gym entries logged while in `?test` write to the real `hangboard-history` store; clean up by filtering on `gymData.type`.
 
-### Critical: port 5173 reuse
+### Ports
 
-`playwright.config.ts` uses `reuseExistingServer: true`. Cuts both ways:
-- If `npm run dev` is already running, Playwright reuses it (full timers → E2E tests fail).
-- If a Playwright-spawned server is still alive after tests, `npm run dev` won't start, and the app silently shows 1s timers.
-
-Run `fuser -k 5173/tcp` before the E2E suite **and** before relaunching dev after E2E. **Do NOT kill 5173 for Playwright MCP screenshot work** — that uses the same dev server with `?test` and there's no conflict.
+The E2E suite runs on **:5174** (`playwright.config.ts` starts its own
+`npm run dev -- --port 5174`), so it doesn't collide with a dev server on :5173.
+Run both at once. `reuseExistingServer` is on, so if something else is already
+listening on :5174 with full-length timers, the workout tests will fail; kill it
+with `fuser -k 5174/tcp`.
 
 ### Debug seed helpers
 - `window.__store` — raw Zustand store. `__store.getState()`, `__store.setState({...})`. Useful for jumping into specific phase states.

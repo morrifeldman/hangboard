@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from "workbox-core";
-import { precacheAndRoute } from "workbox-precaching";
+import { createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
+import { NavigationRoute, registerRoute } from "workbox-routing";
 
 // `self` is typed as WorkerGlobalScope by the WebWorker lib; alias to the
 // service-worker scope for the SW-specific APIs without redeclaring.
@@ -16,6 +17,10 @@ precacheAndRoute(
   (self as unknown as { __WB_MANIFEST: Array<{ url: string; revision: string | null }> })
     .__WB_MANIFEST,
 );
+
+// Deep links like /history and /settings are client-side routes with no file
+// behind them, so every navigation gets the precached shell.
+registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html")));
 
 // ─── Daily reminder (Periodic Background Sync) ────────────────────────────────
 //

@@ -20,6 +20,7 @@ import { getSessions } from "../lib/history";
 import type { SessionRecord } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
+import { useScrollRestore } from "../hooks/useScrollRestore";
 
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -40,6 +41,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [weekCount, setWeekCount] = useState(3);
   const [editingDate, setEditingDate] = useState<string | null>(null);
+  const scrollRef = useScrollRestore<HTMLElement>("schedule", schedules.length > 0 || sessions.length > 0);
 
   useEffect(() => {
     Promise.all([getSchedules(), getSessions(), getClimbs()])
@@ -100,7 +102,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
+      <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
         {weeks.map((week, wIdx) => {
           const ws = new Date(week[0].jsDate);
           const offset = Math.round(

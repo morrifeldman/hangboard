@@ -11,6 +11,7 @@ import type { SessionRecord } from "../lib/history";
 import { buildTrend } from "../lib/progressData";
 import type { TrendPoint } from "../lib/progressData";
 import { overviewDelta } from "../lib/weightCues";
+import { IS_TEST_MODE } from "../lib/testMode";
 
 type EditKey = { holdId: string; set: 1 | 2 } | null;
 
@@ -172,7 +173,7 @@ export function HangboardSetup() {
     );
   };
 
-  const isTestMode = new URLSearchParams(window.location.search).has("test");
+  const isTestMode = IS_TEST_MODE;
   const workouts: { id: WorkoutId; label: string }[] = [
     { id: "repeaters", label: "Repeaters" },
     { id: "max-hang", label: "Max Hang" },

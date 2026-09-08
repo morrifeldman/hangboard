@@ -20,6 +20,7 @@ import {
   toLocalDateString,
 } from "./schedules";
 import type { ScheduleDayType, ScheduleRecord } from "./schedules";
+import { IS_TEST_MODE } from "./testMode";
 
 type Scenario = "default" | "wide" | "seasons" | "attempts";
 
@@ -281,7 +282,7 @@ async function seedSyntheticSchedule(weeks = 2): Promise<number> {
 
 if (
   typeof window !== "undefined" &&
-  (import.meta.env.DEV || new URLSearchParams(window.location.search).has("test"))
+  (import.meta.env.DEV || IS_TEST_MODE)
 ) {
   const w = window as unknown as Record<string, unknown>;
   w.__seedSyntheticClimbs = seed;

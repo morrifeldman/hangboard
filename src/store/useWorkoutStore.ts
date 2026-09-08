@@ -6,6 +6,7 @@ import * as SM from "../lib/stateMachine";
 import { totalWorkoutSecs } from "../lib/workoutTime";
 
 import type { WorkoutPhase } from "../lib/stateMachine";
+import { IS_TEST_MODE } from "../lib/testMode";
 export type { WorkoutPhase };
 
 export type WorkoutId = "repeaters" | "max-hang" | "test";
@@ -269,6 +270,6 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
 // Expose store on window in dev/test mode for easy state manipulation from console
 if (typeof window !== "undefined" &&
-    (import.meta.env.DEV || new URLSearchParams(window.location.search).has("test"))) {
+    (import.meta.env.DEV || IS_TEST_MODE)) {
   (window as unknown as Record<string, unknown>).__store = useWorkoutStore;
 }

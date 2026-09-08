@@ -124,19 +124,32 @@ export async function addSession(record: SessionRecord): Promise<void> {
   await db.put(STORE, record);
 }
 
+// Migrate legacy workout type values stored before the rename.
+function normalizeSession(s: SessionRecord): SessionRecord {
+  // The stored value predates the rename, so it's wider than the current type.
+  const stored = s.workoutType as string;
+  return {
+    ...s,
+    workoutType:
+      stored === "a" ? "repeaters" :
+      stored === "b" ? "max-hang" :
+      s.workoutType,
+  };
+}
+
 /** Returns all sessions sorted newest-first. */
 export async function getSessions(): Promise<SessionRecord[]> {
   const db = await getDB();
-  const all = await db.getAllFromIndex(STORE, "by-start");
-  // Migrate legacy workout type values stored before the rename
-  const normalized = all.map((s) => ({
-    ...s,
-    workoutType:
-      s.workoutType === "a" ? "repeaters" :
-      s.workoutType === "b" ? "max-hang" :
-      s.workoutType,
-  }));
-  return normalized.reverse();
+  const all = (await db.getAllFromIndex(STORE, "by-start")) as SessionRecord[];
+  return all.map(normalizeSession).reverse();
+}
+
+/** One session by id. Undefined once it has been deleted, which a stale
+ *  deep link into the editor will hit. */
+export async function getSession(id: string): Promise<SessionRecord | undefined> {
+  const db = await getDB();
+  const record = (await db.get(STORE, id)) as SessionRecord | undefined;
+  return record && normalizeSession(record);
 }
 
 export async function deleteSession(id: string): Promise<void> {

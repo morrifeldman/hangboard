@@ -12,6 +12,7 @@
     "test:unit:watch": "vitest"
   },
   "dependencies": {
+    "@tanstack/react-router": "^1.170.33",
     "idb": "^8.0.3",
     "lucide-react": "^1.8.0",
     "react": "^19.2.0",
