@@ -132,3 +132,14 @@ export function remainingWorkoutSecs(
   }
   return rem;
 }
+
+// Wall-clock time the workout is due to finish, e.g. "5:42 PM". `nowMs` plus
+// the seconds left; those two move in lockstep, so the answer holds steady
+// between ticks and only shifts when a skip or a pause changes what's left.
+export function finishClockTime(nowMs: number, remainingSecs: number): string {
+  const d = new Date(nowMs + Math.max(0, remainingSecs) * 1000);
+  const h24 = d.getHours();
+  const h = h24 % 12 === 0 ? 12 : h24 % 12;
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m} ${h24 < 12 ? "AM" : "PM"}`;
+}

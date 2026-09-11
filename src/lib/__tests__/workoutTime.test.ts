@@ -3,6 +3,7 @@ import {
   totalWorkoutSecs,
   currentPhaseFullSecs,
   remainingWorkoutSecs,
+  finishClockTime,
 } from "../workoutTime";
 import type { SessionState } from "../stateMachine";
 import type { HoldDefinition } from "../../data/holds";
@@ -161,5 +162,26 @@ describe("remainingWorkoutSecs", () => {
     // Plus set 2 (247) plus 7 more holds (7 * 504 = 3528) = 210 + 247 + 3528 = 3985
     // Plus currentPhaseRemaining = 5. Minus the dropped final break of the last hold (180).
     expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 5)).toBe(5 + 210 + 247 + 7 * 504 - BREAK);
+  });
+});
+
+describe("finishClockTime", () => {
+  const at = (h: number, m: number) => new Date(2026, 0, 15, h, m, 0).getTime();
+
+  it("adds the remaining seconds to the current time", () => {
+    expect(finishClockTime(at(17, 30), 12 * 60)).toBe("5:42 PM");
+  });
+
+  it("uses 12 for noon and midnight", () => {
+    expect(finishClockTime(at(12, 5), 0)).toBe("12:05 PM");
+    expect(finishClockTime(at(0, 5), 0)).toBe("12:05 AM");
+  });
+
+  it("rolls past the hour", () => {
+    expect(finishClockTime(at(9, 55), 10 * 60)).toBe("10:05 AM");
+  });
+
+  it("treats negative remaining as zero", () => {
+    expect(finishClockTime(at(8, 0), -60)).toBe("8:00 AM");
   });
 });

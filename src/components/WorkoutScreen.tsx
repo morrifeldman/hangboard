@@ -5,7 +5,7 @@ import { HangTimer } from "./HangTimer";
 import { BreakTimer } from "./BreakTimer";
 import { addSession, buildSessionRecord } from "../lib/history";
 import { WeightAdjuster } from "./WeightAdjuster";
-import { currentPhaseFullSecs, remainingWorkoutSecs } from "../lib/workoutTime";
+import { currentPhaseFullSecs, remainingWorkoutSecs, finishClockTime } from "../lib/workoutTime";
 import { SET1_REPS, SET2_REPS } from "../data/workout";
 
 function fmtTime(s: number): string {
@@ -170,6 +170,7 @@ export function WorkoutScreen() {
     phaseRemaining,
   );
   const elapsedSecs = Math.max(0, totalScheduledSecs - remainingSecs);
+  const finishAt = finishClockTime(Date.now(), remainingSecs);
 
   const renderPanel = () => {
     switch (phase) {
@@ -408,12 +409,12 @@ export function WorkoutScreen() {
 
       <div className="bg-gray-800 border-t border-gray-700 px-4 py-1.5" data-testid="phase-bar">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wide">
+          <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide">
             {phaseLabel()}
           </span>
           {phase !== "done" && phase !== "idle" && totalScheduledSecs > 0 && (
             <div
-              className="flex gap-3 text-[10px] uppercase tracking-wide tabular-nums text-gray-400"
+              className="flex shrink-0 gap-2.5 whitespace-nowrap text-[10px] uppercase tracking-wide tabular-nums text-gray-400"
               data-testid="time-readout"
             >
               <span>
@@ -424,6 +425,9 @@ export function WorkoutScreen() {
               </span>
               <span>
                 <span className="text-white font-semibold">{fmtTime(totalScheduledSecs)}</span> total
+              </span>
+              <span data-testid="finish-time">
+                ends <span className="text-white font-semibold">{finishAt}</span>
               </span>
             </div>
           )}
