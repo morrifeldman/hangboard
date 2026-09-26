@@ -60,8 +60,22 @@ describe("buildGradeTrend", () => {
     ];
     const [p] = buildGradeTrend(climbs, "months");
     expect(gradeLabel(p.onsight!)).toBe("5.11a");
-    expect(gradeLabel(p.flash!)).toBe("5.10d");
+    // The 5.11a onsight also counts as a flash.
+    expect(gradeLabel(p.flash!)).toBe("5.11a");
     expect(gradeLabel(p.redpoint!)).toBe("5.12a");
+  });
+
+  it("lifts flash and redpoint to the best stricter-style send", () => {
+    const climbs: ClimbRecord[] = [
+      climb({ date: "2025-04-01", grade: "5.11c", style: "onsight" }),
+      climb({ date: "2025-04-02", grade: "5.10b", style: "redpoint" }),
+      climb({ date: "2025-05-01", grade: "5.11a", style: "flash" }),
+    ];
+    const [apr, may] = buildGradeTrend(climbs, "months");
+    expect(gradeLabel(apr.flash!)).toBe("5.11c");
+    expect(gradeLabel(apr.redpoint!)).toBe("5.11c");
+    expect(may.onsight).toBeNull();
+    expect(gradeLabel(may.redpoint!)).toBe("5.11a");
   });
 
   it("excludes attempts from max calculation", () => {

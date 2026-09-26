@@ -8,6 +8,7 @@ import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { sessionNextSummary } from "../lib/weightCues";
+import { sessionPRs } from "../lib/personalRecords";
 import {
   workoutLabel,
   workoutTypeLabel,
@@ -19,6 +20,7 @@ import {
 } from "../lib/historyFilter";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
+import { PRBadge } from "./PRBadge";
 import { GearIcon, NoteIcon } from "./icons";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 
@@ -382,9 +384,10 @@ function sessionTone(record: SessionRecord): ChipTone {
   return record.workoutType === "injury" ? "red" : "orange";
 }
 
-function SessionRow({ record, showDate, onEdit }: {
+function SessionRow({ record, showDate, prCount, onEdit }: {
   record: SessionRecord;
   showDate: boolean;
+  prCount: number;
   onEdit: (r: SessionRecord) => void;
 }) {
   const label = workoutLabel(record);
@@ -405,6 +408,7 @@ function SessionRow({ record, showDate, onEdit }: {
               {nextSummary.down > 0 && <span className="text-red-400">↓{nextSummary.down}</span>}
             </span>
           )}
+          {prCount > 0 && <PRBadge count={prCount} />}
           {record.bailed && <span className="text-yellow-400 text-xs font-medium">Bailed</span>}
           {record.imported && <span className="text-gray-500 text-xs font-medium">Imported</span>}
           <span className="ml-auto pl-1 text-gray-500 text-[11px] whitespace-nowrap">
@@ -444,6 +448,7 @@ export function HistoryScreen({
   onShowSettings,
 }: Props) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const prsBySession = useMemo(() => sessionPRs(sessions), [sessions]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -734,7 +739,7 @@ export function HistoryScreen({
                         : "relative before:absolute before:top-0 before:left-12 before:right-0 before:h-px before:bg-gray-700/40"}
                     >
                       {item.kind === "session" ? (
-                        <SessionRow record={item.record} showDate={newDay} onEdit={onEdit} />
+                        <SessionRow record={item.record} showDate={newDay} prCount={prsBySession.get(item.record.id)?.length ?? 0} onEdit={onEdit} />
                       ) : item.kind === "climbs" ? (
                         <ClimbDayRow
                           climbs={item.climbs}

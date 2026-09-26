@@ -152,6 +152,12 @@ function gradeIndex(grade: string): number | null {
   return i === undefined ? null : i;
 }
 
+function maxGrade(a: number | null, b: number | null): number | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return Math.max(a, b);
+}
+
 /**
  * Build the grade-trend series for the given climbs.
  * Filters to `outdoor` + `sport` setting/type, buckets by granularity, and
@@ -185,13 +191,16 @@ export function buildGradeTrend(climbs: ClimbRecord[], kind: Granularity): Grade
   const allKeys = enumerateBuckets(minDate, maxDate, kind);
   return allKeys.map((k) => {
     const agg = byKey.get(k) ?? { onsight: null, flash: null, redpoint: null };
+    // An onsight is also a flash, and a flash is also a redpoint, so each line
+    // is the best grade sent in that style or any stricter one.
+    const flash = maxGrade(agg.flash, agg.onsight);
     return {
       key: k,
       label: bucketLabel(k, kind),
       bucketStart: bucketStart(k, kind),
       onsight: agg.onsight,
-      flash: agg.flash,
-      redpoint: agg.redpoint,
+      flash,
+      redpoint: maxGrade(agg.redpoint, flash),
     };
   });
 }

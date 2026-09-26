@@ -3,12 +3,14 @@ import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import { isWarmup, plannedReps, warmupVolume } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
-import { addSession, updateSession, deleteSession } from "../lib/history";
+import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
+import { bestsBefore, isPR } from "../lib/personalRecords";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 import { formatWeight } from "../lib/format";
 import { holdNextDirection } from "../lib/weightCues";
 import { BackChevronIcon } from "./icons";
 import { WeightStepper } from "./WeightStepper";
+import { PRBadge } from "./PRBadge";
 
 /** Small tap target to toggle set completion. */
 function SetDot({ completed, onClick }: { completed: boolean; onClick: () => void }) {
@@ -153,6 +155,15 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       return next;
     });
   const [saving, setSaving] = useState(false);
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
+  useEffect(() => {
+    getSessions().then(setAllSessions).catch(console.error);
+  }, []);
+  // Compared against sessions before this one's date, so moving the date re-judges its PRs.
+  const priorBests = useMemo(
+    () => bestsBefore(allSessions, new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime(), initialRecord?.id),
+    [allSessions, dateValue, timeValue, initialRecord?.id],
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Prevent mobile keyboard from opening on mount by blurring any auto-focused input
   useEffect(() => {
@@ -322,7 +333,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     }
   };
 
-  // Max Hang has a long warm-up, so it folds away and leave the main hangs in view.
+  // Max Hang has a long warm-up, so it folds away to leave the main hangs in view.
   const warmupIdx = holds.flatMap((h, i) => (isWarmup(h) ? [i] : []));
   const warmupFolds = warmupIdx.length > 1;
   const warmupRepTotal = warmupIdx.reduce((sum, i) => sum + warmupReps(holds[i]).reduce((a, b) => a + b, 0), 0);
@@ -363,6 +374,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     const set2Completed = co?.set2 ?? (!editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true));
     const set3Completed = co?.set3 ?? (!editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true));
     const warmup = isWarmup(hold);
+    const setStates = ([[w, isCompleted], [w2, set2Completed], [w3, set3Completed]] as const).slice(0, numSets);
+    const completedWeights = setStates.filter(([, done]) => done).map(([v]) => v);
+    const best = completedWeights.length ? Math.max(...completedWeights) : null;
+    const pr = !hold.isRestOnly && !hold.skipProgression && isPR(hold.id, best, priorBests);
     const sectionStart = warmupFolds ? null
       : warmup && i === 0 ? "Warm-up"
       : !warmup && i > 0 && isWarmup(holds[i - 1]) ? "Main hangs"
@@ -389,6 +404,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
             >
               <span className="text-gray-300 text-sm truncate">{hold.name}</span>
+              {pr && <PRBadge />}
               <svg
                 width="11" height="11" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2.5"
@@ -400,8 +416,11 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               </svg>
             </button>
           ) : (
-            <span className={`text-sm flex-1 truncate ${isCompleted ? "text-gray-300" : "text-gray-600"}`}>
-              {hold.name}
+            <span className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className={`text-sm truncate ${isCompleted ? "text-gray-300" : "text-gray-600"}`}>
+                {hold.name}
+              </span>
+              {pr && <PRBadge />}
             </span>
           )}
           {warmup ? (
@@ -427,7 +446,9 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               <div key={setKey} className="flex flex-col items-center gap-1">
                 <div className="flex items-center gap-1">
                   {editing && <SetDot completed={completed} onClick={() => toggleCompletion(hold.id, setKey)} />}
-                  <span className="text-gray-500 text-xs">Set {s + 1}</span>
+                  <span className={`text-xs ${pr && completed && value === best ? "text-amber-300 font-semibold" : "text-gray-500"}`}>
+                    Set {s + 1}
+                  </span>
                 </div>
                 <WeightStepper label={`${hold.name} set ${s + 1}`} value={value} struck={!completed}
                   onChange={(v) => update(i, v)} />
