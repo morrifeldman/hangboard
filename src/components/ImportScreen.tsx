@@ -10,35 +10,8 @@ import { formatWeight } from "../lib/format";
 import { holdNextDirection } from "../lib/weightCues";
 import { BackChevronIcon } from "./icons";
 import { WeightStepper } from "./WeightStepper";
+import { WeightCell } from "./WeightCell";
 import { PRBadge } from "./PRBadge";
-
-/** Small tap target to toggle set completion. */
-function SetDot({ completed, onClick }: { completed: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-5 h-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-        completed
-          ? "border-accent-500/60 bg-accent-500/20"
-          : "border-red-400/60 bg-red-400/20"
-      }`}
-      aria-label={completed ? "Mark as failed" : "Mark as completed"}
-    >
-      {completed ? (
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent-400">
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      ) : (
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-red-400">
-          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      )}
-    </button>
-  );
-}
 
 type Props = {
   onBack: () => void;
@@ -126,14 +99,23 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         .map((h) => [h.holdId, { set1: h.set1.notes ?? "", set2: h.set2?.notes ?? "", set3: h.set3?.notes ?? "" }])
     )
   );
-  // Which hold note fields are currently open (auto-open holds that already have any notes)
-  const [expandedNoteHolds, setExpandedNoteHolds] = useState<Set<string>>(
-    () => new Set(
-      (initialRecord?.holds ?? [])
-        .filter((h) => h.notes || h.set1.notes || h.set2?.notes || h.set3?.notes)
-        .map((h) => h.holdId)
-    )
-  );
+  // Saved notes show as a one-line preview, so the editors start closed.
+  const [expandedNoteHolds, setExpandedNoteHolds] = useState<Set<string>>(() => new Set());
+  const [openCell, setOpenCell] = useState<string | null>(null);
+  useEffect(() => {
+    if (!openCell) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target as Element).closest("[data-weight-cell]")) {
+        setOpenCell(null);
+      }
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [openCell]);
 
   const toggleCompletion = (holdId: string, setKey: "set1" | "set2" | "set3") => {
     setCompletionOverrides((prev) => {
@@ -338,8 +320,18 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const warmupFolds = warmupIdx.length > 1;
   const warmupRepTotal = warmupIdx.reduce((sum, i) => sum + warmupReps(holds[i]).reduce((a, b) => a + b, 0), 0);
   const [warmupOpen, setWarmupOpen] = useState(() =>
-    warmupIdx.some((i) => expandedNoteHolds.has(holds[i].id)),
+    warmupIdx.some((i) => {
+      const id = holds[i].id;
+      const sn = setNotesState[id];
+      return !!holdNotesState[id] || !!sn?.set1 || !!sn?.set2 || !!sn?.set3;
+    }),
   );
+  const tableSets = Math.max(...holds.map((h) => h.numSets ?? 2));
+  const tableCols =
+    tableSets >= 3 ? "grid-cols-[minmax(0,1fr)_repeat(3,3.75rem)]"
+    : tableSets === 2 ? "grid-cols-[minmax(0,1fr)_repeat(2,4.5rem)]"
+    : "grid-cols-[minmax(0,1fr)_4.5rem]";
+  const setSpan = tableSets >= 3 ? "col-span-3" : tableSets === 2 ? "col-span-2" : "";
 
   const holdRow = (hold: HoldDefinition, i: number) => {
     const w = weights[i] ?? 0;
@@ -382,148 +374,117 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       : warmup && i === 0 ? "Warm-up"
       : !warmup && i > 0 && isWarmup(holds[i - 1]) ? "Main hangs"
       : null;
+    // The set columns are labelled once, above the first hold that has weights.
+    const firstWeighted = !warmup && (i === 0 || isWarmup(holds[i - 1]));
+    const weighted = !warmup && !hold.isRestOnly && !hold.skipProgression;
+    const noteFields = ([
+      ["Hold", holdNotesState[hold.id] ?? "", (v: string) => setHoldNotesState((prev) => ({ ...prev, [hold.id]: v }))],
+      ...(["set1", "set2", "set3"] as const).slice(0, numSets).map((key, s) => [
+        `Set ${s + 1}`,
+        sn?.[key] ?? "",
+        (v: string) => setSetNotesState((prev) => ({ ...prev, [hold.id]: { ...prev[hold.id], [key]: v } })),
+      ] as const),
+    ] as const);
+    const notePreview = noteFields.filter(([, v]) => v).map(([label, v]) => (label === "Hold" ? v : `${label}: ${v}`)).join(" · ");
     return (
-      <div
-        key={hold.id}
-        className="px-4 py-2.5 flex flex-col border-b border-gray-700/60 last:border-0"
-      >
-        {sectionStart && (
-          <p
-            className={`-mx-4 -mt-2.5 mb-2.5 px-4 py-2 border-b border-gray-700/60 bg-gray-900/40 text-xs font-semibold ${
-              warmup ? "text-teal-300" : "text-gray-300"
+      <div key={hold.id} className="px-4 py-2 border-b border-gray-700/60 last:border-0">
+        {(sectionStart || firstWeighted) && (
+          <div
+            className={`-mx-4 -mt-2 mb-2 px-4 py-1.5 grid ${tableCols} gap-x-1 items-center border-b border-gray-700/60 bg-gray-900/40 text-xs font-semibold ${
+              i === 0 ? "rounded-t-2xl" : ""
             }`}
           >
-            {sectionStart}
-          </p>
-        )}
-        <div className="flex items-center gap-3">
-          {/* Hold name */}
-          {editing ? (
-            <button
-              onClick={() => toggleNote(hold.id)}
-              className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
-            >
-              <span className="text-gray-300 text-sm truncate">{hold.name}</span>
-              {pr && <PRBadge />}
-              <svg
-                width="11" height="11" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round"
-                className={`flex-shrink-0 transition-colors ${hasNote ? "text-accent-400" : "text-gray-600"}`}
-              >
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-            </button>
-          ) : (
-            <span className="flex items-center gap-1.5 flex-1 min-w-0">
-              <span className={`text-sm truncate ${isCompleted ? "text-gray-300" : "text-gray-600"}`}>
-                {hold.name}
-              </span>
-              {pr && <PRBadge />}
-            </span>
-          )}
-          {warmup ? (
-            <span className="text-teal-300/90 text-sm font-num">{warmupVolume(warmupReps(hold))}</span>
-          ) : hold.isRestOnly || hold.skipProgression ? (
-            <span className="text-gray-400 text-base font-num">BW</span>
-          ) : numSets === 1 && (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
-              <WeightStepper label={`${hold.name} weight`} value={w} struck={!isCompleted}
-                onChange={(v) => updateWeight(i, v)} />
-            </div>
-          )}
-        </div>
-        {/* Multi-set steppers get their own row: three of them beside the hold name would overflow a phone screen. */}
-        {!hold.isRestOnly && !hold.skipProgression && numSets >= 2 && (
-          <div className={`mt-1.5 grid gap-3 ${numSets >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-            {([
-              [w, isCompleted, "set1", updateWeight],
-              [w2, set2Completed, "set2", updateWeight2],
-              [w3, set3Completed, "set3", updateWeight3],
-            ] as const).slice(0, numSets).map(([value, completed, setKey, update], s) => (
-              <div key={setKey} className="flex flex-col items-center gap-1">
-                <div className="flex items-center gap-1">
-                  {editing && <SetDot completed={completed} onClick={() => toggleCompletion(hold.id, setKey)} />}
-                  <span className={`text-xs ${pr && completed && value === best ? "text-amber-300 font-semibold" : "text-gray-500"}`}>
-                    Set {s + 1}
-                  </span>
-                </div>
-                <WeightStepper label={`${hold.name} set ${s + 1}`} value={value} struck={!completed}
-                  onChange={(v) => update(i, v)} />
-              </div>
+            <span className={warmup ? "text-teal-300" : "text-gray-300"}>{sectionStart}</span>
+            {firstWeighted && Array.from({ length: tableSets }, (_, s) => (
+              <span key={s} className="text-center font-medium text-gray-500">Set {s + 1}</span>
             ))}
           </div>
         )}
-        {/* Next-session target captured when the workout was saved */}
-        {editing && nextLabel && (
-          <p className={`text-xs text-right mt-1 ${nextClass}`}>
-            Next: {nextLabel}{nextArrow}
-          </p>
+        <div className={`grid ${tableCols} gap-x-1 items-center`}>
+          <div className="min-w-0">
+            {editing ? (
+              <button
+                onClick={() => toggleNote(hold.id)}
+                aria-expanded={noteOpen}
+                className="flex max-w-full items-center gap-1.5 text-left"
+              >
+                <span className="text-gray-200 text-sm truncate">{hold.name}</span>
+                {pr && <PRBadge />}
+                <svg
+                  width="11" height="11" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  aria-label={hasNote ? "Edit notes" : "Add notes"}
+                  className={`flex-shrink-0 transition-colors ${hasNote ? "text-accent-400" : "text-gray-600"}`}
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <span className={`text-sm truncate ${isCompleted ? "text-gray-200" : "text-gray-600"}`}>
+                  {hold.name}
+                </span>
+                {pr && <PRBadge />}
+              </span>
+            )}
+            {editing && nextLabel && weighted && (
+              <p className="text-xs truncate text-gray-500">
+                Next {nextLabel}<span className={nextClass}>{nextArrow}</span>
+              </p>
+            )}
+          </div>
+          {warmup ? (
+            <span className={`${setSpan} text-center text-teal-300/90 text-sm font-num`}>{warmupVolume(warmupReps(hold))}</span>
+          ) : !weighted ? (
+            <span className={`${setSpan} text-center text-gray-400 text-base font-num`}>BW</span>
+          ) : (
+            setStates.map(([value, completed], s) => {
+              const setKey = (["set1", "set2", "set3"] as const)[s];
+              const cellKey = `${hold.id}:${setKey}`;
+              return (
+                <WeightCell
+                  key={setKey}
+                  label={`${hold.name} set ${s + 1}`}
+                  value={value}
+                  completed={completed}
+                  pr={pr && completed && value === best}
+                  onChange={(v) => [updateWeight, updateWeight2, updateWeight3][s](i, v)}
+                  onToggleCompleted={editing ? () => toggleCompletion(hold.id, setKey) : undefined}
+                  open={openCell === cellKey}
+                  onOpen={() => setOpenCell(cellKey)}
+                  align={s === tableSets - 1 ? "end" : "center"}
+                />
+              );
+            })
+          )}
+        </div>
+        {editing && !noteOpen && notePreview && (
+          <button
+            onClick={() => toggleNote(hold.id)}
+            className="mt-0.5 block w-full truncate text-left text-xs text-gray-400"
+          >
+            {notePreview}
+          </button>
         )}
-        {/* Note fields — slide open when toggled (completed holds only) */}
         {editing && noteOpen && (
-          <div className="mt-2 flex flex-col gap-1.5">
-            <textarea
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              value={holdNotesState[hold.id] ?? ""}
-              onChange={(e) =>
-                setHoldNotesState((prev) => ({ ...prev, [hold.id]: e.target.value }))
-              }
-              placeholder={`Note on ${hold.name}…`}
-              rows={1}
-              className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                         placeholder-gray-600 resize-none border border-gray-700
-                         focus:outline-none focus:border-accent-500/60"
-            />
-            <textarea
-              value={setNotesState[hold.id]?.set1 ?? ""}
-              onChange={(e) =>
-                setSetNotesState((prev) => ({
-                  ...prev,
-                  [hold.id]: { ...prev[hold.id], set1: e.target.value },
-                }))
-              }
-              placeholder="Set 1 note…"
-              rows={1}
-              className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                         placeholder-gray-600 resize-none border border-gray-700
-                         focus:outline-none focus:border-accent-500/60"
-            />
-            {numSets >= 2 && (
-              <textarea
-                value={setNotesState[hold.id]?.set2 ?? ""}
-                onChange={(e) =>
-                  setSetNotesState((prev) => ({
-                    ...prev,
-                    [hold.id]: { ...prev[hold.id], set2: e.target.value },
-                  }))
-                }
-                placeholder="Set 2 note…"
-                rows={1}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                           placeholder-gray-600 resize-none border border-gray-700
-                           focus:outline-none focus:border-accent-500/60"
-              />
-            )}
-            {numSets >= 3 && (
-              <textarea
-                value={setNotesState[hold.id]?.set3 ?? ""}
-                onChange={(e) =>
-                  setSetNotesState((prev) => ({
-                    ...prev,
-                    [hold.id]: { ...prev[hold.id], set3: e.target.value },
-                  }))
-                }
-                placeholder="Set 3 note…"
-                rows={1}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                           placeholder-gray-600 resize-none border border-gray-700
-                           focus:outline-none focus:border-accent-500/60"
-              />
-            )}
+          <div className="mt-2 mb-1 grid grid-cols-[3rem_1fr] items-start gap-x-2 gap-y-1.5">
+            {noteFields.map(([label, value, onChange], n) => (
+              <label key={label} className="contents">
+                <span className="pt-2 text-xs text-gray-500">{label}</span>
+                <textarea
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus={n === 0}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  rows={1}
+                  className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-1.5 text-sm
+                             placeholder-gray-600 resize-none border border-gray-700
+                             focus:outline-none focus:border-accent-500/60 [field-sizing:content]"
+                />
+              </label>
+            ))}
           </div>
         )}
       </div>
@@ -614,7 +575,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Hold rows */}
         {warmupFolds && (
-          <div className="mb-3 overflow-hidden rounded-2xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
+          <div className="mb-3 rounded-2xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
             <button
               type="button"
               onClick={() => setWarmupOpen((o) => !o)}
@@ -643,23 +604,22 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             )}
           </div>
         )}
-        <div className="bg-gray-800 rounded-2xl overflow-hidden">
+        <div className="bg-gray-800 rounded-2xl">
           {holds.map((hold, i) => (warmupFolds && isWarmup(hold) ? null : holdRow(hold, i)))}
         </div>
+
+        <textarea
+          value={sessionNotes}
+          onChange={(e) => setSessionNotes(e.target.value)}
+          rows={2}
+          placeholder="Session notes"
+          className="mt-3 w-full bg-gray-800 text-white rounded-2xl px-4 py-3 text-sm placeholder-gray-500 resize-none border border-gray-700 focus:outline-none focus:border-accent-500/60 [field-sizing:content] min-h-[3.5rem]"
+        />
 
       </div>
 
       {/* Bottom actions — always visible */}
       <div className="px-4 pb-6 pt-3 flex flex-col gap-3 shrink-0 border-t border-gray-800">
-        {/* Notes */}
-        <textarea
-          value={sessionNotes}
-          onChange={(e) => setSessionNotes(e.target.value)}
-          rows={2}
-          placeholder="Session notes (optional)"
-          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500 resize-none border border-gray-700 focus:outline-none focus:border-accent-500/60"
-        />
-
         <div className="flex gap-3">
           <button
             onClick={onBack}

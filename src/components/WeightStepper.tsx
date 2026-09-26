@@ -11,7 +11,7 @@ interface WeightStepperProps {
 }
 
 // Rounding keeps repeated 2.5 steps from drifting into values like 12.499999.
-const step = (value: number, delta: number) => Math.round((value + delta) * 10) / 10;
+export const step = (value: number, delta: number) => Math.round((value + delta) * 10) / 10;
 
 export function WeightStepper({ value, onChange, label, struck = false, formatValue = formatWeight }: WeightStepperProps) {
   const btnClass =
