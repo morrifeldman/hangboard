@@ -167,7 +167,7 @@ export function HangboardSetup() {
             aria-pressed={selectedWorkout === id}
             className={`min-h-[40px] flex-1 rounded-lg text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               selectedWorkout === id
-                ? "bg-gray-600 text-white"
+                ? "bg-accent-500 text-gray-950"
                 : "text-gray-400 active:bg-gray-700"
             }`}
             data-testid={`workout-tab-${id}`}
@@ -180,16 +180,16 @@ export function HangboardSetup() {
       {/* Start sits above the holds so it's on screen without scrolling; the weights below are for checking, not a step you must pass. */}
       <button
         onClick={handleStart}
-        className="mt-1 flex w-full items-center gap-4 rounded-2xl bg-accent-500 active:bg-accent-400 py-3 pl-5 pr-3 text-left text-gray-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+        className="mt-1 flex w-full items-center gap-4 rounded-2xl bg-gray-800 active:bg-gray-700 py-3 pl-5 pr-3 text-left text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
         data-testid="start-workout-btn"
       >
         <span className="min-w-0 flex-1">
           <span className="block text-xl font-bold leading-tight">Start workout</span>
-          <span className="block text-sm font-medium text-gray-950/60">
+          <span className="block text-sm font-medium text-gray-400">
             {mainHolds.length} holds · about {totalMins} min
           </span>
         </span>
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-950 text-accent-400" aria-hidden="true">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-500 text-gray-950" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
             <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
           </svg>
