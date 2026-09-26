@@ -47,7 +47,7 @@ export function plannedReps(hold: HoldDefinition): number[] {
 }
 
 export const HOLDS: HoldDefinition[] = [
-  { id: "jug",         name: "Jug",         defaultSet1Weight:  0,    defaultSet2Weight:  0,    set1Reps: 7, set2Reps: 6, skipProgression: true, warmup: true },
+  { id: "jug",         name: "Jug",         defaultSet1Weight:  0,    defaultSet2Weight:  0,    set1Reps: 7, set2Reps: 6, skipProgression: true, warmup: true, breakSecs: 120 },
   { id: "large-edge",  name: "Large Edge",  defaultSet1Weight:  5,    defaultSet2Weight:  15,   set1Reps: 7, set2Reps: 6 },
   { id: "mr-shallow",  name: "MR Shallow",  defaultSet1Weight: -35,   defaultSet2Weight: -25,   set1Reps: 7, set2Reps: 6 },
   { id: "small-edge",  name: "Med Edge",    defaultSet1Weight: -20,   defaultSet2Weight: -10,   set1Reps: 7, set2Reps: 6 },

@@ -16,6 +16,8 @@ const PREP = 10;
 const HANG = 7;
 const REST = 3;
 const BREAK = 180;
+// The jug is a warm-up, so it gets a shorter break than the other Workout A holds.
+const JUG_BREAK = 120;
 const S1 = 7;
 const S2 = 6;
 
@@ -34,7 +36,8 @@ describe("totalWorkoutSecs", () => {
     //   set2 = PREP + 6*HANG + 5*REST + BREAK = 10 + 42 + 15 + 180 = 247
     // Per hold = 257 + 247 = 504. Workout A has 8 holds → 504 * 8 = 4032.
     // The last set of the last hold drops its trailing break (180): 4032 - 180.
-    expect(totalWorkoutSecs(HOLDS, S1, S2)).toBe(504 * 8 - BREAK);
+    // The jug's two breaks are each 60s shorter.
+    expect(totalWorkoutSecs(HOLDS, S1, S2)).toBe(504 * 8 - BREAK - 2 * (BREAK - JUG_BREAK));
   });
 
   it("handles isRestOnly holds (prep + break only per set)", () => {
@@ -144,8 +147,8 @@ describe("remainingWorkoutSecs", () => {
   });
 
   it("drops by exactly one set's worth between consecutive holds (start of next hold)", () => {
-    const h0Start: SessionState = { phase: "prep", holdIndex: 0, setNumber: 1, repIndex: 0 };
-    const h1Start: SessionState = { phase: "prep", holdIndex: 1, setNumber: 1, repIndex: 0 };
+    const h0Start: SessionState = { phase: "prep", holdIndex: 1, setNumber: 1, repIndex: 0 };
+    const h1Start: SessionState = { phase: "prep", holdIndex: 2, setNumber: 1, repIndex: 0 };
     const rem0 = remainingWorkoutSecs(h0Start, HOLDS, S1, S2, PREP);
     const rem1 = remainingWorkoutSecs(h1Start, HOLDS, S1, S2, PREP);
     // Each hold contributes 504s (set1 257 + set2 247), per HOLDS workout A.
@@ -158,10 +161,10 @@ describe("remainingWorkoutSecs", () => {
     // Remaining of current set after this hang ends:
     //   3 more (hang+rest) for reps 4,5,6 = 3*(HANG+REST) — wait, last rep has no trailing rest.
     //   Actually after rep 3 hang: rest, hang, rest, hang, rest, hang, break = 3 rests + 3 hangs + break
-    //   = 3*REST + 3*HANG + BREAK = 9 + 21 + 180 = 210
-    // Plus set 2 (247) plus 7 more holds (7 * 504 = 3528) = 210 + 247 + 3528 = 3985
+    //   = 3*REST + 3*HANG + JUG_BREAK = 9 + 21 + 120 = 150
+    // Plus jug set 2 (247 - 60 = 187) plus 7 more holds (7 * 504 = 3528)
     // Plus currentPhaseRemaining = 5. Minus the dropped final break of the last hold (180).
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 5)).toBe(5 + 210 + 247 + 7 * 504 - BREAK);
+    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 5)).toBe(5 + 150 + 187 + 7 * 504 - BREAK);
   });
 });
 

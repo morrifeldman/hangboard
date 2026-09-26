@@ -136,7 +136,10 @@ export function HangboardSetup() {
   const warmupHolds = holds.filter(isWarmup);
   const mainHolds = holds.filter((h) => !isWarmup(h));
   const mainInc = mainHolds.find((h) => h.setIncrement)?.setIncrement;
-  const mainDetail = mainInc ? `+${mainInc} lb per set` : undefined;
+  const mainDetail =
+    selectedWorkout === "repeaters"
+      ? `${SET1_REPS}/${SET2_REPS} reps · ${fmtSecs(HANG_SECS)} hang · ${fmtSecs(REST_SECS)} rest · ${fmtSecs(BREAK_SECS)} break`
+      : mainInc ? `+${mainInc} lb per set` : undefined;
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
 
   // Most recent hangboard session of this type (any completion state) — baseline for the
@@ -205,12 +208,6 @@ export function HangboardSetup() {
           </button>
         ))}
       </div>
-
-      {selectedWorkout === "repeaters" && (
-        <p className="text-gray-600 text-xs px-1">
-          {SET1_REPS}/{SET2_REPS} reps · {fmtSecs(HANG_SECS)} hang · {fmtSecs(REST_SECS)} rest · {fmtSecs(BREAK_SECS)} break
-        </p>
-      )}
 
       {warmupHolds.length > 0 && (
         <>
