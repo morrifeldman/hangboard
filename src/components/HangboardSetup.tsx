@@ -216,7 +216,7 @@ export function HangboardSetup() {
 
       {warmupHolds.length > 0 && (
         <>
-          <SectionLabel warmup detail={warmupDetail ?? "Bodyweight"}>Warm-up</SectionLabel>
+          <SectionLabel warmup detail={warmupDetail}>Warm-up</SectionLabel>
           <div className="bg-gray-800/50 rounded-xl divide-y divide-gray-700/60 shrink-0">
             {warmupHolds.map((hold) => (
               <div
@@ -230,9 +230,7 @@ export function HangboardSetup() {
                     <p className="text-gray-500 text-xs">{holdSummary(hold)}</p>
                   )}
                 </div>
-                {warmupDetail && (
-                  <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
-                )}
+                <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
               </div>
             ))}
           </div>
