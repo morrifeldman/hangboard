@@ -502,7 +502,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           <BackChevronIcon />
         </button>
         <h1 className="text-white font-bold text-lg">
-          {editing ? "Edit workout" : "Log past workout"}
+          {editing ? (workoutType === "max-hang" ? "Max Hang" : "Repeaters") : "Log past workout"}
         </h1>
       </header>
 
@@ -525,28 +525,25 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           />
         </div>
 
-        {/* Workout type */}
-        <div className="flex items-center gap-3">
+        {/* A saved session's type can't change, so the header names it instead. */}
+        {!editing && <div className="flex items-center gap-3">
           <span className="text-gray-400 text-sm w-12 flex-shrink-0">Type</span>
           <div className="flex gap-2">
             {([["repeaters", "Repeaters"], ["max-hang", "Max Hang"]] as const).map(([t, label]) => (
               <button
                 key={t}
                 onClick={() => handleTypeChange(t)}
-                disabled={editing}
-                className={`h-10 px-4 rounded-lg text-sm font-semibold transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 disabled:cursor-default ${
+                className={`h-10 px-4 rounded-lg text-sm font-semibold transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                   workoutType !== t
-                    ? "bg-gray-800 text-gray-400 border-gray-700 disabled:text-gray-600 disabled:border-gray-800"
-                    : editing
-                      ? "bg-gray-700 text-gray-200 border-transparent"
-                      : "bg-accent-600 text-white border-transparent"
+                    ? "bg-gray-800 text-gray-400 border-gray-700"
+                    : "bg-accent-500 text-gray-950 border-transparent"
                 }`}
               >
                 {label}
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Set 2 offset — Repeaters only; batch-updates set 2 weights */}
         {workoutType === "repeaters" && (
