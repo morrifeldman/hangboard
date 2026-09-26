@@ -42,18 +42,6 @@ function defaultWeights(holds: readonly HoldDefinition[]): number[] {
   return holds.map((h) => h.defaultSet1Weight);
 }
 
-function offsetFromRecord(record: SessionRecord): number {
-  // Jug (and any rest-only hold) sits at bodyweight for both sets, so its
-  // set2−set1 is 0 — using it would wrongly report a 0 offset. Skip those and
-  // infer the offset from the first real progressing hold instead.
-  const skipIds = new Set(HOLDS.filter((h) => h.skipProgression || h.isRestOnly).map((h) => h.id));
-  for (const h of record.holds) {
-    if (skipIds.has(h.holdId)) continue;
-    if (h.set1.completed && h.set2?.completed) return h.set2.weight - h.set1.weight;
-  }
-  return 10;
-}
-
 export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
   // "beginner" sessions are treated as "repeaters" in the edit UI (same hold structure)
@@ -79,11 +67,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       ? initialRecord.holds.map((h) => h.set3?.weight ?? h.set1.weight)
       : defaultWeights(HOLDS)
   );
-  const [set2Offset, setSet2Offset] = useState(() => {
-    if (!initialRecord) return 10;
-    if (initialRecord.workoutType === "max-hang") return 10;
-    return offsetFromRecord(initialRecord);
-  });
+  const [set2Offset, setSet2Offset] = useState(10);
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
   const [holdNotesState, setHoldNotesState] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -545,8 +529,8 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           </div>
         </div>}
 
-        {/* Set 2 offset — Repeaters only; batch-updates set 2 weights */}
-        {workoutType === "repeaters" && (
+        {/* Set 2 offset — a shortcut for logging a new Repeaters session; saved ones are edited per set. */}
+        {!editing && workoutType === "repeaters" && (
           <div className="flex items-center gap-3">
             <span className="text-gray-400 text-sm w-12 flex-shrink-0">Offset</span>
             <div className="flex items-center gap-2">
