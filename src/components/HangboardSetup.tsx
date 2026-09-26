@@ -102,6 +102,7 @@ export function HangboardSetup() {
   // Nothing in the warm-up is adjustable, so a long one folds away and leaves room for the main hangs.
   const warmupFolds = warmupHolds.length > 1;
   const warmupMins = Math.round(totalWorkoutSecs(warmupHolds, SET1_REPS, SET2_REPS) / 60);
+  const totalMins = Math.round(totalWorkoutSecs(holds, SET1_REPS, SET2_REPS) / 60);
   const mainDetail =
     selectedWorkout === "repeaters"
       ? `${SET1_REPS}/${SET2_REPS} reps · ${fmtSecs(HANG_SECS)} hang · ${fmtSecs(REST_SECS)} rest · ${fmtSecs(BREAK_SECS)} break`
@@ -166,7 +167,7 @@ export function HangboardSetup() {
             aria-pressed={selectedWorkout === id}
             className={`min-h-[40px] flex-1 rounded-lg text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               selectedWorkout === id
-                ? "bg-accent-600 text-white"
+                ? "bg-gray-600 text-white"
                 : "text-gray-400 active:bg-gray-700"
             }`}
             data-testid={`workout-tab-${id}`}
@@ -175,6 +176,25 @@ export function HangboardSetup() {
           </button>
         ))}
       </div>
+
+      {/* Start sits above the holds so it's on screen without scrolling; the weights below are for checking, not a step you must pass. */}
+      <button
+        onClick={handleStart}
+        className="mt-1 flex w-full items-center gap-4 rounded-2xl bg-accent-500 active:bg-accent-400 py-3 pl-5 pr-3 text-left text-gray-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+        data-testid="start-workout-btn"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-xl font-bold leading-tight">Start workout</span>
+          <span className="block text-sm font-medium text-gray-950/60">
+            {mainHolds.length} holds · about {totalMins} min
+          </span>
+        </span>
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-950 text-accent-400" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
+            <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
+          </svg>
+        </span>
+      </button>
 
       {warmupHolds.length > 0 && (
         <>
@@ -332,15 +352,6 @@ export function HangboardSetup() {
       })}
       </div>
 
-      <div className="shrink-0 pt-4 pb-2">
-        <button
-          onClick={handleStart}
-          className="min-h-[60px] w-full rounded-2xl bg-accent-600 active:bg-accent-500 text-white font-bold text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-          data-testid="start-workout-btn"
-        >
-          Start workout
-        </button>
-      </div>
     </div>
   );
 }
