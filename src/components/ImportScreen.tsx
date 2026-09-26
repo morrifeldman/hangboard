@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
-import { isWarmup } from "../data/holds";
+import { isWarmup, plannedReps, warmupVolume } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
@@ -210,6 +210,14 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         return { ...def, numSets: h.set3 !== undefined ? 3 : h.set2 !== null ? 2 : 1 };
       })
     : workoutType === "repeaters" ? HOLDS : HOLDS_B;
+
+  // A saved session keeps the reps it was done with, even after the warm-up plan changes.
+  const warmupReps = (hold: HoldDefinition): number[] => {
+    const saved = initialRecord?.holds.find((h) => h.holdId === hold.id);
+    return saved
+      ? [saved.set1, saved.set2, saved.set3].filter((x) => x != null).map((x) => x.reps)
+      : plannedReps(hold);
+  };
 
   const handleTypeChange = (type: "repeaters" | "max-hang") => {
     setWorkoutType(type);
@@ -470,7 +478,9 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                       {hold.name}
                     </span>
                   )}
-                  {hold.isRestOnly || hold.skipProgression ? (
+                  {warmup ? (
+                    <span className="text-teal-300/90 text-xs font-medium tabular-nums">{warmupVolume(warmupReps(hold))}</span>
+                  ) : hold.isRestOnly || hold.skipProgression ? (
                     <span className="text-gray-500 text-xs font-mono">BW</span>
                   ) : numSets === 1 && (
                     <div className="flex items-center gap-1.5 flex-shrink-0">

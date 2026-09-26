@@ -29,6 +29,23 @@ export function isWarmup(hold: HoldDefinition): boolean {
   return hold.warmup === true;
 }
 
+/**
+ * How much of a bodyweight warm-up was done. Single hangs repeated add up to
+ * one count ("×3"); sets of several reps keep their split ("7 + 6").
+ */
+export function warmupVolume(repsPerSet: readonly number[]): string {
+  if (repsPerSet.every((r) => r === 1)) return `×${repsPerSet.length}`;
+  if (repsPerSet.length === 1) return `×${repsPerSet[0]}`;
+  return repsPerSet.join(" + ");
+}
+
+export function plannedReps(hold: HoldDefinition): number[] {
+  const numSets = hold.numSets ?? 2;
+  return Array.from({ length: numSets }, (_, s) =>
+    hold.repsPerSet ?? (s === 0 ? hold.set1Reps : hold.set2Reps),
+  );
+}
+
 export const HOLDS: HoldDefinition[] = [
   { id: "jug",         name: "Jug",         defaultSet1Weight:  0,    defaultSet2Weight:  0,    set1Reps: 7, set2Reps: 6, skipProgression: true, warmup: true },
   { id: "large-edge",  name: "Large Edge",  defaultSet1Weight:  5,    defaultSet2Weight:  15,   set1Reps: 7, set2Reps: 6 },

@@ -26,7 +26,7 @@ import {
 import type { TrendPoint, CalendarDay } from "../lib/progressData";
 import { buildGradeTrend, gradeLabel } from "../lib/gradeTrends";
 import type { Granularity } from "../lib/gradeTrends";
-import { HOLDS } from "../data/holds";
+import { HOLDS, warmupVolume } from "../data/holds";
 import { HOLDS_B, isWarmupHoldId } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
 import {
@@ -692,18 +692,31 @@ export function ProgressScreen({
 
                 {session.holds.length > 0 && (
                   <div className="flex flex-col gap-1.5">
-                    {session.holds.map((hold, i) => isWarmupHoldId(hold.holdId) ? (
-                      <div key={hold.holdId} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-400">{hold.holdName}</span>
-                        <span className="text-xs text-gray-500">BW</span>
+                    {session.holds.some((h) => isWarmupHoldId(h.holdId)) && (
+                      <div className="-mx-2 mb-1 rounded-lg bg-teal-400/[0.06] px-2 py-1.5">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-teal-300/80">
+                          Warm-up <span className="font-normal normal-case tracking-normal text-gray-500">· bodyweight</span>
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {session.holds.filter((h) => isWarmupHoldId(h.holdId)).map((hold) => {
+                            const sets = [hold.set1, hold.set2, hold.set3].filter((x) => x != null);
+                            const done = sets.every((x) => x.completed);
+                            return (
+                              <div key={hold.holdId} className="flex items-center justify-between gap-3">
+                                <span className={`text-sm truncate ${done ? "text-gray-300" : "text-gray-500 line-through"}`}>
+                                  {hold.holdName}
+                                </span>
+                                <span className="text-xs font-medium tabular-nums text-teal-300/90">
+                                  {warmupVolume(sets.map((x) => x.reps))}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ) : (
-                      <div
-                        key={hold.holdId}
-                        className={`flex items-center justify-between ${
-                          i > 0 && isWarmupHoldId(session.holds[i - 1].holdId) ? "mt-1 pt-2 border-t border-gray-700/60" : ""
-                        }`}
-                      >
+                    )}
+                    {session.holds.filter((h) => !isWarmupHoldId(h.holdId)).map((hold) => (
+                      <div key={hold.holdId} className="flex items-center justify-between">
                         <span className="text-sm text-gray-200">{hold.holdName}</span>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-gray-500">
