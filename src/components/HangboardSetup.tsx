@@ -136,6 +136,10 @@ export function HangboardSetup() {
   const warmupHolds = holds.filter(isWarmup);
   const mainHolds = holds.filter((h) => !isWarmup(h));
   const mainInc = mainHolds.find((h) => h.setIncrement)?.setIncrement;
+  const holdSummary = (hold: HoldDefinition) =>
+    [repLabel(hold), timingLabel(hold)].filter(Boolean).join(" · ");
+  // A lone warm-up hold's timing goes on the section line instead of repeating under the hold.
+  const warmupDetail = warmupHolds.length === 1 ? holdSummary(warmupHolds[0]) : undefined;
   const mainDetail =
     selectedWorkout === "repeaters"
       ? `${SET1_REPS}/${SET2_REPS} reps · ${fmtSecs(HANG_SECS)} hang · ${fmtSecs(REST_SECS)} rest · ${fmtSecs(BREAK_SECS)} break`
@@ -211,7 +215,7 @@ export function HangboardSetup() {
 
       {warmupHolds.length > 0 && (
         <>
-          <SectionLabel warmup detail="Bodyweight">Warm-up</SectionLabel>
+          <SectionLabel warmup detail={warmupDetail ?? "Bodyweight"}>Warm-up</SectionLabel>
           <div className="bg-gray-800/50 rounded-xl divide-y divide-gray-700/60 shrink-0">
             {warmupHolds.map((hold) => (
               <div
@@ -221,9 +225,9 @@ export function HangboardSetup() {
               >
                 <div className="min-w-0">
                   <p className="text-gray-200 text-sm font-medium">{hold.name}</p>
-                  <p className="text-gray-500 text-xs">
-                    {[repLabel(hold), timingLabel(hold)].filter(Boolean).join(" · ")}
-                  </p>
+                  {!warmupDetail && (
+                    <p className="text-gray-500 text-xs">{holdSummary(hold)}</p>
+                  )}
                 </div>
                 <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
               </div>
