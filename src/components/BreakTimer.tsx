@@ -72,14 +72,24 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const barLabel = hold.isRestOnly ? hold.name.toUpperCase() : "BREAK";
 
 
-  const upNextIsWarmup = betweenSets ? isWarmup(hold) : !!nextHold && isWarmup(nextHold);
+  const upNextHold = betweenSets ? hold : nextHold;
+  const endsWarmup = betweenHolds && !!nextHold && isWarmup(hold) && !isWarmup(nextHold);
 
   const progress = breakDuration > 0 ? Math.max(0, Math.min(1, remaining / breakDuration)) : 0;
   const hasNotes = setNoteValue !== "" || holdNoteValue !== "";
 
   return (
     <div className="flex flex-col items-center gap-3 px-4 w-full max-w-sm">
-      {upNextIsWarmup && <WarmupBadge className="self-end" />}
+      {upNextHold && isWarmup(upNextHold) && <WarmupBadge hold={upNextHold} className="self-end" />}
+      {endsWarmup && (
+        <div
+          className="w-full rounded-xl border border-teal-400/30 bg-teal-400/10 px-4 py-3 text-center"
+          data-testid="warmup-complete"
+        >
+          <p className="text-teal-200 text-lg font-bold">Warm-up done</p>
+          <p className="text-gray-300 text-sm">Main hangs start after this break</p>
+        </div>
+      )}
       <div className="w-full flex justify-between">
         <div>
           <p className="text-gray-500 text-xs uppercase tracking-wide">Last</p>
@@ -157,12 +167,6 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
             onDelta={(d) => { adjustNextWeight(hold.id, 1, d); adjustNextWeight(hold.id, 2, d); }}
           />
         </div>
-      )}
-
-      {betweenHolds && nextHold && isWarmup(hold) && !isWarmup(nextHold) && (
-        <p className="text-teal-300 text-sm font-medium" data-testid="warmup-complete">
-          Warm-up done. Main hangs next.
-        </p>
       )}
 
       {betweenHolds && nextHold && !nextHold.isRestOnly && !isWarmup(nextHold) && (() => {

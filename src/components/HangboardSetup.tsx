@@ -9,6 +9,7 @@ import { HANG_SECS, REST_SECS, BREAK_SECS, SET1_REPS, SET2_REPS } from "../data/
 import { initAudio } from "../lib/audio";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { getSessions } from "../lib/history";
+import { totalWorkoutSecs } from "../lib/workoutTime";
 import type { SessionRecord } from "../lib/history";
 import { buildTrend } from "../lib/progressData";
 import type { TrendPoint } from "../lib/progressData";
@@ -127,6 +128,7 @@ export function HangboardSetup() {
   const currentHolds = useWorkoutStore((s) => s.currentHolds);
 
   const [editing, setEditing] = useState<EditKey>(null);
+  const [warmupOpen, setWarmupOpen] = useState(false);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
 
   useEffect(() => {
@@ -140,7 +142,9 @@ export function HangboardSetup() {
   const holdSummary = (hold: HoldDefinition) =>
     [repLabel(hold), timingLabel(hold)].filter(Boolean).join(" · ");
   // A lone warm-up hold's timing goes on the section line instead of repeating under the hold.
-  const warmupDetail = warmupHolds.length === 1 ? holdSummary(warmupHolds[0]) : undefined;
+  // Nothing in the warm-up is adjustable, so a long one folds away and leaves room for the main hangs.
+  const warmupFolds = warmupHolds.length > 1;
+  const warmupMins = Math.round(totalWorkoutSecs(warmupHolds, SET1_REPS, SET2_REPS) / 60);
   const mainDetail =
     selectedWorkout === "repeaters"
       ? `${SET1_REPS}/${SET2_REPS} reps · ${fmtSecs(HANG_SECS)} hang · ${fmtSecs(REST_SECS)} rest · ${fmtSecs(BREAK_SECS)} break`
@@ -216,23 +220,53 @@ export function HangboardSetup() {
 
       {warmupHolds.length > 0 && (
         <>
-          <SectionLabel warmup detail={warmupDetail}>Warm-up</SectionLabel>
-          <div className="bg-gray-800/50 rounded-xl divide-y divide-gray-700/60 shrink-0">
-            {warmupHolds.map((hold) => (
-              <div
-                key={hold.id}
-                className="px-4 py-2.5 flex items-center justify-between gap-3"
-                data-testid={`hold-row-${hold.id}`}
-              >
-                <div className="min-w-0">
-                  <p className="text-gray-200 text-sm font-medium">{hold.name}</p>
-                  {!warmupDetail && (
-                    <p className="text-gray-500 text-xs">{holdSummary(hold)}</p>
-                  )}
-                </div>
-                <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+          <div className="mt-2 shrink-0 overflow-hidden rounded-xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
+            <button
+              type="button"
+              onClick={() => setWarmupOpen((o) => !o)}
+              disabled={!warmupFolds}
+              aria-expanded={warmupFolds ? warmupOpen : undefined}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              data-testid={warmupFolds ? "warmup-toggle" : `hold-row-${warmupHolds[0].id}`}
+            >
+              <div className="min-w-0">
+                <p className="text-teal-200 font-semibold">Warm-up</p>
+                <p className="text-xs text-teal-100/50">
+                  {warmupFolds
+                    ? `${warmupHolds.length} holds · about ${warmupMins} min`
+                    : `${warmupHolds[0].name} · ${holdSummary(warmupHolds[0])}`}
+                </p>
               </div>
-            ))}
+              {!warmupFolds && (
+                <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+              )}
+              {warmupFolds && (
+                <svg
+                  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  className={`shrink-0 text-teal-300/70 transition-transform motion-reduce:transition-none ${warmupOpen ? "rotate-180" : ""}`}
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              )}
+            </button>
+            {warmupFolds && warmupOpen && (
+              <div className="divide-y divide-teal-400/10 border-t border-teal-400/10">
+                {warmupHolds.map((hold) => (
+                  <div
+                    key={hold.id}
+                    className="px-4 py-2.5 flex items-center justify-between gap-3"
+                    data-testid={`hold-row-${hold.id}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-gray-200 text-sm font-medium">{hold.name}</p>
+                      <p className="text-gray-500 text-xs">{holdSummary(hold)}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <SectionLabel detail={mainDetail}>Main hangs</SectionLabel>
         </>

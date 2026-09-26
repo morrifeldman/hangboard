@@ -6,6 +6,7 @@ import { useWorkoutStore } from "../store/useWorkoutStore";
 import { TimerRing } from "./TimerRing";
 import { isWarmup } from "../data/holds";
 import { WarmupBadge } from "./WarmupBadge";
+import { formatWeight } from "../lib/format";
 
 export function HangTimer() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -15,6 +16,7 @@ export function HangTimer() {
   const skipSet = useWorkoutStore((s) => s.skipSet);
   const paused = useWorkoutStore((s) => s.paused);
   const currentHold = useWorkoutStore((s) => s.currentHold);
+  const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
 
   const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
@@ -69,7 +71,7 @@ export function HangTimer() {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {isWarmup(hold) && <WarmupBadge />}
+      {isWarmup(hold) && <WarmupBadge hold={hold} />}
       <p className="text-white font-bold text-xl">{hold.name}</p>
       <TimerRing
         remaining={remaining}
@@ -79,6 +81,11 @@ export function HangTimer() {
         onClick={paused ? resumeWorkout : pauseWorkout}
         paused={paused}
       />
+      {!isWarmup(hold) && !hold.isRestOnly && (
+        <p className="text-white text-3xl font-bold tabular-nums" data-testid="hang-weight">
+          {formatWeight(effectiveWeight(hold.id, setNumber))}
+        </p>
+      )}
       <div className="flex gap-2" data-testid="rep-counter">
         {Array.from({ length: totalReps }, (_, i) => {
           const done = isHanging ? i < repIndex : i <= repIndex;

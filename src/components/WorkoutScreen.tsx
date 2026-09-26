@@ -342,9 +342,18 @@ export function WorkoutScreen() {
     return false;
   };
 
+  const nextHoldDef = holds[holdIndex + 1];
+  // The break that hands over to the main hangs already belongs to them, so the tint lifts there.
+  const inWarmup =
+    !!currentHoldDef &&
+    isWarmup(currentHoldDef) &&
+    phase !== "done" &&
+    !(phase === "break" && setNumber >= numSets && nextHoldDef && !isWarmup(nextHoldDef));
+  const tone = "transition-colors duration-700 motion-reduce:transition-none";
+
   return (
-    <div className="h-full bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-4 pt-3 pb-2">
+    <div className={`h-full flex flex-col ${tone} ${inWarmup ? "bg-warmup-base" : "bg-gray-900"}`} data-warmup={inWarmup || undefined}>
+      <header className={`px-4 pt-3 pb-2 ${tone} ${inWarmup ? "bg-warmup-panel" : "bg-gray-800"}`}>
         <div className="flex items-center justify-between mb-2">
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wide">Set</p>
@@ -393,24 +402,30 @@ export function WorkoutScreen() {
           </div>
         </div>
         <div className="flex gap-1">
-          {holds.map((h, i) => (
-            <div
-              key={h.id}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i > 0 && isWarmup(holds[i - 1]) && !isWarmup(h) ? "ml-2" : ""
-              } ${
-                isHoldDone(i)
-                  ? "bg-white/50"
-                  : i === holdIndex
-                  ? "bg-white"
-                  : "bg-gray-600"
-              }`}
-            />
-          ))}
+          {holds.map((h, i) => {
+            const warm = isWarmup(h);
+            return (
+              <div
+                key={h.id}
+                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                  i > 0 && isWarmup(holds[i - 1]) && !warm ? "ml-2" : ""
+                } ${
+                  isHoldDone(i)
+                    ? warm ? "bg-teal-300/50" : "bg-white/50"
+                    : i === holdIndex
+                    ? warm ? "bg-teal-200" : "bg-white"
+                    : warm ? "bg-teal-700/70" : "bg-gray-600"
+                }`}
+              />
+            );
+          })}
         </div>
       </header>
 
-      <div className="bg-gray-800 border-t border-gray-700 px-4 py-1.5" data-testid="phase-bar">
+      <div
+        className={`border-t px-4 py-1.5 ${tone} ${inWarmup ? "bg-warmup-panel border-warmup-edge" : "bg-gray-800 border-gray-700"}`}
+        data-testid="phase-bar"
+      >
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide">
             {phaseLabel()}

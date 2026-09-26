@@ -695,7 +695,7 @@ export function ProgressScreen({
                     {session.holds.some((h) => isWarmupHoldId(h.holdId)) && (
                       <div className="-mx-2 mb-1 rounded-lg bg-teal-400/[0.06] px-2 py-1.5">
                         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-teal-300/80">
-                          Warm-up <span className="font-normal normal-case tracking-normal text-gray-500">· bodyweight</span>
+                          Warm-up
                         </p>
                         <div className="flex flex-col gap-1">
                           {session.holds.filter((h) => isWarmupHoldId(h.holdId)).map((hold) => {
