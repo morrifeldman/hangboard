@@ -47,6 +47,7 @@ function gymSummary(data: GymData): string {
       const parts: string[] = [`${data.climbMin} min`];
       if (data.routes) parts.push(`${data.routes} routes`);
       if (data.downclimb === "Yes") parts.push("downclimb");
+      else if (data.downclimb === "Some") parts.push("some downclimb");
       if (data.maxGrade) parts.push(`Max ${data.maxGrade}`);
       return parts.join(" · ");
     }

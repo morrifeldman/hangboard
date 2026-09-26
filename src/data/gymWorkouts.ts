@@ -30,7 +30,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     fieldDefs: [
       { key: "climbMin",   label: "Climbing time", type: "number", unit: "min", step: 5 },
       { key: "routes",    label: "Routes",        type: "number", optional: true },
-      { key: "downclimb", label: "Downclimb",     type: "select", options: ["Yes", "No"], optional: true },
+      { key: "downclimb", label: "Downclimb",     type: "select", options: ["Yes", "Some", "No"], optional: true },
       { key: "wallMin",   label: "Session time",  type: "number", unit: "min", optional: true, step: 5 },
       { key: "maxGrade",  label: "Max grade",     type: "grade-yds", optional: true },
     ],
