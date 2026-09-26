@@ -1,4 +1,4 @@
-import { isWarmup } from "./holds";
+import { HOLDS, isWarmup } from "./holds";
 import type { HoldDefinition } from "./holds";
 
 export const HOLDS_B: HoldDefinition[] = [
@@ -66,7 +66,7 @@ export const HOLDS_B: HoldDefinition[] = [
   },
 ];
 
-const WARMUP_IDS = new Set(HOLDS_B.filter(isWarmup).map((h) => h.id));
+const WARMUP_IDS = new Set([...HOLDS, ...HOLDS_B].filter(isWarmup).map((h) => h.id));
 
 /** For saved sessions, which only keep the hold id. */
 export function isWarmupHoldId(holdId: string): boolean {

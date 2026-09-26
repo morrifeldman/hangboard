@@ -20,7 +20,7 @@ test.describe("Home Screen", () => {
   });
 
   test("shows default weights formatted correctly", async ({ page }) => {
-    await expect(page.getByTestId("weight-jug-set1")).toHaveText("BW");
+    await expect(page.getByTestId("hold-row-jug")).toContainText("BW");
     await expect(page.getByTestId("weight-mr-shallow-set1")).toHaveText("-35");
     await expect(page.getByTestId("weight-mr-shallow-set2")).toHaveText("-25");
     await expect(page.getByTestId("weight-imr-shallow-set1")).toHaveText("-10");

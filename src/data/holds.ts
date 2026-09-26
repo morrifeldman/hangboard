@@ -6,8 +6,8 @@ export interface HoldDefinition {
   set1Reps: number;
   set2Reps: number;
   skipProgression?: boolean;
-  // Bodyweight warm-up before the main hangs. Workout A's jug also skips
-  // progression, but it's a working hold there, so this is separate.
+  // Bodyweight warm-up before the main hangs. Separate from skipProgression,
+  // which only means the weight isn't auto-adjusted.
   warmup?: boolean;
   // Per-hold timer overrides (default: global PREP_SECS / HANG_SECS / BREAK_SECS constants)
   prepSecs?: number;
@@ -30,7 +30,7 @@ export function isWarmup(hold: HoldDefinition): boolean {
 }
 
 export const HOLDS: HoldDefinition[] = [
-  { id: "jug",         name: "Jug",         defaultSet1Weight:  0,    defaultSet2Weight:  0,    set1Reps: 7, set2Reps: 6, skipProgression: true },
+  { id: "jug",         name: "Jug",         defaultSet1Weight:  0,    defaultSet2Weight:  0,    set1Reps: 7, set2Reps: 6, skipProgression: true, warmup: true },
   { id: "large-edge",  name: "Large Edge",  defaultSet1Weight:  5,    defaultSet2Weight:  15,   set1Reps: 7, set2Reps: 6 },
   { id: "mr-shallow",  name: "MR Shallow",  defaultSet1Weight: -35,   defaultSet2Weight: -25,   set1Reps: 7, set2Reps: 6 },
   { id: "small-edge",  name: "Med Edge",    defaultSet1Weight: -20,   defaultSet2Weight: -10,   set1Reps: 7, set2Reps: 6 },
