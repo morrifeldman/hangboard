@@ -8,12 +8,23 @@ Vite 7 · React 19 · TypeScript 5.9 (strict) · Tailwind 3 · Zustand 5 · vite
 ## Commands
 
 ```bash
-npm run dev          # dev server on :5173 (normal timers: 7s hang, 3s rest, 180s break)
+scripts/start-dev.sh # dev server on :5173 in tmux session `cairn-dev` (see below)
+npm run dev          # same server in the foreground (normal timers: 7s hang, 3s rest, 180s break)
 npm run build        # tsc -b && vite build → dist/
 npm run test:unit    # Vitest (~155 cases, no browser)
 npm run test:unit:watch
 npx playwright test  # E2E suite (auto-starts dev server with VITE_TEST_MODE=true)
 ```
+
+### Dev server ownership
+
+The dev server lives in tmux session `cairn-dev`, so it survives any single
+terminal or Claude session. `start-dev.sh` also links it as a window into the
+tmux session it was run from, so it's one `Ctrl-b n` away.
+
+- Check before starting: `tmux ls` and `ss -tln | grep 5173`. Never double-start.
+- Logs: `tmux capture-pane -pt cairn-dev`.
+- Stop: `tmux send-keys -t cairn-dev C-c`.
 
 A pre-commit hook at `scripts/pre-commit` runs `npm run build`. Install once: `cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`.
 
