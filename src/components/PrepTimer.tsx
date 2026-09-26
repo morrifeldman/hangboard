@@ -1,3 +1,4 @@
+import { HoldName } from "./HoldName";
 import { useEffect } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { PREP_SECS } from "../data/workout";
@@ -42,7 +43,7 @@ export function PrepTimer() {
   return (
     <div className="flex flex-col items-center gap-3">
       {warmup && <WarmupBadge hold={hold} />}
-      <p className="text-white font-bold text-2xl" data-testid="hold-name">{hold.name}</p>
+      <HoldName name={hold.name} edgeClassName="text-gray-400 text-sm font-medium text-center" className="text-white font-bold text-2xl text-center" data-testid="hold-name" />
       <TimerRing
         remaining={remaining}
         duration={prepDuration}

@@ -1,3 +1,4 @@
+import { HoldName } from "./HoldName";
 import { useEffect, useRef } from "react";
 import { HANG_SECS, REST_SECS, SET1_REPS, SET2_REPS } from "../data/workout";
 import { useTimer } from "../hooks/useTimer";
@@ -72,7 +73,7 @@ export function HangTimer() {
   return (
     <div className="flex flex-col items-center gap-3">
       {isWarmup(hold) && <WarmupBadge hold={hold} />}
-      <p className="text-white font-bold text-2xl">{hold.name}</p>
+      <HoldName name={hold.name} edgeClassName="text-gray-400 text-sm font-medium text-center" className="text-white font-bold text-2xl text-center" />
       <TimerRing
         remaining={remaining}
         duration={duration}

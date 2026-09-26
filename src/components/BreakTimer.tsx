@@ -1,3 +1,4 @@
+import { HoldName } from "./HoldName";
 import { useState } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { BREAK_SECS } from "../data/workout";
@@ -56,8 +57,9 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
   const stored = storedMap[hold.id] ?? { set1: hold.defaultSet1Weight, set2: hold.defaultSet2Weight };
 
-  const lastLabel = betweenSets ? `${hold.name} Set ${setNumber}` : hold.name;
-  const upNextLabel = betweenSets ? `${hold.name} Set ${setNumber + 1}` : (nextHold?.name ?? null);
+  const lastSuffix = betweenSets ? `Set ${setNumber}` : undefined;
+  const upNextName = betweenSets ? hold.name : (nextHold?.name ?? null);
+  const upNextSuffix = betweenSets ? `Set ${setNumber + 1}` : undefined;
 
   // "vs last time" cue for the upcoming hold — compares the weight you're about
   // to lift this session to the same set in the most recent session. Moved here
@@ -90,15 +92,15 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
           <p className="text-gray-300 text-sm">Main hangs start after this break</p>
         </div>
       )}
-      <div className="w-full flex justify-between">
+      <div className="w-full flex justify-between gap-4">
         <div>
           <p className="text-gray-500 text-sm">Last</p>
-          <p className="text-white font-semibold">{lastLabel}</p>
+          <HoldName name={hold.name} suffix={lastSuffix} className="text-white font-semibold" />
         </div>
-        {upNextLabel && (
+        {upNextName && (
           <div className="text-right">
             <p className="text-gray-500 text-sm">Up next</p>
-            <p className="text-white font-bold text-2xl leading-tight">{upNextLabel}</p>
+            <HoldName name={upNextName} suffix={upNextSuffix} className="text-white font-bold text-2xl leading-tight" />
             {upNextDiff !== 0 && (
               <span
                 className={`text-sm font-bold tabular-nums ${
