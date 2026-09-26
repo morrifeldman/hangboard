@@ -322,6 +322,193 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     }
   };
 
+  // Max Hang has a long warm-up, so it folds away and leave the main hangs in view.
+  const warmupIdx = holds.flatMap((h, i) => (isWarmup(h) ? [i] : []));
+  const warmupFolds = warmupIdx.length > 1;
+  const warmupRepTotal = warmupIdx.reduce((sum, i) => sum + warmupReps(holds[i]).reduce((a, b) => a + b, 0), 0);
+  const [warmupOpen, setWarmupOpen] = useState(() =>
+    warmupIdx.some((i) => expandedNoteHolds.has(holds[i].id)),
+  );
+
+  const holdRow = (hold: HoldDefinition, i: number) => {
+    const w = weights[i] ?? 0;
+    const w2 = weights2[i] ?? 0;
+    const w3 = weights3[i] ?? 0;
+    const sn = setNotesState[hold.id];
+    const hasNote = !!holdNotesState[hold.id] || !!sn?.set1 || !!sn?.set2 || !!sn?.set3;
+    const noteOpen = expandedNoteHolds.has(hold.id);
+    const numSets = hold.numSets ?? 2;
+    const co = completionOverrides[hold.id];
+    const origHold = origHoldMap.get(hold.id);
+    const next = origHold?.next;
+    const nextLabel = next
+      ? numSets >= 3
+        ? `${formatWeight(next.set1)} / ${formatWeight(next.set2 ?? next.set1)} / ${formatWeight(next.set3 ?? next.set1)}`
+        : numSets >= 2
+          ? `${formatWeight(next.set1)} → ${formatWeight(next.set2 ?? next.set1)}`
+          : formatWeight(next.set1)
+      : null;
+    const nextDir = origHold ? holdNextDirection(origHold) : null;
+    const nextClass =
+      nextDir === "up" ? "text-green-400" :
+      nextDir === "down" ? "text-red-400" :
+      nextDir === "mixed" ? "text-yellow-400" :
+      "text-gray-500";
+    const nextArrow =
+      nextDir === "up" ? " ↑" :
+      nextDir === "down" ? " ↓" :
+      nextDir === "mixed" ? " ↑↓" :
+      "";
+    const isCompleted = co?.set1 ?? (!editing || (origHoldMap.get(hold.id)?.set1.completed ?? true));
+    const set2Completed = co?.set2 ?? (!editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true));
+    const set3Completed = co?.set3 ?? (!editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true));
+    const warmup = isWarmup(hold);
+    const sectionStart = warmupFolds ? null
+      : warmup && i === 0 ? "Warm-up"
+      : !warmup && i > 0 && isWarmup(holds[i - 1]) ? "Main hangs"
+      : null;
+    return (
+      <div
+        key={hold.id}
+        className="px-4 py-2.5 flex flex-col border-b border-gray-700 last:border-0"
+      >
+        {sectionStart && (
+          <p
+            className={`-mx-4 -mt-2.5 mb-2.5 px-4 py-1.5 border-b border-gray-700 bg-gray-900/40 text-[10px] font-semibold uppercase tracking-wider ${
+              warmup ? "text-teal-300" : "text-gray-400"
+            }`}
+          >
+            {sectionStart}
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          {/* Hold name */}
+          {editing ? (
+            <button
+              onClick={() => toggleNote(hold.id)}
+              className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
+            >
+              <span className="text-gray-300 text-sm truncate">{hold.name}</span>
+              <svg
+                width="11" height="11" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round"
+                className={`flex-shrink-0 transition-colors ${hasNote ? "text-indigo-400" : "text-gray-700"}`}
+              >
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          ) : (
+            <span className={`text-sm flex-1 truncate ${isCompleted ? "text-gray-300" : "text-gray-600"}`}>
+              {hold.name}
+            </span>
+          )}
+          {warmup ? (
+            <span className="text-teal-300/90 text-xs font-medium tabular-nums">{warmupVolume(warmupReps(hold))}</span>
+          ) : hold.isRestOnly || hold.skipProgression ? (
+            <span className="text-gray-500 text-xs font-mono">BW</span>
+          ) : numSets === 1 && (
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
+              <WeightStepper label={`${hold.name} weight`} value={w} struck={!isCompleted}
+                onChange={(v) => updateWeight(i, v)} />
+            </div>
+          )}
+        </div>
+        {/* Multi-set steppers get their own row: three of them beside the hold name would overflow a phone screen. */}
+        {!hold.isRestOnly && !hold.skipProgression && numSets >= 2 && (
+          <div className={`mt-1.5 grid gap-3 ${numSets >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+            {([
+              [w, isCompleted, "set1", updateWeight],
+              [w2, set2Completed, "set2", updateWeight2],
+              [w3, set3Completed, "set3", updateWeight3],
+            ] as const).slice(0, numSets).map(([value, completed, setKey, update], s) => (
+              <div key={setKey} className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-1">
+                  {editing && <SetDot completed={completed} onClick={() => toggleCompletion(hold.id, setKey)} />}
+                  <span className="text-gray-500 text-[10px] uppercase tracking-wide">Set {s + 1}</span>
+                </div>
+                <WeightStepper label={`${hold.name} set ${s + 1}`} value={value} struck={!completed}
+                  onChange={(v) => update(i, v)} />
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Next-session target captured when the workout was saved */}
+        {editing && nextLabel && (
+          <p className={`text-xs font-mono text-right mt-1 ${nextClass}`}>
+            Next: {nextLabel}{nextArrow}
+          </p>
+        )}
+        {/* Note fields — slide open when toggled (completed holds only) */}
+        {editing && noteOpen && (
+          <div className="mt-2 flex flex-col gap-1.5">
+            <textarea
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              value={holdNotesState[hold.id] ?? ""}
+              onChange={(e) =>
+                setHoldNotesState((prev) => ({ ...prev, [hold.id]: e.target.value }))
+              }
+              placeholder={`Note on ${hold.name}…`}
+              rows={1}
+              className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                         placeholder-gray-600 resize-none border border-gray-700
+                         focus:outline-none focus:border-indigo-500/50"
+            />
+            <textarea
+              value={setNotesState[hold.id]?.set1 ?? ""}
+              onChange={(e) =>
+                setSetNotesState((prev) => ({
+                  ...prev,
+                  [hold.id]: { ...prev[hold.id], set1: e.target.value },
+                }))
+              }
+              placeholder="Set 1 note…"
+              rows={1}
+              className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                         placeholder-gray-600 resize-none border border-gray-700
+                         focus:outline-none focus:border-indigo-500/50"
+            />
+            {numSets >= 2 && (
+              <textarea
+                value={setNotesState[hold.id]?.set2 ?? ""}
+                onChange={(e) =>
+                  setSetNotesState((prev) => ({
+                    ...prev,
+                    [hold.id]: { ...prev[hold.id], set2: e.target.value },
+                  }))
+                }
+                placeholder="Set 2 note…"
+                rows={1}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                           placeholder-gray-600 resize-none border border-gray-700
+                           focus:outline-none focus:border-indigo-500/50"
+              />
+            )}
+            {numSets >= 3 && (
+              <textarea
+                value={setNotesState[hold.id]?.set3 ?? ""}
+                onChange={(e) =>
+                  setSetNotesState((prev) => ({
+                    ...prev,
+                    [hold.id]: { ...prev[hold.id], set3: e.target.value },
+                  }))
+                }
+                placeholder="Set 3 note…"
+                rows={1}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
+                           placeholder-gray-600 resize-none border border-gray-700
+                           focus:outline-none focus:border-indigo-500/50"
+              />
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="h-full bg-gray-900 flex flex-col">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
@@ -403,185 +590,38 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       {/* Hold rows — scrollable middle zone */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Hold rows */}
-        <div className="bg-gray-800 rounded-xl overflow-hidden">
-          {holds.map((hold, i) => {
-            const w = weights[i] ?? 0;
-            const w2 = weights2[i] ?? 0;
-            const w3 = weights3[i] ?? 0;
-            const sn = setNotesState[hold.id];
-            const hasNote = !!holdNotesState[hold.id] || !!sn?.set1 || !!sn?.set2 || !!sn?.set3;
-            const noteOpen = expandedNoteHolds.has(hold.id);
-            const numSets = hold.numSets ?? 2;
-            const co = completionOverrides[hold.id];
-            const origHold = origHoldMap.get(hold.id);
-            const next = origHold?.next;
-            const nextLabel = next
-              ? numSets >= 3
-                ? `${formatWeight(next.set1)} / ${formatWeight(next.set2 ?? next.set1)} / ${formatWeight(next.set3 ?? next.set1)}`
-                : numSets >= 2
-                  ? `${formatWeight(next.set1)} → ${formatWeight(next.set2 ?? next.set1)}`
-                  : formatWeight(next.set1)
-              : null;
-            const nextDir = origHold ? holdNextDirection(origHold) : null;
-            const nextClass =
-              nextDir === "up" ? "text-green-400" :
-              nextDir === "down" ? "text-red-400" :
-              nextDir === "mixed" ? "text-yellow-400" :
-              "text-gray-500";
-            const nextArrow =
-              nextDir === "up" ? " ↑" :
-              nextDir === "down" ? " ↓" :
-              nextDir === "mixed" ? " ↑↓" :
-              "";
-            const isCompleted = co?.set1 ?? (!editing || (origHoldMap.get(hold.id)?.set1.completed ?? true));
-            const set2Completed = co?.set2 ?? (!editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true));
-            const set3Completed = co?.set3 ?? (!editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true));
-            const warmup = isWarmup(hold);
-            const sectionStart =
-              warmup && i === 0 ? "Warm-up"
-              : !warmup && i > 0 && isWarmup(holds[i - 1]) ? "Main hangs"
-              : null;
-            return (
-              <div
-                key={hold.id}
-                className="px-4 py-2.5 flex flex-col border-b border-gray-700 last:border-0"
-              >
-                {sectionStart && (
-                  <p
-                    className={`-mx-4 -mt-2.5 mb-2.5 px-4 py-1.5 border-b border-gray-700 bg-gray-900/40 text-[10px] font-semibold uppercase tracking-wider ${
-                      warmup ? "text-teal-300" : "text-gray-400"
-                    }`}
-                  >
-                    {sectionStart}
-                  </p>
-                )}
-                <div className="flex items-center gap-3">
-                  {/* Hold name */}
-                  {editing ? (
-                    <button
-                      onClick={() => toggleNote(hold.id)}
-                      className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
-                    >
-                      <span className="text-gray-300 text-sm truncate">{hold.name}</span>
-                      <svg
-                        width="11" height="11" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" strokeWidth="2.5"
-                        strokeLinecap="round" strokeLinejoin="round"
-                        className={`flex-shrink-0 transition-colors ${hasNote ? "text-indigo-400" : "text-gray-700"}`}
-                      >
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <span className={`text-sm flex-1 truncate ${isCompleted ? "text-gray-300" : "text-gray-600"}`}>
-                      {hold.name}
-                    </span>
-                  )}
-                  {warmup ? (
-                    <span className="text-teal-300/90 text-xs font-medium tabular-nums">{warmupVolume(warmupReps(hold))}</span>
-                  ) : hold.isRestOnly || hold.skipProgression ? (
-                    <span className="text-gray-500 text-xs font-mono">BW</span>
-                  ) : numSets === 1 && (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
-                      <WeightStepper label={`${hold.name} weight`} value={w} struck={!isCompleted}
-                        onChange={(v) => updateWeight(i, v)} />
-                    </div>
-                  )}
-                </div>
-                {/* Multi-set steppers get their own row: three of them beside the hold name would overflow a phone screen. */}
-                {!hold.isRestOnly && !hold.skipProgression && numSets >= 2 && (
-                  <div className={`mt-1.5 grid gap-3 ${numSets >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-                    {([
-                      [w, isCompleted, "set1", updateWeight],
-                      [w2, set2Completed, "set2", updateWeight2],
-                      [w3, set3Completed, "set3", updateWeight3],
-                    ] as const).slice(0, numSets).map(([value, completed, setKey, update], s) => (
-                      <div key={setKey} className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-1">
-                          {editing && <SetDot completed={completed} onClick={() => toggleCompletion(hold.id, setKey)} />}
-                          <span className="text-gray-500 text-[10px] uppercase tracking-wide">Set {s + 1}</span>
-                        </div>
-                        <WeightStepper label={`${hold.name} set ${s + 1}`} value={value} struck={!completed}
-                          onChange={(v) => update(i, v)} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Next-session target captured when the workout was saved */}
-                {editing && nextLabel && (
-                  <p className={`text-xs font-mono text-right mt-1 ${nextClass}`}>
-                    Next: {nextLabel}{nextArrow}
-                  </p>
-                )}
-                {/* Note fields — slide open when toggled (completed holds only) */}
-                {editing && noteOpen && (
-                  <div className="mt-2 flex flex-col gap-1.5">
-                    <textarea
-                      // eslint-disable-next-line jsx-a11y/no-autofocus
-                      autoFocus
-                      value={holdNotesState[hold.id] ?? ""}
-                      onChange={(e) =>
-                        setHoldNotesState((prev) => ({ ...prev, [hold.id]: e.target.value }))
-                      }
-                      placeholder={`Note on ${hold.name}…`}
-                      rows={1}
-                      className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                                 placeholder-gray-600 resize-none border border-gray-700
-                                 focus:outline-none focus:border-indigo-500/50"
-                    />
-                    <textarea
-                      value={setNotesState[hold.id]?.set1 ?? ""}
-                      onChange={(e) =>
-                        setSetNotesState((prev) => ({
-                          ...prev,
-                          [hold.id]: { ...prev[hold.id], set1: e.target.value },
-                        }))
-                      }
-                      placeholder="Set 1 note…"
-                      rows={1}
-                      className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                                 placeholder-gray-600 resize-none border border-gray-700
-                                 focus:outline-none focus:border-indigo-500/50"
-                    />
-                    {numSets >= 2 && (
-                      <textarea
-                        value={setNotesState[hold.id]?.set2 ?? ""}
-                        onChange={(e) =>
-                          setSetNotesState((prev) => ({
-                            ...prev,
-                            [hold.id]: { ...prev[hold.id], set2: e.target.value },
-                          }))
-                        }
-                        placeholder="Set 2 note…"
-                        rows={1}
-                        className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                                   placeholder-gray-600 resize-none border border-gray-700
-                                   focus:outline-none focus:border-indigo-500/50"
-                      />
-                    )}
-                    {numSets >= 3 && (
-                      <textarea
-                        value={setNotesState[hold.id]?.set3 ?? ""}
-                        onChange={(e) =>
-                          setSetNotesState((prev) => ({
-                            ...prev,
-                            [hold.id]: { ...prev[hold.id], set3: e.target.value },
-                          }))
-                        }
-                        placeholder="Set 3 note…"
-                        rows={1}
-                        className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
-                                   placeholder-gray-600 resize-none border border-gray-700
-                                   focus:outline-none focus:border-indigo-500/50"
-                      />
-                    )}
-                  </div>
-                )}
+        {warmupFolds && (
+          <div className="mb-3 overflow-hidden rounded-xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
+            <button
+              type="button"
+              onClick={() => setWarmupOpen((o) => !o)}
+              aria-expanded={warmupOpen}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              data-testid="warmup-toggle"
+            >
+              <div className="min-w-0">
+                <p className="text-teal-200 font-semibold">Warm-up</p>
+                <p className="text-xs text-teal-100/50">
+                  {warmupIdx.length} holds · {warmupRepTotal} reps
+                </p>
               </div>
-            );
-          })}
+              <svg
+                width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                className={`shrink-0 text-teal-300/70 transition-transform motion-reduce:transition-none ${warmupOpen ? "rotate-180" : ""}`}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {warmupOpen && (
+              <div className="border-t border-teal-400/10 [&>div]:border-teal-400/10">
+                {warmupIdx.map((i) => holdRow(holds[i], i))}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="bg-gray-800 rounded-xl overflow-hidden">
+          {holds.map((hold, i) => (warmupFolds && isWarmup(hold) ? null : holdRow(hold, i)))}
         </div>
 
       </div>
