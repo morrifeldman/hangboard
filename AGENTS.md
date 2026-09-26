@@ -136,6 +136,23 @@ with `fuser -k 5174/tcp`.
 - `window.__clearSyntheticClimbs()` — only removes `synthetic-` prefixed records, never touches real climbs.
 - Use these instead of inlining IDB writes via Playwright — easy to wipe real data otherwise.
 
+## Visual design
+
+The app used to look like stock Tailwind. These rules keep it from drifting back:
+
+- **Font:** Archivo Variable (bundled via `@fontsource-variable`, so it works offline).
+  Numbers that are the content, such as weights, grades, timers and counts, use the
+  `font-num` utility in `src/index.css`. It gives a condensed, bold cut with tabular figures.
+- **One accent:** `accent-*` (green, in `tailwind.config.js`) means "tap here", "selected" or
+  "you are here". Selected pills are `bg-accent-500` with dark text.
+  - Category colours (ARC orange, Cardio pink, …) only label types.
+  - Red means danger, teal means warm-up, and yellow means bailed.
+- **Headings** are sentence case. There are no all-caps eyebrow labels.
+- **Lists** sit on one `rounded-2xl` surface with `divide-y` rows, not one card per item.
+  Never put a card inside a card.
+- **Disabled buttons** are gray, never a dimmed colour.
+- **Screen headers** show a title and action icons, not a copy of the tab-bar icon.
+
 ## Conventions
 
 - **Strict TS**: Recharts Tooltip `formatter` signature is `(v: number | undefined, name: string | undefined) => …` — `name` is `undefined`-able under strict mode.

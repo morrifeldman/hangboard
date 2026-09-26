@@ -37,13 +37,13 @@ export function PyramidVisualization({
     return (
       <div className="text-center py-12">
         <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
-        <h3 className="text-lg font-medium text-white mb-2">No climbs yet</h3>
-        <p className="text-gray-400 mb-4">Start building your pyramid!</p>
+        <h3 className="text-lg font-semibold text-white mb-2">No climbs yet</h3>
+        <p className="text-gray-400 mb-5">Log a route to lay the first stone.</p>
         <button
           onClick={onAddClimbClick}
-          className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-colors"
+          className="bg-accent-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-accent-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
-          Add Your First Climb
+          Add your first climb
         </button>
       </div>
     );

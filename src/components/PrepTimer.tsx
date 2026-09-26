@@ -42,25 +42,25 @@ export function PrepTimer() {
   return (
     <div className="flex flex-col items-center gap-3">
       {warmup && <WarmupBadge hold={hold} />}
-      <p className="text-white font-bold text-xl" data-testid="hold-name">{hold.name}</p>
+      <p className="text-white font-bold text-2xl" data-testid="hold-name">{hold.name}</p>
       <TimerRing
         remaining={remaining}
         duration={prepDuration}
-        label="GET READY"
+        label="Get ready"
         color="stroke-orange-400"
         onClick={paused ? resumeWorkout : pauseWorkout}
         paused={paused}
       />
       {warmup ? (
-        <p className="text-gray-400 text-sm font-semibold">Bodyweight</p>
+        <p className="text-gray-300 text-lg font-semibold">Bodyweight</p>
       ) : (
-        <p className="text-white text-4xl font-bold tabular-nums" data-testid="prep-weight">
+        <p className="text-white font-num text-6xl leading-none" data-testid="prep-weight">
           {formatWeight(weight)}
-          {weight !== 0 && <span className="ml-1 text-lg font-semibold text-gray-400">lb</span>}
+          {weight !== 0 && <span className="ml-1.5 font-sans text-xl font-semibold text-gray-400">lb</span>}
         </p>
       )}
       {(hold.numSets ?? 2) > 1 && (
-        <p className="text-gray-500 text-sm">Set {setNumber} of {hold.numSets ?? 2}</p>
+        <p className="text-gray-400 text-base">Set <span className="font-num text-white">{setNumber}</span> of <span className="font-num">{hold.numSets ?? 2}</span></p>
       )}
     </div>
   );

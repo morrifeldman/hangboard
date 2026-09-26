@@ -111,7 +111,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
           <BackChevronIcon />
         </button>
         <h1 className="text-white font-bold text-lg">
-          {editing ? "Edit Note" : "New Note"}
+          {editing ? "Edit note" : "New note"}
         </h1>
       </header>
 
@@ -123,7 +123,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
             type="date"
             value={dateValue}
             onChange={(e) => setDateValue(e.target.value)}
-            className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+            className="flex-1 min-w-0 h-10 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 [color-scheme:dark] focus:outline-none focus:border-accent-500/60"
           />
         </div>
 
@@ -137,7 +137,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
               onChange={(e) => setCategory(e.target.value)}
               list="note-categories"
               placeholder="e.g. Health, Training"
-              className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 border border-gray-700 focus:outline-none focus:border-gray-500"
+              className="flex-1 min-w-0 h-10 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500 border border-gray-700 focus:outline-none focus:border-accent-500/60"
             />
             <datalist id="note-categories">
               {categoryOptions.map((c) => <option key={c} value={c} />)}
@@ -150,10 +150,11 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
                   key={c}
                   type="button"
                   onClick={() => setCategory(c)}
-                  className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  aria-pressed={category === c}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                     category === c
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-800 text-gray-400 border border-gray-700"
+                      ? "bg-accent-600 text-white border-transparent"
+                      : "bg-gray-800 text-gray-400 border-gray-700"
                   }`}
                 >
                   {c}
@@ -171,7 +172,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
           onChange={(e) => setText(e.target.value)}
           rows={8}
           placeholder="Notes…"
-          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2.5 text-sm leading-relaxed placeholder-gray-500 resize-none border border-gray-700 focus:outline-none focus:border-accent-500/60"
         />
       </div>
 
@@ -180,27 +181,27 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
         <div className="flex gap-3">
           <button
             onClick={onBack}
-            className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-gray-400 text-base"
+            className="flex-1 py-3 rounded-lg font-semibold bg-gray-800 active:bg-gray-700 text-gray-300 text-base"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !trimmedText || !dateValue || !hasChanges}
-            className="flex-1 py-3 rounded-xl font-semibold bg-purple-600 text-white text-base disabled:opacity-50"
+            className="flex-1 py-3 rounded-lg font-semibold bg-accent-600 active:bg-accent-700 text-white text-base disabled:bg-gray-700 disabled:text-gray-500"
           >
-            {saving ? "Saving…" : editing ? "Save Changes" : "Save Note"}
+            {saving ? "Saving…" : editing ? "Save changes" : "Save note"}
           </button>
         </div>
 
         {editing && (
           <button
             onClick={handleDelete}
-            className={`w-full py-2.5 rounded-xl font-semibold text-base transition-colors ${
-              confirmDelete ? "bg-red-600 text-white" : "bg-gray-800 text-gray-500"
+            className={`w-full py-2.5 rounded-lg font-semibold text-sm transition-colors ${
+              confirmDelete ? "bg-red-600 text-white" : "text-red-400/80 active:bg-gray-800"
             }`}
           >
-            {confirmDelete ? "Tap again to delete" : "Delete Note"}
+            {confirmDelete ? "Tap again to delete" : "Delete note"}
           </button>
         )}
       </div>

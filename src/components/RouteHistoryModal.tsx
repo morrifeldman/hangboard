@@ -3,7 +3,7 @@ import { shortLocation } from "../lib/format";
 
 const STYLE_COLORS: Record<string, string> = {
   onsight: "bg-green-500/20 text-green-400",
-  flash:   "bg-blue-500/20 text-blue-400",
+  flash:   "bg-yellow-500/20 text-yellow-400",
   redpoint:"bg-red-500/20 text-red-400",
   attempt: "bg-gray-700 text-gray-500",
 };
@@ -90,9 +90,9 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
 
         {/* Sessions list */}
         <div className="px-4 py-3 flex flex-col gap-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">
+          <h3 className="text-sm font-semibold text-gray-300">
             {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-          </p>
+          </h3>
           {sessions.map((c) => {
             const falls = c.style === "redpoint" ? c.climbs - 1 : 0;
             const styleLabel =
@@ -103,7 +103,7 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
               <div key={c.id} className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-300 text-sm flex-1">{formatDate(c.date)}</span>
-                  <span className="text-gray-500 text-xs font-mono">{c.grade}</span>
+                  <span className="text-gray-300 font-num text-[15px]">{c.grade}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STYLE_COLORS[c.style] ?? STYLE_COLORS.attempt}`}>
                     {styleLabel}
                   </span>

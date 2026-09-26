@@ -100,7 +100,6 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
         onBack={onBack}
-        onShowScrolling={onShowScrollingPyramids}
         showCounts={showCounts}
         onToggleCounts={() => setShowCounts((v) => !v)}
         showSendsOnly={showSendsOnly}
@@ -128,9 +127,10 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         currentView={currentView}
         showSendsOnly={showSendsOnly}
         climbs={climbs}
+        onShowScrolling={onShowScrollingPyramids}
       />
 
-      <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
         <TimeRangeSlider climbs={climbs} timeRange={timeRange} setTimeRange={setTimeRange} />
 
         <PyramidVisualization

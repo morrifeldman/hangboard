@@ -170,8 +170,7 @@ export function WorkoutScreen() {
     SET2_REPS,
     phaseRemaining,
   );
-  const elapsedSecs = Math.max(0, totalScheduledSecs - remainingSecs);
-  const finishAt = finishClockTime(Date.now(), remainingSecs);
+    const finishAt = finishClockTime(Date.now(), remainingSecs);
 
   const renderPanel = () => {
     switch (phase) {
@@ -310,7 +309,7 @@ export function WorkoutScreen() {
                 saveSession(false, sessionNotes);
                 advancePhase();
               }}
-              className="w-full py-3 rounded-xl font-semibold bg-green-600 text-white text-base"
+              className="w-full min-h-[52px] rounded-xl font-semibold bg-accent-600 active:bg-accent-500 text-white text-lg"
             >
               Save
             </button>
@@ -323,11 +322,11 @@ export function WorkoutScreen() {
 
   const phaseLabel = () => {
     switch (phase) {
-      case "prep":     return <span className="text-orange-400">● Get Ready</span>;
-      case "hanging":  return <span className="text-green-400">● Hang — Rep {repIndex + 1}</span>;
-      case "resting":  return <span className="text-yellow-400">● Rest</span>;
-      case "break":    return <span className="text-blue-400">● Break</span>;
-      case "done":     return <span className="text-green-400">● Done</span>;
+      case "prep":     return <span className="text-orange-400">Get ready</span>;
+      case "hanging":  return <span className="text-green-400">Hang <span className="font-normal text-green-400/70">· rep <span className="font-num">{repIndex + 1}</span></span></span>;
+      case "resting":  return <span className="text-yellow-400">Rest</span>;
+      case "break":    return <span className="text-blue-400">Break</span>;
+      case "done":     return <span className="text-green-400">Done</span>;
       default:         return null;
     }
   };
@@ -350,20 +349,23 @@ export function WorkoutScreen() {
     phase !== "done" &&
     !(phase === "break" && setNumber >= numSets && nextHoldDef && !isWarmup(nextHoldDef));
   const tone = "transition-colors duration-700 motion-reduce:transition-none";
+  const hudBtn =
+    "h-11 flex items-center rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
 
   return (
     <div className={`h-full flex flex-col ${tone} ${inWarmup ? "bg-warmup-base" : "bg-gray-900"}`} data-warmup={inWarmup || undefined}>
-      <header className={`px-4 pt-3 pb-2 ${tone} ${inWarmup ? "bg-warmup-panel" : "bg-gray-800"}`}>
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <p className="text-gray-400 text-xs uppercase tracking-wide">Set</p>
-            <p className="text-white font-bold text-lg">{setNumber} / {numSets}</p>
-          </div>
-          <div className="flex items-center gap-3">
+      <header className={`px-4 pt-3 pb-3 ${tone} ${inWarmup ? "bg-warmup-panel" : "bg-gray-800"}`}>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <p className="flex items-baseline gap-1.5 text-gray-400 text-sm">
+            Set
+            <span className="font-num text-3xl leading-none text-white">{setNumber}</span>
+            <span className="font-num text-lg leading-none text-gray-500">/ {numSets}</span>
+          </p>
+          <div className="flex items-center gap-2">
             {document.fullscreenEnabled && (
               <button
                 onClick={toggleFullscreen}
-                className="px-2 py-1.5 rounded-lg text-sm bg-gray-700 text-gray-300 transition-colors"
+                className={`${hudBtn} w-11 justify-center bg-white/10 text-gray-200 active:bg-white/20`}
                 aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               >
                 {isFullscreen ? (
@@ -382,18 +384,19 @@ export function WorkoutScreen() {
             {phase !== "done" && (
               <button
                 onClick={paused ? resumeWorkout : pauseWorkout}
-                className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-700 text-gray-300 transition-colors"
+                className={`${hudBtn} min-w-[88px] justify-center px-4 bg-white/10 text-gray-100 active:bg-white/20`}
                 data-testid="pause-btn"
               >
                 {paused ? "Resume" : "Pause"}
               </button>
             )}
+            {/* Red from the start, so the one way out of a running workout is never mistaken for Pause. */}
             <button
               onClick={handleEndClick}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+              className={`${hudBtn} min-w-[88px] justify-center px-4 ${
                 confirming
                   ? "bg-red-600 text-white"
-                  : "bg-gray-700 text-gray-300"
+                  : "border border-red-500/50 text-red-300 active:bg-red-500/10"
               }`}
               data-testid="bail-btn"
             >
@@ -423,29 +426,23 @@ export function WorkoutScreen() {
       </header>
 
       <div
-        className={`border-t px-4 py-1.5 ${tone} ${inWarmup ? "bg-warmup-panel border-warmup-edge" : "bg-gray-800 border-gray-700"}`}
+        className={`border-t px-4 py-2 ${tone} ${inWarmup ? "bg-warmup-panel border-warmup-edge" : "bg-gray-800 border-gray-700"}`}
         data-testid="phase-bar"
       >
-        <div className="flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="min-w-0 truncate text-base font-semibold">
             {phaseLabel()}
           </span>
           {phase !== "done" && phase !== "idle" && totalScheduledSecs > 0 && (
             <div
-              className="flex shrink-0 gap-2.5 whitespace-nowrap text-[10px] uppercase tracking-wide tabular-nums text-gray-400"
+              className="flex shrink-0 items-baseline gap-4 whitespace-nowrap text-sm text-gray-400"
               data-testid="time-readout"
             >
               <span>
-                <span className="text-white font-semibold">{fmtTime(elapsedSecs)}</span> done
-              </span>
-              <span>
-                <span className="text-white font-semibold">{fmtTime(remainingSecs)}</span> left
-              </span>
-              <span>
-                <span className="text-white font-semibold">{fmtTime(totalScheduledSecs)}</span> total
+                <span className="font-num text-base text-white">{fmtTime(remainingSecs)}</span> left
               </span>
               <span data-testid="finish-time">
-                ends <span className="text-white font-semibold">{finishAt}</span>
+                ends <span className="font-num text-base text-white">{finishAt}</span>
               </span>
             </div>
           )}

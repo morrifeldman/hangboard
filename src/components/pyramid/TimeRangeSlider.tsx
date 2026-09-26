@@ -46,30 +46,30 @@ export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
   return (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-medium text-gray-400">Time Range</h3>
+        <h2 className="text-sm font-semibold text-gray-300">Time range</h2>
         <button
           onClick={() => setTimeRange([0, 100])}
-          className="text-xs text-green-400 hover:text-green-300"
+          className="-my-2 -mr-2 px-2 py-2 rounded-lg text-sm font-semibold text-accent-400 hover:text-accent-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           Reset
         </button>
       </div>
 
-      <div className="relative h-6">
-        <div className="absolute top-2 w-full h-2 bg-gray-700 rounded-lg" />
+      <div className="relative h-6 mx-2">
+        <div className="absolute top-2.5 w-full h-1 bg-gray-700 rounded-full" />
         <div
-          className="absolute top-2 h-2 bg-green-600 rounded-lg"
+          className="absolute top-2.5 h-1 bg-accent-500 rounded-full"
           style={{ left: `${timeRange[0]}%`, width: `${timeRange[1] - timeRange[0]}%` }}
         />
         <div
-          className="absolute top-1 w-4 h-4 bg-green-500 rounded-full cursor-pointer border-2 border-gray-900 shadow-md hover:scale-110 transition-transform"
-          style={{ left: `calc(${timeRange[0]}% - 8px)` }}
+          className="absolute top-0.5 w-5 h-5 bg-white rounded-full cursor-pointer border-2 border-accent-500 shadow-md before:absolute before:-inset-3 before:content-['']"
+          style={{ left: `calc(${timeRange[0]}% - 10px)` }}
           onMouseDown={handleDragStart(true)}
           onTouchStart={handleDragStart(true)}
         />
         <div
-          className="absolute top-1 w-4 h-4 bg-green-500 rounded-full cursor-pointer border-2 border-gray-900 shadow-md hover:scale-110 transition-transform"
-          style={{ left: `calc(${timeRange[1]}% - 8px)` }}
+          className="absolute top-0.5 w-5 h-5 bg-white rounded-full cursor-pointer border-2 border-accent-500 shadow-md before:absolute before:-inset-3 before:content-['']"
+          style={{ left: `calc(${timeRange[1]}% - 10px)` }}
           onMouseDown={handleDragStart(false)}
           onTouchStart={handleDragStart(false)}
         />
@@ -80,7 +80,7 @@ export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
           <span>{dateInfo.startDate.toLocaleDateString()}</span>
           <span className="font-medium">
             {dateInfo.isFullRange
-              ? "All Time"
+              ? "All time"
               : `${Math.round(timeRange[1] - timeRange[0])}% of history`}
           </span>
           <span>{dateInfo.endDate.toLocaleDateString()}</span>

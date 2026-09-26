@@ -1,9 +1,10 @@
 import { getStyleColor } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
+import { STONE_EDGE } from "../stone";
 
 const STYLE_COLORS: Record<string, string> = {
   onsight: "bg-green-500/20 text-green-400",
-  flash:   "bg-blue-500/20 text-blue-400",
+  flash:   "bg-yellow-500/20 text-yellow-400",
   redpoint:"bg-red-500/20 text-red-400",
   attempt: "bg-gray-700 text-gray-500",
 };
@@ -25,18 +26,18 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-xl max-w-lg w-full">
+      <div className="bg-gray-800 rounded-2xl max-w-lg w-full">
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="text-xl font-bold text-white">{climb.route}</h3>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-lg font-semibold text-green-400">{climb.grade}</span>
-                <div className={`w-3 h-3 rounded ${getStyleColor(climb.style)}`} />
+                <span className="font-num text-xl text-white">{climb.grade}</span>
+                <div className={`w-3 h-3 rounded-[3px] ${getStyleColor(climb.style)}`} style={{ boxShadow: STONE_EDGE }} />
                 <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
               </div>
             </div>
-            <button onClick={onClose} className="text-gray-500 hover:text-white text-2xl">
+            <button onClick={onClose} aria-label="Close" className="-mr-2 -mt-1 px-2 text-gray-500 hover:text-white text-2xl">
               &times;
             </button>
           </div>
@@ -113,20 +114,20 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
           <div className="mt-6 flex justify-between">
             <button
               onClick={() => onDelete(climb.id)}
-              className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 transition-colors"
+              className="bg-red-600 text-white font-semibold px-4 py-2.5 rounded-lg hover:bg-red-700 transition-colors"
             >
               Delete
             </button>
             <div className="flex gap-2">
               <button
                 onClick={() => onEdit(climb)}
-                className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-colors"
+                className="bg-accent-600 text-white font-semibold px-4 py-2.5 rounded-lg hover:bg-accent-700 transition-colors"
               >
                 Edit
               </button>
               <button
                 onClick={onClose}
-                className="bg-gray-700 text-gray-300 px-4 py-2 rounded-xl hover:bg-gray-600 transition-colors"
+                className="bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg hover:bg-gray-600 transition-colors"
               >
                 Close
               </button>

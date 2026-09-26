@@ -1,11 +1,10 @@
-import { RefreshCw, Layers, BarChart2, Trophy, CalendarDays, Hash, ChevronRight } from "lucide-react";
-import { BackChevronIcon, PyramidIcon } from "../icons";
+import { RefreshCw, BarChart2, Trophy, CalendarDays, Hash } from "lucide-react";
+import { BackChevronIcon } from "../icons";
 
 type Props = {
   onRefresh: () => void;
   isRefreshing: boolean;
   onBack: () => void;
-  onShowScrolling: () => void;
   showCounts: boolean;
   onToggleCounts: () => void;
   showSendsOnly: boolean;
@@ -14,38 +13,26 @@ type Props = {
   onToggleSessionCounts: () => void;
 };
 
-export function PyramidHeader({ onRefresh, isRefreshing, onBack, onShowScrolling, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
+export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
   return (
     <div className="bg-gray-800 px-4 py-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-1 -ml-1" aria-label="Back">
+          <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-2 -ml-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400" aria-label="Back">
             <BackChevronIcon />
           </button>
-          <PyramidIcon className="text-white" aria-label="Climbing Pyramid" />
-          {/* Navigation to the scrolling-pyramids screen. Outline pill + a
-              forward chevron reads as "drill into another view" — deliberately
-              unlike the indigo-fill toggles, which hold an on/off state. */}
-          <button
-            onClick={onShowScrolling}
-            className="ml-1 flex items-center gap-0.5 rounded-xl border border-gray-600 bg-gray-800 pl-2.5 pr-1.5 py-1.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-            title="Scrolling Pyramids"
-            aria-label="Scrolling Pyramids"
-          >
-            <Layers size={16} />
-            <ChevronRight size={14} className="opacity-60" />
-          </button>
+          <h1 className="text-white text-xl font-bold">Pyramid</h1>
         </div>
         <div className="flex items-center gap-2">
           {/* View toggles — grouped in one recessed well (like a B/I/U toolbar
               group) so "options that hold a state" read distinctly from the
-              solid action buttons. Each segment lights up indigo when on. */}
+              solid action buttons. Each segment lights up in accent when on. */}
           <div className="flex items-center gap-0.5 rounded-xl bg-gray-900 p-0.5 ring-1 ring-inset ring-white/5">
             <button
               onClick={onToggleSendsOnly}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center text-sm transition-colors ${
+              className={`px-2.5 py-2 rounded-lg flex items-center text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                 showSendsOnly
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-accent-600 text-white"
                   : "text-gray-400 hover:text-white hover:bg-gray-700/50"
               }`}
               title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
@@ -56,9 +43,9 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, onShowScrolling
             </button>
             <button
               onClick={onToggleCounts}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center text-sm transition-colors ${
+              className={`px-2.5 py-2 rounded-lg flex items-center text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                 showCounts
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-accent-600 text-white"
                   : "text-gray-400 hover:text-white hover:bg-gray-700/50"
               }`}
               title="Toggle per-grade counts and cumulative bars"
@@ -69,9 +56,9 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, onShowScrolling
             </button>
             <button
               onClick={onToggleSessionCounts}
-              className={`px-2.5 py-1.5 rounded-lg flex items-center text-sm transition-colors ${
+              className={`px-2.5 py-2 rounded-lg flex items-center text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                 showSessionCounts
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-accent-600 text-white"
                   : "text-gray-400 hover:text-white hover:bg-gray-700/50"
               }`}
               title={
@@ -92,7 +79,7 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, onShowScrolling
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="bg-orange-600 text-white px-2.5 py-1.5 rounded-xl flex items-center text-sm hover:bg-orange-700 transition-colors disabled:opacity-70"
+            className="bg-gray-700 text-gray-200 px-2.5 py-2 rounded-lg flex items-center text-sm hover:bg-gray-600 hover:text-white transition-colors disabled:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
             title="Refresh from Mountain Project"
             aria-label="Refresh from Mountain Project"
           >

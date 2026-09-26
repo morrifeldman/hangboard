@@ -67,12 +67,12 @@ export function HangTimer() {
   });
 
   const color = isHanging ? "stroke-green-400" : "stroke-yellow-400";
-  const label = isHanging ? "HANG" : "REST";
+  const label = isHanging ? "Hang" : "Rest";
 
   return (
     <div className="flex flex-col items-center gap-3">
       {isWarmup(hold) && <WarmupBadge hold={hold} />}
-      <p className="text-white font-bold text-xl">{hold.name}</p>
+      <p className="text-white font-bold text-2xl">{hold.name}</p>
       <TimerRing
         remaining={remaining}
         duration={duration}
@@ -82,7 +82,7 @@ export function HangTimer() {
         paused={paused}
       />
       {!isWarmup(hold) && !hold.isRestOnly && (
-        <p className="text-white text-3xl font-bold tabular-nums" data-testid="hang-weight">
+        <p className="text-white font-num text-6xl leading-none" data-testid="hang-weight">
           {formatWeight(effectiveWeight(hold.id, setNumber))}
         </p>
       )}
@@ -93,7 +93,7 @@ export function HangTimer() {
           return (
             <div
               key={i}
-              className={`w-3 h-3 rounded-full transition-colors ${
+              className={`w-3.5 h-3.5 rounded-full transition-colors ${
                 active ? "bg-green-400" : done ? "bg-white/50" : "bg-gray-600"
               }`}
             />
@@ -102,7 +102,7 @@ export function HangTimer() {
       </div>
       <button
         onClick={skipSet}
-        className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm font-semibold"
+        className="mt-2 min-h-[44px] px-5 rounded-lg bg-white/10 active:bg-white/20 text-gray-200 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         data-testid="skip-set-btn"
       >
         Skip set

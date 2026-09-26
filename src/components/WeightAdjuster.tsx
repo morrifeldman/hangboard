@@ -10,16 +10,16 @@ interface WeightAdjusterProps {
 
 export function WeightAdjuster({ value, onDelta, label, disabled = false, formatValue = formatWeight }: WeightAdjusterProps) {
   const btnClass =
-    "min-h-[40px] min-w-[40px] px-3 rounded-lg bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm disabled:opacity-40 select-none";
+    "min-h-[44px] min-w-[52px] px-3 rounded-lg bg-gray-700 active:bg-gray-600 text-white font-num text-base select-none disabled:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
 
   return (
     <div className="flex flex-col items-center gap-2">
       {label && <span className="text-gray-400 text-sm">{label}</span>}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <button className={btnClass} onClick={() => onDelta(-2.5)} disabled={disabled}>
           −2.5
         </button>
-        <span className="min-w-[80px] text-center text-white font-bold text-lg select-none">
+        <span className="min-w-[88px] text-center text-white font-num text-3xl select-none">
           {formatValue(value)}
         </span>
         <button className={btnClass} onClick={() => onDelta(2.5)} disabled={disabled}>

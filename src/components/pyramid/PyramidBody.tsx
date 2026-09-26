@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getStyleColor } from "../../lib/climbUtils";
 import type { ClimbRecord } from "../../lib/climbs";
 import type { PyramidRow } from "../../lib/climbUtils";
+import { STONE_EDGE, stoneRadius } from "./stone";
 
 const IDEAL_TILE = 24;
-const IDEAL_GAP = 4;
+const IDEAL_GAP = 3;
 const MIN_TILE = 6;
 const MIN_GAP = 1;
 const TILE_COUNT_THRESHOLD = 14;
 const IDEAL_ROW_HEIGHT = Math.max(20, IDEAL_TILE + 6);
-const IDEAL_TILE_RADIUS = Math.max(2, Math.floor(IDEAL_TILE / 6));
+const IDEAL_TILE_RADIUS = stoneRadius(IDEAL_TILE);
 
 function fitTiles(avail: number, n: number) {
   if (n <= 0) return { tile: IDEAL_TILE, gap: IDEAL_GAP };
@@ -91,7 +92,7 @@ export function PyramidBody({
     containerWidth === null ? Infinity : Math.max(0, containerWidth - labelGutter - 4);
   const { tile: tileSize, gap: tileGap } = fitTiles(availForTiles, maxClimbs);
   const rowHeight = Math.max(20, tileSize + 6);
-  const tileRadius = Math.max(2, Math.floor(tileSize / 6));
+  const tileRadius = stoneRadius(tileSize);
   const showTileCount = tileSize >= TILE_COUNT_THRESHOLD;
   const rowMinWidth = maxClimbs * tileSize + Math.max(0, maxClimbs - 1) * tileGap;
 
@@ -131,26 +132,26 @@ export function PyramidBody({
                 }
                 className={`grid w-full items-center pl-1 pr-1 gap-1 appearance-none border-0 bg-transparent text-left transition-colors ${
                   showCounts ? "grid-cols-[3rem_1.5rem_28px_auto]" : "grid-cols-[3rem]"
-                } ${hasClimbs ? "cursor-pointer hover:bg-white/5" : "cursor-default"}`}
+                } ${hasClimbs ? "cursor-pointer hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400" : "cursor-default"}`}
                 style={{ height: rh }}
               >
                 <span
-                  className={`text-sm font-medium tabular-nums ${
-                    isExpanded ? "text-white" : "text-gray-400"
+                  className={`font-num text-[15px] leading-none ${
+                    isExpanded ? "text-accent-300" : "text-gray-400"
                   }`}
                 >
                   {r.grade}
                 </span>
                 {showCounts && (
                   <>
-                    <span className="text-[10px] text-gray-500 tabular-nums">
+                    <span className="font-num text-[11px] text-gray-500">
                       {r.climbs.length > 0 ? `[${r.climbs.length}]` : ""}
                     </span>
                     <div
-                      className="h-2 bg-indigo-500/60 rounded-sm justify-self-end"
+                      className="h-2 bg-gray-500/70 rounded-sm justify-self-end"
                       style={{ width: `${(cumulatives[i] / maxCum) * 24}px` }}
                     />
-                    <span className="text-[10px] text-indigo-400/80 tabular-nums italic">
+                    <span className="font-num text-[11px] text-gray-400">
                       {cumulatives[i] > 0 ? `(${cumulatives[i]})` : ""}
                     </span>
                   </>
@@ -194,11 +195,12 @@ export function PyramidBody({
                     type="button"
                     onClick={() => onClimbClick(climb)}
                     title={getClimbTitle(climb)}
-                    className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white text-xs font-bold cursor-pointer hover:scale-110 transition-transform appearance-none p-0 border-0 leading-none`}
+                    className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white font-num text-xs cursor-pointer hover:brightness-110 transition appearance-none p-0 border-0 leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white`}
                     style={{
                       width: t,
                       height: t,
                       borderRadius: radius,
+                      boxShadow: STONE_EDGE,
                     }}
                   >
                     {withCount && value > threshold ? value : ""}

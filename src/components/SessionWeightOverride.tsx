@@ -29,7 +29,7 @@ export function SessionWeightOverride() {
 
       <button
         onClick={advancePhase}
-        className="min-h-[56px] w-full max-w-xs rounded-xl bg-green-600 active:bg-green-500 text-white font-bold text-xl"
+        className="min-h-[56px] w-full max-w-xs rounded-xl bg-accent-600 active:bg-accent-500 text-white font-bold text-xl"
         data-testid="start-set-btn"
       >
         Start Set {setNumber}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
 import type { SessionRecord, GymData, GymWorkoutType, FreeformSection, CampusSet } from "../lib/history";
-import { GYM_WORKOUTS, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES, sequenceShortLabel, shortCodeToSequence, ladderDisplayName, rungShortLabel } from "../data/gymWorkouts";
+import { GYM_WORKOUTS, GYM_CATEGORIES, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES, sequenceShortLabel, shortCodeToSequence, ladderDisplayName, rungShortLabel } from "../data/gymWorkouts";
 import type { GymWorkoutDef } from "../data/gymWorkouts";
 import { V_GRADES, YDS_GRADES } from "../lib/gradeUtils";
 import { useWorkoutStore } from "../store/useWorkoutStore";
@@ -9,6 +9,19 @@ import { Audio, initAudio } from "../lib/audio";
 import { Haptics } from "../lib/haptics";
 import { BackChevronIcon, NoteIcon, ClockIcon, DumbbellIcon, GearIcon } from "./icons";
 import { HangboardSetup } from "./HangboardSetup";
+
+const FIELD_CLS =
+  "h-11 bg-gray-800 text-white rounded-lg px-3 text-base border border-gray-700 [color-scheme:dark] focus:outline-none focus:border-accent-500";
+const PILL_CLS =
+  "inline-flex items-center h-10 px-4 rounded-full text-sm font-semibold transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
+const PILL_ON_CLS = "bg-accent-500 text-gray-900";
+const PILL_OFF_CLS = "bg-gray-800 text-gray-300 hover:text-white";
+
+// One size for every − value + control, so the rows line up down the card.
+const STEP_BTN_CLS =
+  "shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-gray-700/70 text-gray-200 text-xl leading-none active:bg-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
+const STEP_VALUE_CLS =
+  "h-10 bg-transparent text-white text-center font-num text-lg rounded-lg focus:outline-none focus:bg-gray-700/50 focus-visible:ring-2 focus-visible:ring-accent-400";
 
 type Props = {
   onBack: () => void;
@@ -229,12 +242,12 @@ function CampusRestTimer() {
   const done = !running && remaining === 0;
 
   return (
-    <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-2.5">
+    <div className="bg-gray-800 rounded-2xl p-3 flex flex-col gap-2.5">
       <div className="flex items-center gap-3">
         <ClockIcon size={18} className="text-gray-500 shrink-0" />
         <span
-          className={`font-mono tabular-nums text-2xl font-bold tracking-tight ${
-            done ? "text-orange-400" : "text-white"
+          className={`font-num text-3xl ${
+            done ? "text-accent-400" : "text-white"
           }`}
         >
           {formatMMSS(remaining)}
@@ -244,7 +257,7 @@ function CampusRestTimer() {
           type="button"
           onClick={toggle}
           aria-label={running ? "Pause rest timer" : "Start rest timer"}
-          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-orange-500 text-white text-lg hover:bg-orange-400 transition-colors"
+          className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-accent-500 text-gray-900 text-lg hover:bg-accent-400 transition-colors"
         >
           {running ? "⏸" : "▶"}
         </button>
@@ -266,7 +279,7 @@ function CampusRestTimer() {
             aria-pressed={duration === p}
             className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
               duration === p
-                ? "bg-gray-700 text-white border border-gray-600"
+                ? "bg-accent-500 text-gray-900 border border-accent-500"
                 : "text-gray-400 hover:text-white border border-gray-700"
             }`}
           >
@@ -284,7 +297,7 @@ function CampusRestTimer() {
           aria-pressed={!REST_PRESETS.includes(duration)}
           className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
             !REST_PRESETS.includes(duration)
-              ? "bg-gray-700 text-white border border-gray-600"
+              ? "bg-accent-500 text-gray-900 border border-accent-500"
               : "text-gray-400 hover:text-white border border-gray-700"
           }`}
         >
@@ -375,6 +388,8 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   }, [editing, initialRecord?.id]);
 
   const def = GYM_WORKOUTS.find((w) => w.id === workoutType)!;
+  const hasUnits = def.fieldDefs.some((fd) => fd.unit);
+  const hasOptional = def.fieldDefs.some((fd) => fd.optional);
   const isCampus = workoutType === "campus";
   const freeformGymData =
     workoutType === "freeform" ? buildFreeformGymData(freeformTitle, freeformSections) : null;
@@ -646,7 +661,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
           </button>
         )}
         <h1 className="text-white font-bold text-lg">
-          {tabMode ? "Workout" : "Edit Gym Session"}
+          {tabMode ? "Workout" : "Edit gym session"}
         </h1>
         {tabMode && onShowSettings && (
           <button
@@ -661,94 +676,98 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-8 flex flex-col gap-5">
-        {/* Date + Time */}
         {!hangboardMode && (
-          <div className="flex items-center gap-3">
-            <label className="text-gray-400 text-sm w-12 flex-shrink-0">Date</label>
+          <div className="flex items-center gap-2">
             <input
               type="date"
+              aria-label="Date"
               value={dateValue}
               onChange={(e) => setDateValue(e.target.value)}
-              className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+              className={`flex-1 min-w-0 ${FIELD_CLS}`}
             />
             <input
               type="time"
+              aria-label="Time"
               value={timeValue}
               onChange={(e) => setTimeValue(e.target.value)}
-              className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+              className={`w-32 ${FIELD_CLS}`}
             />
           </div>
         )}
 
-        {/* Workout type pill picker — collapses to the selected type once chosen */}
+        {/* Workout type picker — collapses to the selected type once chosen */}
         <div>
-          <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Workout Type</p>
           {pickerOpen && !editing ? (
-            <div className="flex flex-wrap gap-2">
-              {GYM_WORKOUTS.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => requestWorkoutType(w.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
-                    workoutType === w.id && !hangboardMode
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-800 text-gray-400 border border-gray-700"
-                  }`}
-                >
-                  {w.label}
-                </button>
+            <div className="flex flex-col gap-3">
+              {GYM_CATEGORIES.map((cat) => (
+                <div key={cat.id}>
+                  <p className="text-gray-500 text-xs mb-1.5">{cat.label}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {GYM_WORKOUTS.filter((w) => w.category === cat.id).map((w) => (
+                      <button
+                        key={w.id}
+                        onClick={() => requestWorkoutType(w.id)}
+                        aria-pressed={workoutType === w.id && !hangboardMode}
+                        className={`${PILL_CLS} ${
+                          workoutType === w.id && !hangboardMode ? PILL_ON_CLS : PILL_OFF_CLS
+                        }`}
+                      >
+                        {w.label}
+                      </button>
+                    ))}
+                    {/* Hangboard launches the guided timer rather than a log form */}
+                    {cat.id === "power" && (
+                      <button
+                        onClick={selectHangboard}
+                        data-testid="workout-pill-hangboard"
+                        aria-pressed={hangboardMode}
+                        className={`${PILL_CLS} gap-1.5 ${hangboardMode ? PILL_ON_CLS : PILL_OFF_CLS}`}
+                      >
+                        <DumbbellIcon size={14} />
+                        Hangboard
+                      </button>
+                    )}
+                  </div>
+                </div>
               ))}
-              {/* Hangboard — last in the list; launches the guided timer rather than a log form */}
-              <button
-                onClick={selectHangboard}
-                data-testid="workout-pill-hangboard"
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${
-                  hangboardMode
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-800 text-green-400 border border-green-600/50"
-                }`}
-              >
-                <DumbbellIcon size={13} />
-                Hangboard
-              </button>
             </div>
           ) : (
             <button
               type="button"
               onClick={() => !editing && setPickerOpen(true)}
               disabled={editing}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white disabled:cursor-default ${
-                hangboardMode ? "bg-green-600" : "bg-orange-500"
-              }`}
+              className="inline-flex items-center gap-3 rounded-full disabled:cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
             >
-              {hangboardMode && <DumbbellIcon size={13} />}
-              {hangboardMode ? "Hangboard" : def.label}
-              {!editing && <span className="text-white/70 text-[0.65rem]">▾ change</span>}
+              <span className={`${PILL_CLS} gap-1.5 ${PILL_ON_CLS}`}>
+                {hangboardMode && <DumbbellIcon size={14} />}
+                {hangboardMode ? "Hangboard" : def.label}
+              </span>
+              {!editing && <span className="text-accent-400 text-sm font-medium">Change</span>}
             </button>
           )}
           {pendingType && (
-            <div className="mt-2 flex items-center gap-2 rounded-lg bg-gray-800 border border-orange-500/40 px-3 py-2">
-              <p className="flex-1 text-xs text-gray-300">
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-gray-800 px-3 py-2">
+              <p className="flex-1 text-sm text-gray-300">
                 Switch to {GYM_WORKOUTS.find((w) => w.id === pendingType)?.label}? Current entries will be cleared.
               </p>
               <button
                 type="button"
                 onClick={confirmSwitch}
-                className="text-xs font-semibold text-white bg-orange-500 rounded-full px-3 py-1"
+                className="h-9 text-sm font-semibold text-gray-900 bg-accent-500 rounded-lg px-3"
               >
                 Switch
               </button>
               <button
                 type="button"
                 onClick={cancelSwitch}
-                className="text-xs font-semibold text-gray-400 hover:text-white px-2 py-1"
+                className="h-9 text-sm font-semibold text-gray-400 hover:text-white px-2"
               >
                 Cancel
               </button>
             </div>
           )}
           {def && !hangboardMode && (
-            <p className="text-gray-600 text-xs mt-2">{def.description}</p>
+            <p className="text-gray-400 text-sm mt-3">{def.description}</p>
           )}
         </div>
 
@@ -763,19 +782,19 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
               value={freeformTitle}
               onChange={(e) => setFreeformTitle(e.target.value)}
               placeholder="Title (required)"
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 border border-gray-700 focus:outline-none focus:border-gray-500"
+              className={`w-full placeholder-gray-500 ${FIELD_CLS}`}
             />
             {!editing && lastFreeform && (
               <button
                 type="button"
                 onClick={useLastFreeform}
-                className="self-start text-xs font-semibold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-full border border-orange-500/40 bg-orange-500/10"
+                className="self-start text-sm font-medium text-accent-400 hover:text-accent-300 py-1.5"
               >
-                ↺ Use last freeform
+                Use last freeform
               </button>
             )}
             {freeformSections.map((sec, sIdx) => (
-              <div key={sIdx} className="bg-gray-800 rounded-xl p-3">
+              <div key={sIdx} className="bg-gray-800 rounded-2xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <input
                     type="text"
@@ -783,7 +802,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                     value={sec.name}
                     onChange={(e) => setFreeformSectionName(sIdx, e.target.value)}
                     placeholder="Section name (optional)"
-                    className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                    className="flex-1 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-600 focus:outline-none focus:border-accent-500"
                   />
                   {freeformSections.length > 1 && (
                     <button
@@ -805,14 +824,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                         value={entry.key}
                         onChange={(e) => setFreeformEntry(sIdx, eIdx, { key: e.target.value })}
                         placeholder="key"
-                        className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                        className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-600 focus:outline-none focus:border-accent-500"
                       />
                       <input
                         type="text"
                         value={entry.value}
                         onChange={(e) => setFreeformEntry(sIdx, eIdx, { value: e.target.value })}
                         placeholder="value"
-                        className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                        className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm placeholder-gray-500 border border-gray-600 focus:outline-none focus:border-accent-500"
                       />
                       <button
                         type="button"
@@ -851,6 +870,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
         ) : isCampus ? (
           <div className="flex flex-col gap-3">
             <CampusRestTimer />
+            <div className="bg-gray-800 rounded-2xl divide-y divide-gray-700/60">
             {campusSets.map((row, i) => {
               // Presets ∪ previously-saved ∪ sequences already used by same-Name rows
               // in this form — so a custom entry is instantly reusable across sibling sets.
@@ -869,14 +889,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                 ]),
               );
               return (
-                <div key={i} className="bg-gray-800 rounded-xl p-2 flex flex-col gap-2">
+                <div key={i} className="px-2 py-2 flex flex-col gap-2">
                   <div className="flex items-center gap-1.5">
                     <select
                       value={row.rung}
                       onChange={(e) => setCampusRow(i, { rung: e.target.value })}
                       aria-label="Rung size"
                       title="Rung size"
-                      className="shrink-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs font-semibold border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                      className="shrink-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs font-semibold border border-gray-600 focus:outline-none focus:border-accent-500"
                     >
                       <option value="" disabled hidden>·</option>
                       {CAMPUS_RUNGS.map((r) => <option key={r} value={r}>{rungShortLabel(r)}</option>)}
@@ -885,7 +905,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                       value={row.name}
                       onChange={(e) => setCampusRow(i, { name: e.target.value })}
                       aria-label="Ladder name"
-                      className="shrink-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                      className="shrink-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs border border-gray-600 focus:outline-none focus:border-accent-500"
                     >
                       <option value="" disabled hidden>Name</option>
                       {nameOptions.map((n) => <option key={n} value={n}>{ladderDisplayName(n)}</option>)}
@@ -908,7 +928,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                       }}
                       aria-label="Hand sequence"
                       title={row.sequence || "Hand sequence"}
-                      className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50"
+                      className="flex-1 min-w-0 bg-gray-700 text-white rounded-lg pl-2 pr-1 py-1.5 text-xs font-mono border border-gray-600 focus:outline-none focus:border-accent-500"
                     >
                       <option value="" disabled hidden>Seq</option>
                       {seqOptions.map((s) => <option key={s} value={s}>{sequenceShortLabel(s)}</option>)}
@@ -921,7 +941,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                       title="Note"
                       className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
                         row.note || noteOpen.has(i)
-                          ? "text-orange-400 bg-orange-500/10"
+                          ? "text-accent-400 bg-accent-500/10"
                           : "text-gray-500 hover:text-gray-300"
                       }`}
                     >
@@ -949,12 +969,13 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                       placeholder="Note"
                       aria-label="Set note"
                       autoFocus
-                      className="w-full bg-gray-700/60 text-white rounded-lg px-2 py-1.5 text-xs placeholder-gray-500 border border-gray-700 focus:outline-none focus:border-orange-500/50"
+                      className="w-full bg-gray-700/60 text-white rounded-lg px-2 py-1.5 text-xs placeholder-gray-500 border border-gray-700 focus:outline-none focus:border-accent-500"
                     />
                   )}
                 </div>
               );
             })}
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
@@ -968,9 +989,9 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                 <button
                   type="button"
                   onClick={resetCampusTemplate}
-                  className="text-xs font-semibold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-full border border-orange-500/40 bg-orange-500/10"
+                  className="text-sm font-medium text-accent-400 hover:text-accent-300 px-2 py-1.5"
                 >
-                  ↺ Reset to routine
+                  Reset to routine
                 </button>
               )}
               <button
@@ -988,28 +1009,31 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
             </div>
           </div>
         ) : def && def.fieldDefs.length > 0 && (
-          <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
+          <div className="bg-gray-800 rounded-2xl overflow-hidden shrink-0 divide-y divide-gray-700/60">
             {/* shrink-0 above is load-bearing: overflow-hidden zeroes the card's min
                 flex size, so without it the card compresses (clipping its last rows)
                 instead of the page scrolling */}
-            {def.fieldDefs.map((fd, i) => {
+            {def.fieldDefs.map((fd) => {
               const isGrade = fd.type === "grade-v" || fd.type === "grade-yds";
               const grades = fd.type === "grade-v" ? V_GRADES : YDS_GRADES;
-              const borderCls = i < def.fieldDefs.length - 1 ? "border-b border-gray-700" : "";
+              const value = fields[fd.key] ?? "";
+              const label = (
+                <div className="flex-1 min-w-0">
+                  <label className="text-gray-200 text-sm leading-tight block">{fd.label}</label>
+                  {fd.optional && <span className="text-gray-500 text-xs leading-tight">Optional</span>}
+                </div>
+              );
               if (fd.type === "multi-select") {
-                const selected = new Set((fields[fd.key] ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+                const selected = new Set(value.split(",").map((s) => s.trim()).filter(Boolean));
                 return (
-                  <div key={fd.key} className={`px-4 py-3 ${borderCls}`}>
+                  <div key={fd.key} className="px-4 py-3">
                     <div className="flex items-center mb-2">
-                      <label className="text-gray-400 text-sm flex-1">
-                        {fd.label}
-                        {fd.optional && <span className="text-gray-600 ml-1 text-xs">(opt)</span>}
-                      </label>
+                      {label}
                       {fd.optional && selected.size > 0 && (
                         <button
                           type="button"
                           onClick={() => setField(fd.key, "")}
-                          className="text-xs font-semibold text-gray-500 hover:text-red-400"
+                          className="text-sm font-medium text-gray-500 hover:text-red-400 px-2 py-1"
                         >
                           Clear
                         </button>
@@ -1021,10 +1045,34 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                           key={o}
                           type="button"
                           onClick={() => toggleMultiSelect(fd.key, o)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors whitespace-nowrap ${
-                            selected.has(o)
-                              ? "bg-orange-500 text-white"
-                              : "bg-gray-700 text-gray-400 border border-gray-600"
+                          aria-pressed={selected.has(o)}
+                          className={`h-9 px-3 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
+                            selected.has(o) ? PILL_ON_CLS : "bg-gray-700/70 text-gray-300"
+                          }`}
+                        >
+                          {o}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              if (fd.type === "select") {
+                // Tapping the chosen segment again clears an optional field, standing in
+                // for the "—" entry the old dropdown had.
+                return (
+                  <div key={fd.key} className="px-4 py-3">
+                    <div className="mb-2">{label}</div>
+                    <div role="radiogroup" aria-label={fd.label} className="flex gap-1 rounded-xl bg-gray-900/60 p-1">
+                      {fd.options?.map((o) => (
+                        <button
+                          key={o}
+                          type="button"
+                          role="radio"
+                          aria-checked={value === o}
+                          onClick={() => setField(fd.key, value === o && fd.optional ? "" : o)}
+                          className={`flex-1 h-9 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
+                            value === o ? PILL_ON_CLS : "text-gray-400 hover:text-white"
                           }`}
                         >
                           {o}
@@ -1035,104 +1083,91 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
                 );
               }
               return (
-                <div
-                  key={fd.key}
-                  className={`px-4 py-3 flex items-center gap-3 ${borderCls}`}
-                >
-                  <label className="text-gray-400 text-sm flex-1">
-                    {fd.label}
-                    {fd.optional && <span className="text-gray-600 ml-1 text-xs">(opt)</span>}
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    {isGrade ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => stepGrade(fd.key, grades, -1)}
-                          aria-label={`Decrease ${fd.label}`}
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
-                        >
-                          −
-                        </button>
-                        <select
-                          value={fields[fd.key] ?? ""}
-                          onChange={(e) => setField(fd.key, e.target.value)}
-                          className="w-20 bg-gray-700 text-white text-center rounded-lg px-2 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50 appearance-none"
-                        >
-                          <option value="">{fd.type === "grade-v" ? "V?" : "5.?"}</option>
-                          {grades.map((g) => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => stepGrade(fd.key, grades, 1)}
-                          aria-label={`Increase ${fd.label}`}
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
-                        >
-                          +
-                        </button>
-                      </div>
-                    ) : fd.type === "text" ? (
-                      <input
-                        type="text"
-                        autoComplete="off"
-                        value={fields[fd.key] ?? ""}
-                        onChange={(e) => setField(fd.key, e.target.value)}
-                        className="w-32 bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                      />
-                    ) : fd.type === "select" ? (
-                      <select
-                        value={fields[fd.key] ?? ""}
-                        onChange={(e) => setField(fd.key, e.target.value)}
-                        className="bg-gray-700 text-white rounded-lg px-3 py-1.5 text-sm border border-gray-600 focus:outline-none focus:border-orange-500/50"
-                      >
-                        <option value="">—</option>
-                        {fd.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => stepField(fd.key, -(fd.step ?? 1))}
-                          aria-label={`Decrease ${fd.label}`}
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          step={fd.step ?? 1}
-                          autoComplete="off"
-                          value={fields[fd.key] ?? ""}
-                          onChange={(e) => setField(fd.key, e.target.value)}
-                          placeholder="0"
-                          className="w-14 bg-gray-700 text-white text-center rounded-lg px-2 py-1.5 text-sm font-mono border border-gray-600 focus:outline-none focus:border-orange-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => stepField(fd.key, fd.step ?? 1)}
-                          aria-label={`Increase ${fd.label}`}
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 text-gray-300 text-lg leading-none border border-gray-600 active:bg-gray-600"
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
-                    {fd.unit && <span className="text-gray-500 text-xs w-7">{fd.unit}</span>}
-                    {fd.optional ? (
+                <div key={fd.key} className="px-4 py-2.5 flex items-center gap-2">
+                  {label}
+                  {isGrade ? (
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => setField(fd.key, "")}
-                        disabled={!(fields[fd.key] ?? "").trim()}
-                        aria-label={`Clear ${fd.label}`}
-                        className="shrink-0 w-6 h-6 flex items-center justify-center text-base leading-none text-gray-500 hover:text-red-400 disabled:opacity-0 disabled:pointer-events-none"
+                        onClick={() => stepGrade(fd.key, grades, -1)}
+                        aria-label={`Decrease ${fd.label}`}
+                        className={STEP_BTN_CLS}
                       >
-                        ×
+                        −
                       </button>
-                    ) : (
-                      <span className="w-6 shrink-0" />
-                    )}
-                  </div>
+                      <select
+                        value={value}
+                        onChange={(e) => setField(fd.key, e.target.value)}
+                        aria-label={fd.label}
+                        className={`w-16 appearance-none ${STEP_VALUE_CLS} ${value ? "" : "!text-gray-500"}`}
+                      >
+                        <option value="">—</option>
+                        {grades.map((g) => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => stepGrade(fd.key, grades, 1)}
+                        aria-label={`Increase ${fd.label}`}
+                        className={STEP_BTN_CLS}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : fd.type === "text" ? (
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      aria-label={fd.label}
+                      value={value}
+                      onChange={(e) => setField(fd.key, e.target.value)}
+                      className="w-40 h-10 bg-gray-700/70 text-white rounded-lg px-3 text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => stepField(fd.key, -(fd.step ?? 1))}
+                        aria-label={`Decrease ${fd.label}`}
+                        className={STEP_BTN_CLS}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        step={fd.step ?? 1}
+                        autoComplete="off"
+                        aria-label={fd.label}
+                        value={value}
+                        onChange={(e) => setField(fd.key, e.target.value)}
+                        placeholder="—"
+                        className={`w-16 placeholder-gray-500 ${STEP_VALUE_CLS} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => stepField(fd.key, fd.step ?? 1)}
+                        aria-label={`Increase ${fd.label}`}
+                        className={STEP_BTN_CLS}
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+                  {/* Reserve the unit and clear slots on every row so the steppers line up */}
+                  {hasUnits && <span className="text-gray-500 text-xs w-7 shrink-0">{fd.unit}</span>}
+                  {fd.optional ? (
+                    <button
+                      type="button"
+                      onClick={() => setField(fd.key, "")}
+                      disabled={!value.trim()}
+                      aria-label={`Clear ${fd.label}`}
+                      className="shrink-0 w-6 h-10 -mr-1 flex items-center justify-center text-lg leading-none text-gray-500 hover:text-red-400 disabled:opacity-0 disabled:pointer-events-none"
+                    >
+                      ×
+                    </button>
+                  ) : (
+                    hasOptional && <span className="w-6 -mr-1 shrink-0" />
+                  )}
                 </div>
               );
             })}
@@ -1146,7 +1181,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
             onChange={(e) => setSessionNotes(e.target.value)}
             rows={4}
             placeholder="Session notes (optional)"
-            className="w-full shrink-0 min-h-[6rem] bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-y border border-gray-700 focus:outline-none focus:border-gray-500"
+            className="w-full shrink-0 min-h-[6rem] bg-gray-800 text-white rounded-2xl px-4 py-3 text-base placeholder-gray-500 resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           />
         )}
       </div>
@@ -1157,19 +1192,19 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
         <button
           onClick={handleSave}
           disabled={saving || !dateValue || !valid}
-          className="w-full py-3 rounded-xl font-semibold bg-orange-500 text-white text-base disabled:opacity-50"
+          className="w-full h-12 rounded-xl font-semibold bg-accent-500 text-gray-900 text-base transition-colors disabled:bg-gray-700 disabled:text-gray-500"
         >
-          {saving ? "Saving…" : editing ? "Save Changes" : "Save Session"}
+          {saving ? "Saving…" : editing ? "Save changes" : "Save session"}
         </button>
 
         {editing && (
           <button
             onClick={handleDelete}
-            className={`w-full py-2.5 rounded-xl font-semibold text-base transition-colors ${
-              confirmDelete ? "bg-red-600 text-white" : "bg-gray-800 text-gray-500"
+            className={`w-full h-11 rounded-xl font-semibold text-base transition-colors ${
+              confirmDelete ? "bg-red-600 text-white" : "bg-gray-800 text-red-400"
             }`}
           >
-            {confirmDelete ? "Tap again to delete" : "Delete Session"}
+            {confirmDelete ? "Tap again to delete" : "Delete session"}
           </button>
         )}
       </div>

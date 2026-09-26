@@ -15,7 +15,7 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
-import { BarChartIcon, GearIcon } from "./icons";
+import { GearIcon } from "./icons";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 import { PyramidPreview } from "./pyramid/PyramidPreview";
 import {
@@ -57,6 +57,25 @@ type Props = {
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
 
+// Matches getStyleColor, so a flash is the same yellow in the pyramid and the chart.
+const STYLE_HEX = { onsight: "#22c55e", flash: "#eab308", redpoint: "#ef4444" } as const;
+const ACCENT_HEX = "#22c55e";
+
+const AXIS_TICK = { fill: "#6b7280", fontSize: 10 };
+const AXIS_NUM_TICK = { ...AXIS_TICK, fontSize: 12, className: "font-num" };
+const TOOLTIP_STYLE = { background: "#111827", border: "1px solid #374151", borderRadius: 8, fontSize: 12 };
+
+const GRANULARITIES: { value: Granularity; label: string }[] = [
+  { value: "months", label: "Months" },
+  { value: "seasons", label: "Seasons" },
+  { value: "years", label: "Years" },
+];
+
+const WORKOUTS: { value: ProgressView["workout"]; label: string }[] = [
+  { value: "repeaters", label: "Repeaters" },
+  { value: "max-hang", label: "Max Hang" },
+];
+
 type ChartPoint = { weight: number; label: string; bailed: boolean; isPR: boolean; setFailed: boolean; isBeginner: boolean; sessionId: string };
 
 function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
@@ -89,8 +108,8 @@ function CustomDot({ cx, cy, payload, onClick }: DotProps) {
     : payload.bailed
     ? "#6b7280"
     : payload.isPR
-    ? "#22c55e"
-    : "#6366f1";
+    ? ACCENT_HEX
+    : "#d1d5db";
   const fill = (payload.bailed && !payload.setFailed) || payload.isBeginner ? "transparent" : color;
 
   return (
@@ -110,7 +129,7 @@ function CustomDot({ cx, cy, payload, onClick }: DotProps) {
         <circle cx={cx} cy={cy} r={r} fill={fill} stroke={color} strokeWidth={1.5} />
       )}
       {payload.isPR && (
-        <text x={cx} y={cy - 9} textAnchor="middle" fill="#22c55e" fontSize={8} fontWeight="bold">
+        <text x={cx} y={cy - 9} textAnchor="middle" fill={ACCENT_HEX} fontSize={9} className="font-num">
           PR
         </text>
       )}
@@ -297,7 +316,7 @@ export function ProgressScreen({
     return [Math.max(0, Math.min(...vals) - 1), Math.min(15, Math.max(...vals) + 1)];
   }, [visibleGradeTrend]);
 
-  const lineColor = isTrendingUp ? "#22c55e" : "#6366f1";
+  const lineColor = isTrendingUp ? ACCENT_HEX : "#6b7280";
 
   const hasSessions = sessions.length > 0;
   const workoutLabel = workoutType === "repeaters" ? "Repeaters" : "Max Hang";
@@ -314,15 +333,18 @@ export function ProgressScreen({
 
   return (
     <div className="h-full bg-gray-900 flex flex-col overflow-hidden">
-      {/* Header */}
       <header className="bg-gray-800 px-4 py-4 flex items-center gap-3">
-        <h1 className="text-white font-bold text-2xl">Cairn</h1>
-        <BarChartIcon className="text-white ml-1" aria-label="Progress" />
+        <h1
+          className="text-white text-[1.7rem] font-extrabold leading-none tracking-[0.01em]"
+          style={{ fontStretch: "118%" }}
+        >
+          Cairn
+        </h1>
         <button
           onClick={onShowSettings}
           aria-label="Open settings"
           data-testid="open-settings"
-          className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
+          className="ml-auto -mr-2 p-2 rounded-lg text-gray-400 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <GearIcon size={22} />
         </button>
@@ -347,14 +369,12 @@ export function ProgressScreen({
           <p className="text-gray-500">Complete a session to see your progress.</p>
         </div>
       ) : (
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-5 pb-8 flex flex-col gap-8">
+          <PyramidPreview climbs={climbs} onOpen={onShowPyramid} />
 
-
-          {/* ── Overview calendar ── */}
-          <section>
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Overview</p>
-            <div className="bg-gray-800 rounded-xl px-4 py-3">
-              {/* Month labels */}
+          <section className="flex flex-col gap-2.5">
+            <SectionHeading>Activity</SectionHeading>
+            <div className="bg-gray-800 rounded-2xl px-4 py-3">
               <div className="flex gap-1 mb-1 ml-5">
                 {monthLabels.map((label, i) => (
                   <div key={i} className="w-3 text-[9px] text-gray-500 text-center leading-none">
@@ -363,7 +383,6 @@ export function ProgressScreen({
                 ))}
               </div>
 
-              {/* Grid: day-of-week labels + week columns */}
               <div className="flex gap-1">
                 <div className="flex flex-col gap-1 mr-1 mt-0.5">
                   {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
@@ -385,8 +404,7 @@ export function ProgressScreen({
                 ))}
               </div>
 
-              {/* Legend */}
-              <div className="flex gap-3 mt-3 flex-wrap">
+              <div className="flex gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-700/60 flex-wrap">
                 <LegendItem color="bg-teal-600" label="Outdoor" />
                 <LegendItem color="bg-amber-500" label="Gym" />
                 <LegendItem color="bg-rose-500" label="Cardio" />
@@ -395,37 +413,91 @@ export function ProgressScreen({
             </div>
           </section>
 
-          {/* ── Weight trends (order-2 → renders below the sport section) ── */}
-          <section className="order-2">
-            <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Weight Trends</p>
-            <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-3">
-              {/* A / B toggle */}
-              <div className="flex gap-2">
-                {(["repeaters", "max-hang"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => handleWorkoutType(t)}
-                    className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                      workoutType === t
-                        ? "bg-green-600 text-white"
-                        : "bg-gray-700 text-gray-400"
-                    }`}
-                  >
-                    {t === "repeaters" ? "Repeaters" : "Max Hang"}
-                  </button>
-                ))}
-              </div>
+          <section className="flex flex-col gap-2.5">
+            <SectionHeading>Route grades over time</SectionHeading>
+            <div className="bg-gray-800 rounded-2xl px-4 py-3 flex flex-col gap-4">
+              <Segmented
+                label="Group by"
+                options={GRANULARITIES}
+                value={granularity}
+                onChange={setGranularity}
+              />
 
-              {/* Hold picker */}
-              <div className="flex gap-2 overflow-x-auto -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {gradeTrendAll.length === 0 ? (
+                <div className="h-[180px] flex items-center justify-center">
+                  <p className="text-gray-600 text-sm">No outdoor sport climbs yet</p>
+                </div>
+              ) : (
+                <>
+                  <RangeSlider
+                    max={gradeTrendAll.length - 1}
+                    start={Math.min(rangeStart, rangeEnd)}
+                    end={Math.max(rangeStart, rangeEnd)}
+                    startLabel={gradeTrendAll[Math.min(rangeStart, rangeEnd)]?.label ?? ""}
+                    endLabel={gradeTrendAll[Math.max(rangeStart, rangeEnd)]?.label ?? ""}
+                    onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); }}
+                  />
+
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={visibleGradeTrend} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis
+                        dataKey="label"
+                        tick={AXIS_TICK}
+                        tickLine={false}
+                        axisLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        domain={gradeYDomain ?? [0, 15]}
+                        type="number"
+                        ticks={gradeYDomain ? rangeTicks(gradeYDomain[0], gradeYDomain[1]) : undefined}
+                        tick={AXIS_NUM_TICK}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v: number) => gradeLabel(v)}
+                        width={40}
+                      />
+                      <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        labelStyle={{ color: "#9ca3af" }}
+                        formatter={(v: number | undefined, name: string | undefined) => [v == null ? "—" : gradeLabel(v), name ?? ""]}
+                      />
+                      <Line type="monotone" dataKey="onsight"  name="Onsight"  stroke={STYLE_HEX.onsight}  strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      <Line type="monotone" dataKey="flash"    name="Flash"    stroke={STYLE_HEX.flash}    strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      <Line type="monotone" dataKey="redpoint" name="Redpoint" stroke={STYLE_HEX.redpoint} strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                    </LineChart>
+                  </ResponsiveContainer>
+
+                  <div className="flex gap-4 flex-wrap">
+                    <LegendItem color="bg-green-500" label="Onsight" />
+                    <LegendItem color="bg-yellow-500" label="Flash" />
+                    <LegendItem color="bg-red-500" label="Redpoint" />
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-2.5">
+            <SectionHeading>Hangboard weights</SectionHeading>
+            <div className="bg-gray-800 rounded-2xl px-4 py-3 flex flex-col gap-3">
+              <Segmented
+                label="Workout"
+                options={WORKOUTS}
+                value={workoutType}
+                onChange={handleWorkoutType}
+              />
+
+              <div className="flex gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {holds.map((hold, i) => (
                   <button
                     key={hold.id}
                     onClick={() => setHoldIndex(i)}
-                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                    aria-pressed={holdIndex === i}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                       holdIndex === i
-                        ? "bg-indigo-600 text-white"
-                        : "bg-gray-700 text-gray-400"
+                        ? "bg-accent-600 text-white"
+                        : "bg-gray-700/70 text-gray-400 hover:text-gray-200"
                     }`}
                   >
                     {hold.name}
@@ -433,7 +505,6 @@ export function ProgressScreen({
                 ))}
               </div>
 
-              {/* Chart or empty state */}
               {chartPoints.length < 2 ? (
                 <div className="h-[160px] flex items-center justify-center">
                   <p className="text-gray-600 text-sm">
@@ -446,7 +517,7 @@ export function ProgressScreen({
                 <ResponsiveContainer width="100%" height={160}>
                   <LineChart
                     data={chartPoints}
-                    margin={{ top: 20, right: 8, bottom: 0, left: 32 }}
+                    margin={{ top: 20, right: 8, bottom: 0, left: 0 }}
                     style={{ cursor: "pointer" }}
                     onClick={(data) => {
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -458,26 +529,21 @@ export function ProgressScreen({
                   >
                     <XAxis
                       dataKey="label"
-                      tick={{ fill: "#6b7280", fontSize: 10 }}
+                      tick={AXIS_TICK}
                       tickLine={false}
                       axisLine={false}
                       interval="preserveStartEnd"
                     />
                     <YAxis
-                      tick={{ fill: "#6b7280", fontSize: 10 }}
+                      tick={AXIS_NUM_TICK}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={formatWeight}
-                      width={32}
+                      width={36}
                     />
                     <ReferenceLine y={0} stroke="rgba(255,255,255,0.1)" strokeDasharray="3 3" />
                     <Tooltip
-                      contentStyle={{
-                        background: "#1f2937",
-                        border: "none",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
+                      contentStyle={TOOLTIP_STYLE}
                       labelStyle={{ color: "#9ca3af" }}
                       formatter={(v: number | undefined) => [v != null ? formatWeight(v) : "—", "Weight"]}
                     />
@@ -502,91 +568,6 @@ export function ProgressScreen({
               )}
             </div>
           </section>
-
-          {/* ── Route grades (outdoor sport) — order-1 puts it above Weight Trends (order-2) ── */}
-          <section className="order-1 flex flex-col gap-3">
-            <p className="text-gray-500 text-xs uppercase tracking-wider">Route Grades · Outdoor Sport</p>
-            <PyramidPreview climbs={climbs} onOpen={onShowPyramid} />
-            <div className="bg-gray-800 rounded-xl px-4 py-3 flex flex-col gap-4">
-              {/* Granularity slider */}
-              <div>
-                <div className="flex justify-between text-[10px] text-gray-500 mb-1 px-0.5">
-                  <span>Months</span><span>Seasons</span><span>Years</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={2}
-                  step={1}
-                  value={granularity === "months" ? 0 : granularity === "seasons" ? 1 : 2}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    setGranularity(v === 0 ? "months" : v === 1 ? "seasons" : "years");
-                  }}
-                  className="w-full accent-orange-500"
-                />
-              </div>
-
-              {gradeTrendAll.length === 0 ? (
-                <div className="h-[180px] flex items-center justify-center">
-                  <p className="text-gray-600 text-sm">No outdoor sport climbs yet</p>
-                </div>
-              ) : (
-                <>
-                  {/* Time-range dual-handle slider */}
-                  <RangeSlider
-                    max={gradeTrendAll.length - 1}
-                    start={Math.min(rangeStart, rangeEnd)}
-                    end={Math.max(rangeStart, rangeEnd)}
-                    startLabel={gradeTrendAll[Math.min(rangeStart, rangeEnd)]?.label ?? ""}
-                    endLabel={gradeTrendAll[Math.max(rangeStart, rangeEnd)]?.label ?? ""}
-                    onChange={(s, e) => { setRangeStart(s); setRangeEnd(e); }}
-                  />
-
-                  {/* Chart */}
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={visibleGradeTrend} margin={{ top: 8, right: 8, bottom: 0, left: 32 }}>
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fill: "#6b7280", fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis
-                        domain={gradeYDomain ?? [0, 15]}
-                        type="number"
-                        ticks={gradeYDomain ? rangeTicks(gradeYDomain[0], gradeYDomain[1]) : undefined}
-                        tick={{ fill: "#6b7280", fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v: number) => gradeLabel(v)}
-                        width={36}
-                      />
-                      <Tooltip
-                        contentStyle={{ background: "#1f2937", border: "none", borderRadius: 8, fontSize: 12 }}
-                        labelStyle={{ color: "#9ca3af" }}
-                        formatter={(v: number | undefined, name: string | undefined) => [v == null ? "—" : gradeLabel(v), name ?? ""]}
-                      />
-                      <Line type="monotone" dataKey="onsight"  name="Onsight"  stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                      <Line type="monotone" dataKey="flash"    name="Flash"    stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                      <Line type="monotone" dataKey="redpoint" name="Redpoint" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    </LineChart>
-                  </ResponsiveContainer>
-
-                  {/* Legend */}
-                  <div className="flex gap-4 flex-wrap text-xs">
-                    <LegendItem color="bg-green-500" label="Onsight" />
-                    <LegendItem color="bg-blue-500" label="Flash" />
-                    <LegendItem color="bg-red-500" label="Redpoint" />
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-
-          {/* bottom padding (order-last keeps it beneath the reordered sections) */}
-          <div className="order-last h-4" />
         </div>
       )}
 
@@ -620,7 +601,7 @@ export function ProgressScreen({
             {/* Notes section */}
             {dayNotes.length > 0 && (
               <div className="px-4 py-3">
-                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Notes</p>
+                <h3 className="text-sm font-semibold text-gray-300 mb-2">Notes</h3>
                 <div className="flex flex-col gap-2.5">
                   {dayNotes.map((note) => (
                     <div key={note.id} className="flex flex-col gap-1">
@@ -639,7 +620,7 @@ export function ProgressScreen({
             {/* Climbs section */}
             {dayClimbs.length > 0 && (
               <div className="px-4 py-3">
-                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Climbing</p>
+                <h3 className="text-sm font-semibold text-gray-300 mb-2">Climbing</h3>
                 <div className="flex flex-col gap-2.5">
                   {dayClimbs.map((climb) => (
                     <button
@@ -650,7 +631,7 @@ export function ProgressScreen({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-white text-sm font-medium">{climb.route}</span>
-                          <span className="text-gray-400 text-sm font-mono">{climb.grade}</span>
+                          <span className="text-gray-300 text-[15px] font-num">{climb.grade}</span>
                           <span className={`text-xs px-1.5 py-0.5 rounded ${climbStyleBadge(climb.style)}`}>
                             {climb.style}
                           </span>
@@ -673,7 +654,7 @@ export function ProgressScreen({
               <div key={session.id} className="px-4 py-3 border-t border-gray-800">
                 <div className="flex items-center justify-between mb-2">
                   <button
-                    className="text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 transition-colors text-left"
+                    className="text-sm font-semibold text-gray-300 hover:text-white transition-colors text-left"
                     onClick={() => onEditSession(session)}
                   >
                     {sessionTypeLabel(session.workoutType)}
@@ -694,7 +675,7 @@ export function ProgressScreen({
                   <div className="flex flex-col gap-1.5">
                     {session.holds.some((h) => isWarmupHoldId(h.holdId)) && (
                       <div className="-mx-2 mb-1 rounded-lg bg-teal-400/[0.06] px-2 py-1.5">
-                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-teal-300/80">
+                        <p className="mb-1 text-xs font-semibold text-teal-300/80">
                           Warm-up
                         </p>
                         <div className="flex flex-col gap-1">
@@ -768,7 +749,7 @@ export function ProgressScreen({
 
 function climbStyleBadge(style: ClimbRecord["style"]): string {
   if (style === "onsight") return "bg-green-500/20 text-green-400";
-  if (style === "flash") return "bg-blue-500/20 text-blue-400";
+  if (style === "flash") return "bg-yellow-500/20 text-yellow-400";
   if (style === "redpoint") return "bg-red-500/20 text-red-400";
   return "bg-gray-700 text-gray-400";
 }
@@ -791,34 +772,36 @@ type RangeSliderProps = {
 function RangeSlider({ max, start, end, startLabel, endLabel, onChange }: RangeSliderProps) {
   const pct = (v: number) => (max === 0 ? 0 : (v / max) * 100);
   const thumbCls =
-    "absolute inset-x-0 top-0 w-full h-6 appearance-none bg-transparent pointer-events-none " +
+    "absolute inset-x-0 top-0 w-full h-10 appearance-none bg-transparent pointer-events-none " +
     "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none " +
-    "[&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full " +
-    "[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-orange-500 " +
-    "[&::-webkit-slider-thumb]:cursor-pointer " +
-    "[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 " +
+    "[&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full " +
+    "[&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-accent-500 " +
+    "[&::-webkit-slider-thumb]:cursor-pointer focus:outline-none focus-visible:[&::-webkit-slider-thumb]:ring-2 focus-visible:[&::-webkit-slider-thumb]:ring-accent-400 " +
+    "[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 " +
     "[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 " +
-    "[&::-moz-range-thumb]:border-orange-500 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-solid";
+    "[&::-moz-range-thumb]:border-accent-500 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-solid";
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex justify-between text-[10px] text-gray-500 px-0.5">
+      <div className="flex justify-between text-xs text-gray-400 px-0.5">
         <span>{startLabel}</span>
         <span>{endLabel}</span>
       </div>
-      <div className="relative h-6">
+      <div className="relative h-10">
         <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1 bg-gray-700 rounded" />
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-1 bg-orange-500 rounded"
+          className="absolute top-1/2 -translate-y-1/2 h-1 bg-accent-500 rounded"
           style={{ left: `${pct(start)}%`, right: `${100 - pct(end)}%` }}
         />
         <input
           type="range" min={0} max={max} step={1} value={start}
+          aria-label="Range start"
           onChange={(e) => onChange(Math.min(Number(e.target.value), end), end)}
           className={thumbCls}
         />
         <input
           type="range" min={0} max={max} step={1} value={end}
+          aria-label="Range end"
           onChange={(e) => onChange(start, Math.max(Number(e.target.value), start))}
           className={thumbCls}
         />
@@ -887,6 +870,40 @@ function gymDataSummary(data: NonNullable<SessionRecord["gymData"]>): string {
     return parts.length > 0 ? parts.join(" · ") : "Logged";
   }
   return "";
+}
+
+function SectionHeading({ children }: { children: ReactNode }) {
+  return <h2 className="text-sm font-semibold text-gray-300">{children}</h2>;
+}
+
+function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex rounded-lg bg-gray-900/70 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          className={`flex-1 min-h-[38px] rounded-md text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
+            value === o.value ? "bg-accent-600 text-white" : "text-gray-400 hover:text-gray-200"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {

@@ -1,3 +1,5 @@
+@import "@fontsource-variable/archivo/wdth.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,4 +25,22 @@ body {
   position: fixed;
   inset: 0;
   overflow: hidden;
+}
+
+@layer base {
+  body {
+    font-family: "Archivo Variable", system-ui, sans-serif;
+    font-stretch: 96%;
+  }
+}
+
+@layer utilities {
+  /* Weights, grades, timers and rep counts are the content of this app, so they
+     get a condensed, heavy cut that reads from across the gym and lines up in columns. */
+  .font-num {
+    font-stretch: 72%;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
 }

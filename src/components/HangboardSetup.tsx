@@ -11,8 +11,6 @@ import { WeightAdjuster } from "./WeightAdjuster";
 import { getSessions } from "../lib/history";
 import { totalWorkoutSecs } from "../lib/workoutTime";
 import type { SessionRecord } from "../lib/history";
-import { buildTrend } from "../lib/progressData";
-import type { TrendPoint } from "../lib/progressData";
 import { overviewDelta } from "../lib/weightCues";
 import { IS_TEST_MODE } from "../lib/testMode";
 
@@ -30,54 +28,13 @@ function scrollCardIntoViewRef(el: HTMLDivElement | null) {
   }
 }
 
-// ─── SparkLine ────────────────────────────────────────────────────────────────
-
-function SparkLine({ points }: { points: TrendPoint[] }) {
-  if (points.length < 2) return <div className="w-[50px] h-5" />;
-
-  const weights = points.map((p) => p.weight);
-  const min = Math.min(...weights);
-  const max = Math.max(...weights);
-  const range = max - min || 1;
-  const W = 50;
-  const H = 20;
-  const pad = 2;
-
-  const coords = points.map((p, i) => {
-    const x = pad + (i / (points.length - 1)) * (W - pad * 2);
-    const y = H - pad - ((p.weight - min) / range) * (H - pad * 2);
-    return `${x},${y}`;
-  });
-
-  const lastWeight = weights[weights.length - 1];
-  const firstWeight = weights[0];
-  const color = lastWeight >= firstWeight ? "#22c55e" : "#6366f1";
-
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-[50px] h-5"
-      aria-hidden="true"
-    >
-      <polyline
-        points={coords.join(" ")}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 /** "vs last workout" cue on the setup overview: ▲ advancing, ▼ backing off. */
 function DeltaChip({ delta }: { delta: number | null }) {
   if (!delta) return null;
   const up = delta > 0;
   return (
     <span
-      className={`text-[10px] font-semibold tabular-nums ${up ? "text-green-400" : "text-red-400"}`}
+      className={`text-xs font-semibold tabular-nums ${up ? "text-green-400" : "text-red-400"}`}
     >
       {up ? "▲" : "▼"}{formatOffset(delta)}
     </span>
@@ -201,15 +158,16 @@ export function HangboardSetup() {
   return (
     <div className="flex flex-col gap-2">
       {/* Subtype picker */}
-      <div className="flex gap-2">
+      <div className="flex gap-1 rounded-xl bg-gray-800 p-1" role="group" aria-label="Hangboard workout">
         {workouts.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => handleSelectWorkout(id)}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-base transition-colors ${
+            aria-pressed={selectedWorkout === id}
+            className={`min-h-[40px] flex-1 rounded-lg text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               selectedWorkout === id
-                ? "bg-green-600 text-white"
-                : "bg-gray-800 text-gray-400"
+                ? "bg-accent-600 text-white"
+                : "text-gray-400 active:bg-gray-700"
             }`}
             data-testid={`workout-tab-${id}`}
           >
@@ -220,7 +178,7 @@ export function HangboardSetup() {
 
       {warmupHolds.length > 0 && (
         <>
-          <div className="mt-2 shrink-0 overflow-hidden rounded-xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
+          <div className="mt-2 shrink-0 overflow-hidden rounded-2xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
             <button
               type="button"
               onClick={() => setWarmupOpen((o) => !o)}
@@ -238,7 +196,7 @@ export function HangboardSetup() {
                 </p>
               </div>
               {!warmupFolds && (
-                <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+                <span className="font-num text-base text-teal-100/60">BW</span>
               )}
               {warmupFolds && (
                 <svg
@@ -262,7 +220,7 @@ export function HangboardSetup() {
                       <p className="text-gray-200 text-sm font-medium">{hold.name}</p>
                       <p className="text-gray-500 text-xs">{holdSummary(hold)}</p>
                     </div>
-                    <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+                    <span className="font-num text-base text-teal-100/60">BW</span>
                   </div>
                 ))}
               </div>
@@ -272,6 +230,7 @@ export function HangboardSetup() {
         </>
       )}
 
+      <div className="shrink-0 overflow-hidden rounded-2xl bg-gray-800 divide-y divide-gray-700/60">
       {mainHolds.map((hold) => {
         const stored = storedMap[hold.id] ?? {
           set1: hold.defaultSet1Weight,
@@ -283,66 +242,69 @@ export function HangboardSetup() {
         const inc = hold.setIncrement ?? 0;
         const editingS1 = editing?.holdId === hold.id && editing.set === 1;
         const editingS2 = editing?.holdId === hold.id && editing.set === 2;
-        const sparkPoints = buildTrend(sessions, hold.id, selectedWorkout === "max-hang" ? "max-hang" : "repeaters");
         const lastHold = lastHoldMap.get(hold.id);
         const delta1 = hold.isRestOnly || hold.skipProgression ? null : overviewDelta(stored.set1, lastHold, 1);
         const delta2 = isMultiSet && !is3Set ? overviewDelta(stored.set2, lastHold, 2) : null;
+        const weightBtn =
+          "min-h-[40px] -my-1 px-2 flex items-center gap-1.5 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
 
         return (
           <div
             key={hold.id}
-            className="bg-gray-800 rounded-xl overflow-hidden shrink-0"
+            className="shrink-0"
             data-testid={`hold-row-${hold.id}`}
           >
-            {/* Row header */}
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div>
+            <div className="pl-4 pr-2 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <p className="text-white font-medium">{hold.name}</p>
                 {selectedWorkout !== "repeaters" && (
-                  <p className="text-gray-500 text-xs">{repLabel(hold)}</p>
+                  <p className="text-gray-400 text-xs">{repLabel(hold)}</p>
                 )}
                 {selectedWorkout !== "repeaters" && timingLabel(hold) && (
-                  <p className="text-gray-600 text-xs">{timingLabel(hold)}</p>
+                  <p className="text-gray-500 text-xs">{timingLabel(hold)}</p>
                 )}
               </div>
               {hold.isRestOnly ? (
-                <span className="py-0.5 px-2 text-sm tabular-nums font-semibold text-gray-200">BW</span>
+                <span className="px-2 font-num text-2xl text-gray-300">BW</span>
               ) : (
-                <div className="flex items-center gap-2">
-                  <SparkLine points={sparkPoints} />
-                  <div className="flex flex-col items-end">
-                    <button
-                      onClick={() => toggleEdit(hold.id, 1)}
-                      className={`py-0.5 px-2 text-sm tabular-nums font-semibold transition-colors flex items-center gap-1.5 ${
-                        editingS1 ? "text-indigo-400" : "text-gray-200"
-                      }`}
-                      data-testid={`weight-${hold.id}-set1`}
-                    >
-                      <DeltaChip delta={delta1} />
-                      {is3Set
-                        ? `${formatWeight(stored.set1)} → ${formatWeight(stored.set1 + inc)} → ${formatWeight(stored.set1 + inc * 2)}`
-                        : formatWeight(stored.set1)}
-                    </button>
-                    {isMultiSet && !is3Set && (
-                      <button
-                        onClick={() => toggleEdit(hold.id, 2)}
-                        className={`py-0.5 px-2 text-sm tabular-nums transition-colors flex items-center gap-1.5 ${
-                          editingS2 ? "text-indigo-400" : "text-gray-500"
-                        }`}
-                        data-testid={`weight-${hold.id}-set2`}
-                      >
-                        <DeltaChip delta={delta2} />
-                        {formatWeight(stored.set2)}
-                      </button>
+                <div className="flex shrink-0 items-baseline">
+                  <button
+                    onClick={() => toggleEdit(hold.id, 1)}
+                    aria-expanded={editingS1}
+                    className={`${weightBtn} font-num text-2xl ${editingS1 ? "text-accent-400" : "text-white"}`}
+                    data-testid={`weight-${hold.id}-set1`}
+                  >
+                    <DeltaChip delta={delta1} />
+                    {is3Set ? (
+                      <span className="flex items-baseline gap-1.5">
+                        {formatWeight(stored.set1)}
+                        <span className="text-base font-normal text-gray-500" aria-hidden="true">→</span>
+                        {formatWeight(stored.set1 + inc)}
+                        <span className="text-base font-normal text-gray-500" aria-hidden="true">→</span>
+                        {formatWeight(stored.set1 + inc * 2)}
+                      </span>
+                    ) : (
+                      formatWeight(stored.set1)
                     )}
-                  </div>
+                  </button>
+                  {isMultiSet && !is3Set && (
+                    <button
+                      onClick={() => toggleEdit(hold.id, 2)}
+                      aria-expanded={editingS2}
+                      className={`${weightBtn} font-num text-lg ${editingS2 ? "text-accent-400" : "text-gray-400"}`}
+                      data-testid={`weight-${hold.id}-set2`}
+                    >
+                      <DeltaChip delta={delta2} />
+                      {formatWeight(stored.set2)}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Inline editor — S1 moves both sets together */}
             {editingS1 && (
-              <div ref={scrollCardIntoViewRef} className="border-t border-gray-700 px-4 py-4">
+              <div ref={scrollCardIntoViewRef} className="border-t border-gray-700/60 bg-gray-900/40 px-4 py-4">
                 <WeightAdjuster
                   value={stored.set1}
                   onDelta={(d) => {
@@ -356,7 +318,7 @@ export function HangboardSetup() {
 
             {/* Inline editor — S2 offset only */}
             {editingS2 && isMultiSet && (
-              <div ref={scrollCardIntoViewRef} className="border-t border-gray-700 px-4 py-4">
+              <div ref={scrollCardIntoViewRef} className="border-t border-gray-700/60 bg-gray-900/40 px-4 py-4">
                 <WeightAdjuster
                   value={stored.set2 - stored.set1}
                   onDelta={(d) => adjustNextWeight(hold.id, 2, d)}
@@ -368,14 +330,15 @@ export function HangboardSetup() {
           </div>
         );
       })}
+      </div>
 
       <div className="shrink-0 pt-4 pb-2">
         <button
           onClick={handleStart}
-          className="min-h-[64px] w-full rounded-2xl bg-green-600 active:bg-green-500 text-white font-bold text-2xl"
+          className="min-h-[60px] w-full rounded-2xl bg-accent-600 active:bg-accent-500 text-white font-bold text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
           data-testid="start-workout-btn"
         >
-          Start Workout
+          Start workout
         </button>
       </div>
     </div>

@@ -19,7 +19,7 @@ export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: st
   hangboard: { label: "Hangboard", bg: "bg-indigo-600", dot: "bg-indigo-400" },
   outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
   stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
-  cardio: { label: "Cardio", bg: "bg-emerald-600", dot: "bg-emerald-400" },
+  cardio: { label: "Cardio", bg: "bg-pink-600", dot: "bg-pink-400" },
   rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
 };
 

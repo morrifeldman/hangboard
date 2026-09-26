@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { CalendarIcon, GearIcon, NoteIcon } from "./icons";
+import { GearIcon, NoteIcon } from "./icons";
 import {
   addDays,
   buildScheduleWeeks,
@@ -33,6 +33,14 @@ function weekTitle(offset: number, weekStart: Date): string {
   return `Week of ${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()}`;
 }
 
+function weekRange(weekStart: Date): string {
+  const end = addDays(weekStart, 6);
+  const from = `${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()}`;
+  return end.getMonth() === weekStart.getMonth()
+    ? `${from}–${end.getDate()}`
+    : `${from} – ${MONTHS[end.getMonth()]} ${end.getDate()}`;
+}
+
 type Props = { onShowSettings: () => void };
 
 export function ScheduleScreen({ onShowSettings }: Props) {
@@ -41,6 +49,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [weekCount, setWeekCount] = useState(3);
   const [editingDate, setEditingDate] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const scrollRef = useScrollRestore<HTMLElement>("schedule", schedules.length > 0 || sessions.length > 0);
 
   useEffect(() => {
@@ -50,7 +59,8 @@ export function ScheduleScreen({ onShowSettings }: Props) {
         setSessions(sess);
         setClimbs(c);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
 
   // Anchor the current week, then start the view one week earlier so recent
@@ -90,19 +100,23 @@ export function ScheduleScreen({ onShowSettings }: Props) {
   return (
     <div className="h-full bg-gray-900 flex flex-col" data-testid="schedule-screen">
       <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <CalendarIcon className="text-white" aria-label="Schedule" />
         <h1 className="text-white font-bold text-lg">Schedule</h1>
         <button
           onClick={onShowSettings}
           aria-label="Open settings"
           data-testid="open-settings"
-          className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
+          className="ml-auto -mr-2 p-2 rounded-lg text-gray-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <GearIcon size={22} />
         </button>
       </header>
 
       <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
+        {loaded && schedules.length === 0 && (
+          <p className="text-gray-400 text-sm" data-testid="schedule-hint">
+            Tap a day to plan it. Its dot turns into a tick once you log it.
+          </p>
+        )}
         {weeks.map((week, wIdx) => {
           const ws = new Date(week[0].jsDate);
           const offset = Math.round(
@@ -114,8 +128,11 @@ export function ScheduleScreen({ onShowSettings }: Props) {
               className="flex flex-col gap-2"
               data-testid={`schedule-week-${wIdx}`}
             >
-              <h2 className="text-gray-300 font-semibold text-sm uppercase tracking-wide">
-                {weekTitle(offset, ws)}
+              <h2 className="flex items-baseline gap-2 text-sm">
+                <span className="font-semibold text-gray-200">{weekTitle(offset, ws)}</span>
+                {Math.abs(offset) <= 1 && (
+                  <span className="text-gray-500">{weekRange(ws)}</span>
+                )}
               </h2>
               <div className="grid grid-cols-7 gap-1">
                 {week.map((day, i) => (
@@ -133,18 +150,11 @@ export function ScheduleScreen({ onShowSettings }: Props) {
 
         <button
           onClick={() => setWeekCount((n) => n + 2)}
-          className="w-full py-2.5 rounded-xl bg-gray-800 active:bg-gray-700 text-gray-300 font-medium text-sm"
+          className="self-center px-5 py-2.5 rounded-lg border border-gray-700 text-gray-400 font-medium text-sm hover:text-gray-200 active:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           data-testid="schedule-load-more"
         >
           Load 2 more weeks
         </button>
-
-        <p className="text-gray-600 text-xs leading-relaxed">
-          Tap a day to plan one or more of Power, Endurance, Hangboard, Outdoor,
-          Stretching, Cardio, or Rest. Each plan shows a colored dot — it
-          turns into a checkmark once you log something that fits, or a struck
-          dot if a past day went unlogged.
-        </p>
       </main>
 
       {editingDay && (
@@ -170,7 +180,11 @@ function DayChip({
   letter: string;
   onClick: () => void;
 }) {
-  const ring = day.isToday ? "ring-2 ring-white/70" : "";
+  const tone = day.isToday
+    ? "bg-accent-500/10 ring-2 ring-accent-400 text-white"
+    : day.isPast
+      ? "bg-gray-800/50 text-gray-400"
+      : "bg-gray-800 text-white";
   const statusAttr = day.typeStatus.map((s) => `${s.type}:${s.state}`).join(",");
   return (
     <button
@@ -179,17 +193,24 @@ function DayChip({
       data-day-types={day.dayTypes.join(",")}
       data-type-status={statusAttr}
       data-adherence={day.adherence}
-      className={`relative aspect-square rounded-lg bg-gray-800 ${ring} flex flex-col items-center justify-center text-white active:scale-95 transition-transform`}
+      aria-current={day.isToday ? "date" : undefined}
+      className={`relative aspect-square rounded-lg ${tone} flex flex-col items-center justify-center active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300`}
     >
-      <span className="text-[10px] leading-none text-white/70">{letter}</span>
-      <span className="text-base font-bold leading-tight">
+      <span
+        className={`text-[10px] leading-none font-medium ${
+          day.isToday ? "text-accent-300" : "opacity-70"
+        }`}
+      >
+        {letter}
+      </span>
+      <span className="font-num text-lg leading-tight">
         {day.jsDate.getDate()}
       </span>
       <TypeRow statuses={day.typeStatus} />
       {day.note && (
         <NoteIcon
           size={14}
-          className="absolute top-1 right-1 text-white/90"
+          className="absolute top-1 right-1 opacity-80"
           aria-label="Has note"
         />
       )}
@@ -315,7 +336,7 @@ function EditSheet({
         <div className="flex flex-col gap-0.5">
           <h2 className="text-white font-semibold text-base">{dateLabel}</h2>
           <p className="text-gray-400 text-xs">
-            Plan this day — tap to add or remove
+            Tap to add or remove a plan
           </p>
         </div>
 
@@ -359,10 +380,13 @@ function EditSheet({
               onClick={() => toggle(t)}
               data-testid={`schedule-pick-${t}`}
               aria-pressed={selected.has(t)}
-              className={`py-3 rounded-xl text-white font-semibold text-sm ${SCHEDULE_TYPE_META[t].bg} ${
-                selected.has(t) ? "ring-2 ring-white/70" : "opacity-60"
-              } active:scale-95 transition-transform`}
+              className={`flex items-center gap-2 px-3 py-3 rounded-lg font-semibold text-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 ${
+                selected.has(t)
+                  ? "bg-gray-700 text-white ring-2 ring-accent-400"
+                  : "bg-gray-900/60 text-gray-400"
+              }`}
             >
+              <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${SCHEDULE_TYPE_META[t].dot}`} />
               {SCHEDULE_TYPE_META[t].label}
             </button>
           ))}
@@ -381,7 +405,7 @@ function EditSheet({
             onChange={(e) => setNote(e.target.value)}
             placeholder="How did it go? (optional)"
             rows={3}
-            className="w-full rounded-lg bg-gray-900 text-white text-sm px-3 py-2 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-white/30 resize-none"
+            className="w-full rounded-lg bg-gray-900 text-white text-sm px-3 py-2 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-400/70 resize-none"
             data-testid="schedule-note-input"
           />
         </div>
@@ -390,7 +414,7 @@ function EditSheet({
           <button
             onClick={() => onSave(orderedSelected, note)}
             disabled={!dirty}
-            className="w-full py-2.5 rounded-xl bg-green-600 active:bg-green-700 disabled:opacity-40 text-white font-semibold text-sm"
+            className="w-full py-3 rounded-lg bg-accent-600 active:bg-accent-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm"
             data-testid="schedule-save"
           >
             Save
@@ -398,7 +422,7 @@ function EditSheet({
           <div className="flex gap-2">
             <button
               onClick={onCancel}
-              className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm"
+              className="flex-1 py-3 rounded-lg bg-gray-700 active:bg-gray-600 text-white font-semibold text-sm"
               data-testid="schedule-cancel"
             >
               Cancel
@@ -406,7 +430,7 @@ function EditSheet({
             <button
               onClick={onClear}
               disabled={day.dayTypes.length === 0 && !day.note}
-              className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white font-semibold text-sm"
+              className="flex-1 py-3 rounded-lg bg-gray-700 active:bg-gray-600 disabled:text-gray-500 text-white font-semibold text-sm"
               data-testid="schedule-clear"
             >
               Clear

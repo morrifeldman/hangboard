@@ -16,7 +16,7 @@ export function TimerRing({
   duration,
   label,
   sublabel,
-  color = "stroke-indigo-400",
+  color = "stroke-accent-400",
   onClick,
   paused,
 }: TimerRingProps) {
@@ -26,7 +26,7 @@ export function TimerRing({
   return (
     <div className="flex flex-col items-center gap-2">
       <div
-        className={`w-44 h-44 relative ${onClick ? "cursor-pointer" : ""}`}
+        className={`w-64 h-64 relative ${onClick ? "cursor-pointer" : ""}`}
         onClick={onClick}
       >
         <svg
@@ -41,8 +41,8 @@ export function TimerRing({
             r={RADIUS}
             fill="none"
             stroke="currentColor"
-            strokeWidth="6"
-            className="text-gray-700"
+            strokeWidth="5"
+            className="text-white/10"
           />
           {/* Progress arc */}
           <circle
@@ -50,7 +50,7 @@ export function TimerRing({
             cy="50"
             r={RADIUS}
             fill="none"
-            strokeWidth="6"
+            strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={dashoffset}
@@ -63,19 +63,19 @@ export function TimerRing({
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {paused ? (
             <>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="white" className="opacity-80">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="white" className="opacity-80">
                 <rect x="6" y="4" width="4" height="16" rx="1" />
                 <rect x="14" y="4" width="4" height="16" rx="1" />
               </svg>
-              <span className="text-sm font-medium text-gray-400 mt-1">PAUSED</span>
+              <span className="text-lg font-medium text-gray-300 mt-1">Paused</span>
             </>
           ) : (
             <>
-              <span className="text-5xl font-bold tabular-nums text-white">
+              <span className="font-num text-[112px] leading-none text-white">
                 {Math.ceil(remaining)}
               </span>
               {label && (
-                <span className="text-sm font-medium text-gray-400 mt-1">{label}</span>
+                <span className="text-lg font-medium text-gray-300 mt-2">{label}</span>
               )}
             </>
           )}

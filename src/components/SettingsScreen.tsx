@@ -26,7 +26,7 @@ import {
   unregisterPeriodicReminder,
 } from "../lib/notifications";
 import type { NotificationPrefs, PeriodicReminderSupport } from "../lib/notifications";
-import { BackChevronIcon, GearIcon } from "./icons";
+import { BackChevronIcon } from "./icons";
 
 type Props = {
   onBack: () => void;
@@ -237,12 +237,12 @@ export function SettingsScreen({ onBack }: Props) {
         >
           <BackChevronIcon />
         </button>
-        <GearIcon className="text-white" aria-label="Settings" />
+        <h1 className="text-white font-bold text-lg">Settings</h1>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
-        <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3">
-          <h2 className="text-white font-semibold text-base">Backup &amp; Restore</h2>
+      <main className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col divide-y divide-gray-800">
+        <section className="py-6 flex flex-col gap-3">
+          <h2 className="text-white font-semibold text-base">Backup and restore</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
             Your workouts, climbs, weights, and settings live only in this browser. Export a JSON
             file you can re-import here later or on another device.
@@ -260,7 +260,7 @@ export function SettingsScreen({ onBack }: Props) {
             <button
               onClick={handleBackup}
               disabled={restoring}
-              className="w-full py-3 rounded-xl bg-green-600 active:bg-green-500 disabled:opacity-50 text-white font-semibold text-base"
+              className="w-full py-3 rounded-lg bg-accent-600 active:bg-accent-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
               data-testid="settings-backup"
             >
               Download backup
@@ -272,7 +272,7 @@ export function SettingsScreen({ onBack }: Props) {
                 fileInputRef.current?.click();
               }}
               disabled={restoring}
-              className="w-full py-3 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white font-semibold text-base"
+              className="w-full py-3 rounded-lg bg-gray-800 active:bg-gray-700 border border-gray-700 disabled:text-gray-600 disabled:border-gray-800 text-gray-200 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
               data-testid="settings-restore"
             >
               Restore from file…
@@ -287,14 +287,46 @@ export function SettingsScreen({ onBack }: Props) {
           </div>
 
           {status && (
-            <p className="text-green-400 text-sm" data-testid="settings-status">{status}</p>
+            <p className="text-accent-300 text-sm" data-testid="settings-status">{status}</p>
           )}
           {error && (
             <p className="text-red-400 text-sm" data-testid="settings-error">{error}</p>
           )}
+          {pending && (
+            <div className="bg-red-950/40 border border-red-700/60 rounded-2xl p-4 flex flex-col gap-3">
+              <h3 className="text-red-200 font-semibold text-base">Confirm restore</h3>
+              <p className="text-red-100 text-sm leading-relaxed">
+                This will <strong>replace</strong> everything currently stored on this device with
+                the contents of <span className="font-mono">{pending.fileName}</span>:
+                {" "}{pending.sessionCount} session{pending.sessionCount === 1 ? "" : "s"},{" "}
+                {pending.climbCount} climb{pending.climbCount === 1 ? "" : "s"}, and{" "}
+                {pending.noteCount} note{pending.noteCount === 1 ? "" : "s"}.
+              </p>
+              <p className="text-red-200 text-xs">
+                Tip: download a backup of your current data first if you might want it back.
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setPending(null)}
+                  disabled={restoring}
+                  className="flex-1 py-3 rounded-lg bg-gray-700 active:bg-gray-600 disabled:text-gray-500 text-white font-semibold text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRestore}
+                  disabled={restoring}
+                  className="flex-1 py-3 rounded-lg bg-red-600 active:bg-red-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm"
+                  data-testid="settings-confirm-restore"
+                >
+                  {restoring ? "Restoring…" : "Replace everything"}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
-        <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3" data-testid="settings-mountain-project">
+        <section className="py-6 flex flex-col gap-3" data-testid="settings-mountain-project">
           <h2 className="text-white font-semibold text-base">Mountain Project</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
             Pull your ticks in from Mountain Project. Every import{" "}
@@ -312,7 +344,7 @@ export function SettingsScreen({ onBack }: Props) {
             value={mpUrl}
             onChange={(e) => setMpUrl(e.target.value)}
             placeholder="https://www.mountainproject.com/user/.../tick-export"
-            className="w-full px-3 py-2 rounded-lg bg-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full h-10 px-3 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-accent-500/60"
             data-testid="settings-mp-url"
           />
 
@@ -320,7 +352,7 @@ export function SettingsScreen({ onBack }: Props) {
             <button
               onClick={handleMpRefresh}
               disabled={mpBusy || !mpUrl.trim()}
-              className="w-full py-3 rounded-xl bg-green-600 active:bg-green-500 disabled:opacity-50 text-white font-semibold text-base flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-lg bg-accent-600 active:bg-accent-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 flex items-center justify-center gap-2"
               data-testid="settings-mp-refresh"
             >
               {mpBusy && (
@@ -340,7 +372,7 @@ export function SettingsScreen({ onBack }: Props) {
               <button
                 onClick={() => mpFileInputRef.current?.click()}
                 disabled={mpBusy}
-                className="flex-1 py-3 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white font-semibold text-base"
+                className="flex-1 py-3 rounded-lg bg-gray-800 active:bg-gray-700 border border-gray-700 disabled:text-gray-600 disabled:border-gray-800 text-gray-200 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
                 data-testid="settings-mp-file"
               >
                 Upload CSV…
@@ -348,7 +380,7 @@ export function SettingsScreen({ onBack }: Props) {
               <button
                 onClick={handleMpClear}
                 disabled={mpBusy || !mpUrl}
-                className="px-4 py-3 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white font-semibold text-base"
+                className="px-5 py-3 rounded-lg bg-gray-800 active:bg-gray-700 border border-gray-700 disabled:text-gray-600 disabled:border-gray-800 text-gray-200 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
                 data-testid="settings-mp-clear"
               >
                 Clear
@@ -364,45 +396,45 @@ export function SettingsScreen({ onBack }: Props) {
           </div>
 
           {mpStatus && (
-            <p className="text-green-400 text-sm" data-testid="settings-mp-status">{mpStatus}</p>
+            <p className="text-accent-300 text-sm" data-testid="settings-mp-status">{mpStatus}</p>
           )}
           {mpError && (
             <p className="text-red-400 text-sm" data-testid="settings-mp-error">{mpError}</p>
           )}
         </section>
 
-        <section className="bg-gray-800 rounded-xl p-4 flex flex-col gap-3" data-testid="settings-notifications">
+        <section className="py-6 flex flex-col gap-3" data-testid="settings-notifications">
           <h2 className="text-white font-semibold text-base">Daily reminder</h2>
           <p className="text-gray-400 text-sm leading-relaxed">
-            Notification when today has a planned workout, once per day at or
-            after your chosen time. Fires on app open, and — on an installed
-            Android PWA — in the background too.
+            Get one notification on days with a planned workout, at or after
+            the time you choose.
           </p>
-          <label className="flex items-center justify-between gap-3">
+          <label className="flex min-h-10 items-center justify-between gap-3">
             <span className="text-white text-sm">Enable</span>
             <input
               type="checkbox"
+              role="switch"
               checked={notifPrefs.enabled}
               onChange={handleToggleNotif}
               disabled={notifPermission === "unsupported"}
-              className="w-5 h-5 accent-green-600"
+              className="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-gray-600 transition-colors checked:bg-accent-600 disabled:cursor-default disabled:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5 disabled:before:bg-gray-500 motion-reduce:before:transition-none"
               data-testid="settings-notif-toggle"
             />
           </label>
-          <label className="flex items-center justify-between gap-3">
+          <label className="flex min-h-10 items-center justify-between gap-3">
             <span className="text-white text-sm">Time</span>
             <input
               type="time"
               value={notifPrefs.time}
               onChange={(e) => handleTimeChange(e.target.value)}
-              className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+              className="h-10 px-3 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm [color-scheme:dark] focus:outline-none focus:border-accent-500/60"
               data-testid="settings-notif-time"
             />
           </label>
           <button
             onClick={handleTestNotif}
             disabled={notifPermission === "unsupported"}
-            className="self-start px-3 py-1.5 rounded-lg bg-gray-700 active:bg-gray-600 disabled:opacity-40 text-white text-xs font-semibold"
+            className="self-start px-4 py-2.5 rounded-lg bg-gray-800 active:bg-gray-700 border border-gray-700 disabled:text-gray-600 disabled:border-gray-800 text-gray-200 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
             data-testid="settings-notif-test"
           >
             Send test notification
@@ -414,8 +446,8 @@ export function SettingsScreen({ onBack }: Props) {
           )}
           {notifPermission === "denied" && (
             <p className="text-amber-400 text-xs">
-              Browser notifications are blocked — enable them in your browser or
-              OS settings to receive reminders.
+              Notifications are blocked. Allow them in your browser or phone
+              settings to get reminders.
             </p>
           )}
           {notifPermission === "unsupported" && (
@@ -425,9 +457,8 @@ export function SettingsScreen({ onBack }: Props) {
           )}
           {notifPrefs.enabled && bgStatus === "granted" && (
             <p className="text-gray-500 text-xs leading-relaxed">
-              Background reminders are on. Timing is approximate — Android
-              decides when to wake the app (roughly daily), so the alert may
-              arrive a while after your set time.
+              Reminders also arrive when the app is closed. Android decides
+              when to wake it, so one may come a while after your set time.
             </p>
           )}
           {notifPrefs.enabled && bgStatus !== "granted" && (
@@ -439,38 +470,6 @@ export function SettingsScreen({ onBack }: Props) {
           )}
         </section>
 
-        {pending && (
-          <section className="bg-red-950/40 border border-red-700/60 rounded-xl p-4 flex flex-col gap-3">
-            <h3 className="text-red-200 font-semibold text-base">Confirm restore</h3>
-            <p className="text-red-100 text-sm leading-relaxed">
-              This will <strong>replace</strong> everything currently stored on this device with
-              the contents of <span className="font-mono">{pending.fileName}</span>:
-              {" "}{pending.sessionCount} session{pending.sessionCount === 1 ? "" : "s"},{" "}
-              {pending.climbCount} climb{pending.climbCount === 1 ? "" : "s"}, and{" "}
-              {pending.noteCount} note{pending.noteCount === 1 ? "" : "s"}.
-            </p>
-            <p className="text-red-200 text-xs">
-              Tip: download a backup of your current data first if you might want it back.
-            </p>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setPending(null)}
-                disabled={restoring}
-                className="flex-1 py-2.5 rounded-xl bg-gray-700 active:bg-gray-600 disabled:opacity-50 text-white font-semibold text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmRestore}
-                disabled={restoring}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 active:bg-red-500 disabled:opacity-50 text-white font-semibold text-sm"
-                data-testid="settings-confirm-restore"
-              >
-                {restoring ? "Restoring…" : "Replace everything"}
-              </button>
-            </div>
-          </section>
-        )}
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Layers, Repeat, Trophy } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Repeat, Trophy } from "lucide-react";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
@@ -69,17 +69,17 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
         <button
           onClick={onBack}
           aria-label="Back"
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
+          className="text-gray-400 hover:text-white transition-colors p-2 -ml-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <BackChevronIcon />
         </button>
-        <Layers size={24} className="text-white" aria-label="Scrolling Pyramids" />
+        <h1 className="text-white text-xl font-bold">Over time</h1>
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setShowSendsOnly((v) => !v)}
-            className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
+            className={`flex items-center px-2.5 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               showSendsOnly
-                ? "bg-indigo-600 text-white"
+                ? "bg-accent-600 text-white"
                 : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
             }`}
             title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
@@ -90,9 +90,9 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           </button>
           <button
             onClick={() => setShowCounts((v) => !v)}
-            className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
+            className={`flex items-center px-2.5 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               showCounts
-                ? "bg-indigo-600 text-white"
+                ? "bg-accent-600 text-white"
                 : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
             }`}
             title="Toggle per-grade counts and cumulative bars"
@@ -103,9 +103,9 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           </button>
           <button
             onClick={() => setShowSessionCounts((v) => !v)}
-            className={`flex items-center px-2 py-1.5 rounded-md transition-colors ${
+            className={`flex items-center px-2.5 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               showSessionCounts
-                ? "bg-indigo-600 text-white"
+                ? "bg-accent-600 text-white"
                 : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
             }`}
             title={
@@ -120,7 +120,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           </button>
           <button
             onClick={() => setNewestFirst((v) => !v)}
-            className="flex items-center px-2 py-1.5 rounded-md bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            className="flex items-center px-2.5 py-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
             title={newestFirst ? "Newest first — tap to reverse" : "Oldest first — tap to reverse"}
             aria-label={newestFirst ? "Sort: newest first" : "Sort: oldest first"}
           >
@@ -134,10 +134,11 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           <button
             key={k.key}
             onClick={() => setKind(k.key)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+            aria-pressed={kind === k.key}
+            className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
               kind === k.key
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-800 text-gray-400"
+                ? "bg-accent-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:text-gray-200"
             }`}
           >
             {k.label}
@@ -154,7 +155,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           <p className="text-gray-500 text-sm">No climbs logged for this view yet.</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+        <div className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col divide-y divide-gray-800">
           {windows.map((w) => (
             <SeasonCard
               key={w.id}
@@ -167,7 +168,6 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
               onClimbClick={(c) => setSelectedRoute(c.route)}
             />
           ))}
-          <div className="h-4" />
         </div>
       )}
 
@@ -215,11 +215,11 @@ function SeasonCard({
   const totalLabel = showSendsOnly ? "send" : "climb";
 
   return (
-    <div className="bg-gray-800 rounded-xl px-4 py-3">
+    <section className="py-5">
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-white font-semibold">{window.label}</h2>
-        <span className="text-gray-400 text-xs">
-          {total} {totalLabel}{total === 1 ? "" : "s"}
+        <h2 className="text-white text-lg font-semibold">{window.label}</h2>
+        <span className="text-gray-400 text-sm">
+          <span className="font-num text-gray-200">{total}</span> {totalLabel}{total === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -233,10 +233,10 @@ function SeasonCard({
           showCounts={showCounts}
           showSessionCounts={showSessionCounts}
           onClimbClick={onClimbClick}
-          gutterBgClass="bg-gray-800"
+          gutterBgClass="bg-gray-900"
         />
       )}
-    </div>
+    </section>
   );
 }
 

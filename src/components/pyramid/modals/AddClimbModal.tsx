@@ -11,7 +11,7 @@ type Props = {
   onAddClimb: () => void;
 };
 
-const INPUT = "w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-500";
+const INPUT = "w-full px-3 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 placeholder-gray-500";
 
 export function AddClimbModal({ isOpen, onClose, newClimb, setNewClimb, onAddClimb }: Props) {
   if (!isOpen) return null;
@@ -24,13 +24,13 @@ export function AddClimbModal({ isOpen, onClose, newClimb, setNewClimb, onAddCli
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-800 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-white">Add New Climb</h3>
+          <h3 className="text-lg font-semibold mb-4 text-white">Add climb</h3>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Route Name</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Route name</label>
               <input
                 type="text"
                 value={newClimb.route}
@@ -132,7 +132,7 @@ export function AddClimbModal({ isOpen, onClose, newClimb, setNewClimb, onAddCli
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Notes (Optional)</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Notes (optional)</label>
               <textarea
                 value={newClimb.notes || ""}
                 onChange={(e) => setNewClimb({ ...newClimb, notes: e.target.value })}
@@ -146,13 +146,13 @@ export function AddClimbModal({ isOpen, onClose, newClimb, setNewClimb, onAddCli
           <div className="flex gap-3 mt-6">
             <button
               onClick={handleSubmit}
-              className="flex-1 bg-green-600 text-white py-2 px-4 rounded-xl hover:bg-green-700 transition-colors"
+              className="flex-1 bg-accent-600 text-white font-semibold py-2.5 px-4 rounded-lg hover:bg-accent-700 transition-colors"
             >
-              Add Climb
+              Add climb
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-700 text-gray-300 py-2 px-4 rounded-xl hover:bg-gray-600 transition-colors"
+              className="flex-1 bg-gray-700 text-gray-300 font-semibold py-2.5 px-4 rounded-lg hover:bg-gray-600 transition-colors"
             >
               Cancel
             </button>

@@ -69,7 +69,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
       : 0;
 
   // For isRestOnly holds the label becomes the exercise name
-  const barLabel = hold.isRestOnly ? hold.name.toUpperCase() : "BREAK";
+  const barLabel = hold.isRestOnly ? hold.name : "Break";
 
 
   const upNextHold = betweenSets ? hold : nextHold;
@@ -92,12 +92,12 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
       )}
       <div className="w-full flex justify-between">
         <div>
-          <p className="text-gray-500 text-xs uppercase tracking-wide">Last</p>
+          <p className="text-gray-500 text-sm">Last</p>
           <p className="text-white font-semibold">{lastLabel}</p>
         </div>
         {upNextLabel && (
           <div className="text-right">
-            <p className="text-gray-500 text-xs uppercase tracking-wide">Up next</p>
+            <p className="text-gray-500 text-sm">Up next</p>
             <p className="text-white font-bold text-2xl leading-tight">{upNextLabel}</p>
             {upNextDiff !== 0 && (
               <span
@@ -125,17 +125,17 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
                 <rect x="6" y="4" width="4" height="16" rx="1" />
                 <rect x="14" y="4" width="4" height="16" rx="1" />
               </svg>
-              <span className="text-sm font-medium text-gray-400">PAUSED</span>
+              <span className="text-base font-medium text-gray-300">Paused</span>
             </div>
           ) : (
             <>
-              <span className="text-5xl font-bold tabular-nums text-white">
+              <span className="font-num text-[88px] leading-none text-white">
                 {Math.ceil(remaining)}
               </span>
-              <span className="text-sm font-medium text-gray-400">{barLabel}</span>
+              <span className="text-base font-medium text-gray-300">{barLabel}</span>
             </>
           )}
-          <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
+          <div className="w-full bg-white/10 rounded-full h-1.5 mt-1">
             <div
               className="bg-blue-400 h-1.5 rounded-full transition-all duration-100"
               style={{ width: `${progress * 100}%` }}
@@ -146,7 +146,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
 
       {/* Next set weight adjuster — between sets of the same hold */}
       {betweenSets && !hold.skipProgression && (
-        <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">
+        <div className="w-full bg-gray-800 rounded-2xl p-3 space-y-2">
           <p className="text-gray-400 text-sm text-center">Set {setNumber + 1}</p>
           <WeightAdjuster
             value={effectiveWeight(hold.id, setNumber + 1)}
@@ -160,7 +160,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
 
       {/* Progression panels — between holds, for non-skipProgression holds */}
       {betweenHolds && !hold.skipProgression && (
-        <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">
+        <div className="w-full bg-gray-800 rounded-2xl p-3 space-y-2">
           <p className="text-gray-400 text-sm text-center">Next workout — {hold.name}</p>
           <WeightAdjuster
             value={stored.set1}
@@ -172,7 +172,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
       {betweenHolds && nextHold && !nextHold.isRestOnly && !isWarmup(nextHold) && (() => {
         const nextStored = storedMap[nextHold.id] ?? { set1: nextHold.defaultSet1Weight, set2: nextHold.defaultSet2Weight };
         return (
-          <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">
+          <div className="w-full bg-gray-800 rounded-2xl p-3 space-y-2">
             <p className="text-gray-400 text-sm text-center">Up next — {nextHold.name}</p>
             <WeightAdjuster
               value={nextStored.set1}
@@ -185,10 +185,11 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
       {!hold.isRestOnly && (
         <button
           onClick={onToggleFailed}
-          className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+          aria-pressed={isFailed}
+          className={`w-full min-h-[40px] rounded-lg text-sm font-semibold transition-colors ${
             isFailed
               ? "bg-red-900/50 text-red-400 border border-red-700/50"
-              : "bg-gray-800 text-gray-600 border border-gray-700"
+              : "text-gray-400 border border-gray-700"
           }`}
         >
           Failed last set
@@ -222,16 +223,16 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
       ) : (
         <button
           onClick={() => setNotesExpanded(true)}
-          className="w-full py-1.5 text-sm text-gray-500 bg-gray-800 rounded-lg border border-gray-700"
+          className="w-full min-h-[40px] text-sm text-gray-400 rounded-lg border border-gray-700"
         >
-          Add notes...
+          Add notes
         </button>
       )}
 
       <div className="flex w-full gap-3">
         <button
           onClick={advancePhase}
-          className="min-h-[44px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-white font-bold text-lg"
+          className="min-h-[44px] flex-1 rounded-xl bg-white/10 active:bg-white/20 text-white font-bold text-lg"
           data-testid="skip-break-btn"
         >
           {betweenHolds && !nextHold ? "Done" : "Skip break"}
@@ -239,16 +240,16 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         {betweenSets && (
           <button
             onClick={skipNextSet}
-            className="min-h-[44px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-gray-300 font-semibold text-base"
+            className="min-h-[44px] flex-1 rounded-xl bg-white/10 active:bg-white/20 text-gray-200 font-semibold text-base"
             data-testid="skip-next-set-btn"
           >
-            Skip Set {setNumber + 1}
+            Skip set {setNumber + 1}
           </button>
         )}
         {betweenHolds && nextHold && !hold.isRestOnly && (
           <button
             onClick={skipNextHold}
-            className="min-h-[44px] flex-1 rounded-xl bg-gray-700 active:bg-gray-600 text-gray-300 font-semibold text-base"
+            className="min-h-[44px] flex-1 rounded-xl bg-white/10 active:bg-white/20 text-gray-200 font-semibold text-base"
             data-testid="skip-next-hold-btn"
           >
             Skip next hold

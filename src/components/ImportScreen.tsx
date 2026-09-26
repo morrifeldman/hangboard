@@ -18,14 +18,14 @@ function SetDot({ completed, onClick }: { completed: boolean; onClick: () => voi
       onClick={onClick}
       className={`w-5 h-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
         completed
-          ? "border-green-500/60 bg-green-500/20"
+          ? "border-accent-500/60 bg-accent-500/20"
           : "border-red-400/60 bg-red-400/20"
       }`}
       aria-label={completed ? "Mark as failed" : "Mark as completed"}
     >
       {completed ? (
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
+          strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-accent-400">
           <polyline points="20 6 9 17 4 12" />
         </svg>
       ) : (
@@ -370,12 +370,12 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     return (
       <div
         key={hold.id}
-        className="px-4 py-2.5 flex flex-col border-b border-gray-700 last:border-0"
+        className="px-4 py-2.5 flex flex-col border-b border-gray-700/60 last:border-0"
       >
         {sectionStart && (
           <p
-            className={`-mx-4 -mt-2.5 mb-2.5 px-4 py-1.5 border-b border-gray-700 bg-gray-900/40 text-[10px] font-semibold uppercase tracking-wider ${
-              warmup ? "text-teal-300" : "text-gray-400"
+            className={`-mx-4 -mt-2.5 mb-2.5 px-4 py-2 border-b border-gray-700/60 bg-gray-900/40 text-xs font-semibold ${
+              warmup ? "text-teal-300" : "text-gray-300"
             }`}
           >
             {sectionStart}
@@ -393,7 +393,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                 width="11" height="11" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2.5"
                 strokeLinecap="round" strokeLinejoin="round"
-                className={`flex-shrink-0 transition-colors ${hasNote ? "text-indigo-400" : "text-gray-700"}`}
+                className={`flex-shrink-0 transition-colors ${hasNote ? "text-accent-400" : "text-gray-600"}`}
               >
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -405,9 +405,9 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             </span>
           )}
           {warmup ? (
-            <span className="text-teal-300/90 text-xs font-medium tabular-nums">{warmupVolume(warmupReps(hold))}</span>
+            <span className="text-teal-300/90 text-sm font-num">{warmupVolume(warmupReps(hold))}</span>
           ) : hold.isRestOnly || hold.skipProgression ? (
-            <span className="text-gray-500 text-xs font-mono">BW</span>
+            <span className="text-gray-400 text-base font-num">BW</span>
           ) : numSets === 1 && (
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
@@ -427,7 +427,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               <div key={setKey} className="flex flex-col items-center gap-1">
                 <div className="flex items-center gap-1">
                   {editing && <SetDot completed={completed} onClick={() => toggleCompletion(hold.id, setKey)} />}
-                  <span className="text-gray-500 text-[10px] uppercase tracking-wide">Set {s + 1}</span>
+                  <span className="text-gray-500 text-xs">Set {s + 1}</span>
                 </div>
                 <WeightStepper label={`${hold.name} set ${s + 1}`} value={value} struck={!completed}
                   onChange={(v) => update(i, v)} />
@@ -437,7 +437,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         )}
         {/* Next-session target captured when the workout was saved */}
         {editing && nextLabel && (
-          <p className={`text-xs font-mono text-right mt-1 ${nextClass}`}>
+          <p className={`text-xs text-right mt-1 ${nextClass}`}>
             Next: {nextLabel}{nextArrow}
           </p>
         )}
@@ -455,7 +455,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               rows={1}
               className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
                          placeholder-gray-600 resize-none border border-gray-700
-                         focus:outline-none focus:border-indigo-500/50"
+                         focus:outline-none focus:border-accent-500/60"
             />
             <textarea
               value={setNotesState[hold.id]?.set1 ?? ""}
@@ -469,7 +469,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               rows={1}
               className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
                          placeholder-gray-600 resize-none border border-gray-700
-                         focus:outline-none focus:border-indigo-500/50"
+                         focus:outline-none focus:border-accent-500/60"
             />
             {numSets >= 2 && (
               <textarea
@@ -484,7 +484,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                 rows={1}
                 className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
                            placeholder-gray-600 resize-none border border-gray-700
-                           focus:outline-none focus:border-indigo-500/50"
+                           focus:outline-none focus:border-accent-500/60"
               />
             )}
             {numSets >= 3 && (
@@ -500,7 +500,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                 rows={1}
                 className="w-full bg-gray-700/50 text-white rounded-lg px-3 py-2 text-xs
                            placeholder-gray-600 resize-none border border-gray-700
-                           focus:outline-none focus:border-indigo-500/50"
+                           focus:outline-none focus:border-accent-500/60"
               />
             )}
           </div>
@@ -520,7 +520,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           <BackChevronIcon />
         </button>
         <h1 className="text-white font-bold text-lg">
-          {editing ? "Edit Workout" : "Log Past Workout"}
+          {editing ? "Edit workout" : "Log past workout"}
         </h1>
       </header>
 
@@ -533,13 +533,13 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             type="date"
             value={dateValue}
             onChange={(e) => setDateValue(e.target.value)}
-            className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+            className="flex-1 min-w-0 h-10 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 [color-scheme:dark] focus:outline-none focus:border-accent-500/60"
           />
           <input
             type="time"
             value={timeValue}
             onChange={(e) => setTimeValue(e.target.value)}
-            className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 focus:outline-none focus:border-gray-500"
+            className="w-32 h-10 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm border border-gray-700 [color-scheme:dark] focus:outline-none focus:border-accent-500/60"
           />
         </div>
 
@@ -552,11 +552,13 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                 key={t}
                 onClick={() => handleTypeChange(t)}
                 disabled={editing}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  workoutType === t
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-800 text-gray-400 border border-gray-700"
-                } disabled:opacity-50 disabled:cursor-default`}
+                className={`h-10 px-4 rounded-lg text-sm font-semibold transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 disabled:cursor-default ${
+                  workoutType !== t
+                    ? "bg-gray-800 text-gray-400 border-gray-700 disabled:text-gray-600 disabled:border-gray-800"
+                    : editing
+                      ? "bg-gray-700 text-gray-200 border-transparent"
+                      : "bg-accent-600 text-white border-transparent"
+                }`}
               >
                 {label}
               </button>
@@ -591,7 +593,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Hold rows */}
         {warmupFolds && (
-          <div className="mb-3 overflow-hidden rounded-xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
+          <div className="mb-3 overflow-hidden rounded-2xl border-l-4 border-teal-400/70 bg-teal-400/[0.07]">
             <button
               type="button"
               onClick={() => setWarmupOpen((o) => !o)}
@@ -620,7 +622,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             )}
           </div>
         )}
-        <div className="bg-gray-800 rounded-xl overflow-hidden">
+        <div className="bg-gray-800 rounded-2xl overflow-hidden">
           {holds.map((hold, i) => (warmupFolds && isWarmup(hold) ? null : holdRow(hold, i)))}
         </div>
 
@@ -634,33 +636,33 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           onChange={(e) => setSessionNotes(e.target.value)}
           rows={2}
           placeholder="Session notes (optional)"
-          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
+          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-500 resize-none border border-gray-700 focus:outline-none focus:border-accent-500/60"
         />
 
         <div className="flex gap-3">
           <button
             onClick={onBack}
-            className="flex-1 py-3 rounded-xl font-semibold bg-gray-800 text-gray-400 text-base"
+            className="flex-1 py-3 rounded-lg font-semibold bg-gray-800 active:bg-gray-700 text-gray-300 text-base"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !dateValue || !hasChanges}
-            className="flex-1 py-3 rounded-xl font-semibold bg-indigo-600 text-white text-base disabled:opacity-50"
+            className="flex-1 py-3 rounded-lg font-semibold bg-accent-600 active:bg-accent-700 text-white text-base disabled:bg-gray-700 disabled:text-gray-500"
           >
-            {saving ? "Saving…" : editing ? "Save Changes" : "Save Workout"}
+            {saving ? "Saving…" : editing ? "Save changes" : "Save workout"}
           </button>
         </div>
 
         {editing && (
           <button
             onClick={handleDelete}
-            className={`w-full py-2.5 rounded-xl font-semibold text-base transition-colors ${
-              confirmDelete ? "bg-red-600 text-white" : "bg-gray-800 text-gray-500"
+            className={`w-full py-2.5 rounded-lg font-semibold text-sm transition-colors ${
+              confirmDelete ? "bg-red-600 text-white" : "text-red-400/80 active:bg-gray-800"
             }`}
           >
-            {confirmDelete ? "Tap again to delete" : "Delete Workout"}
+            {confirmDelete ? "Tap again to delete" : "Delete workout"}
           </button>
         )}
       </div>

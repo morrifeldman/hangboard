@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { getSessions } from "../lib/history";
 import type { SessionRecord, GymData } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
@@ -18,7 +19,7 @@ import {
 } from "../lib/historyFilter";
 import { shortLocation } from "../lib/format";
 import { RouteHistoryModal } from "./RouteHistoryModal";
-import { ClockIcon, GearIcon, NoteIcon } from "./icons";
+import { GearIcon, NoteIcon } from "./icons";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 
 /** The parts of the timeline view that live in the URL, so they survive a
@@ -41,36 +42,106 @@ type Props = {
 
 type TimelineFilter = "all" | "workouts" | "climbs" | "notes";
 
-function gymSummary(data: GymData): string {
+// ─── Small pieces ─────────────────────────────────────────────────────────────
+
+/** A figure that is the content of a summary line, as opposed to its units. */
+function Fig({ children }: { children: ReactNode }) {
+  return <span className="font-num text-gray-200">{children}</span>;
+}
+
+function joinDots(parts: ReactNode[]): ReactNode {
+  return parts.map((p, i) => (
+    <Fragment key={i}>
+      {i > 0 && " · "}
+      {p}
+    </Fragment>
+  ));
+}
+
+const CHIP_TONES = {
+  neutral: "bg-gray-700 text-gray-200",
+  orange:  "bg-orange-500/15 text-orange-300",
+  red:     "bg-red-500/15 text-red-300",
+  purple:  "bg-purple-500/15 text-purple-300",
+  teal:    "bg-teal-500/15 text-teal-300",
+  green:   "bg-green-500/15 text-green-300",
+  blue:    "bg-blue-500/15 text-blue-300",
+  muted:   "bg-gray-700/60 text-gray-400",
+} as const;
+
+type ChipTone = keyof typeof CHIP_TONES;
+
+/** The one shape every type label on this screen uses; only the colour varies. */
+function Chip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
+  return (
+    <span className={`inline-flex items-center shrink-0 rounded-md px-1.5 py-px text-[11px] font-semibold leading-4 whitespace-nowrap ${CHIP_TONES[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+function Chevron({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14" height="14" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="2.5"
+      strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden
+      className={`text-gray-600 shrink-0 ${className}`}
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+const ROW_BUTTON =
+  "w-full text-left flex items-center gap-3 pl-3 pr-3 py-3 min-h-[52px] transition-colors hover:bg-gray-700/30 active:bg-gray-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400";
+
+// ─── Summaries ────────────────────────────────────────────────────────────────
+
+function gymSummary(data: GymData): ReactNode {
   switch (data.type) {
     case "arc": {
-      const parts: string[] = [`${data.climbMin} min`];
-      if (data.routes) parts.push(`${data.routes} routes`);
+      const parts: ReactNode[] = [<><Fig>{data.climbMin}</Fig> min</>];
+      if (data.routes) parts.push(<><Fig>{data.routes}</Fig> routes</>);
       if (data.downclimb === "Yes") parts.push("downclimb");
       else if (data.downclimb === "Some") parts.push("some downclimb");
-      if (data.maxGrade) parts.push(`Max ${data.maxGrade}`);
-      return parts.join(" · ");
+      if (data.maxGrade) parts.push(<>Max <Fig>{data.maxGrade}</Fig></>);
+      return joinDots(parts);
     }
     case "cir": {
-      const parts: string[] = [`${data.repeats} repeats`];
+      const parts: ReactNode[] = [<><Fig>{data.repeats}</Fig> repeats</>];
       if (data.climbRating) parts.push(data.climbRating);
-      parts.push(`~${data.avgRestSec}s rest`);
-      return parts.join(" · ");
+      parts.push(<>~<Fig>{data.avgRestSec}s</Fig> rest</>);
+      return joinDots(parts);
     }
     case "pe-route":
-      return `${data.climbSec}s on · ${data.dutyCycle} rest · ${data.reps} reps`;
+      return joinDots([
+        <><Fig>{data.climbSec}s</Fig> on</>,
+        <><Fig>{data.dutyCycle}</Fig> rest</>,
+        <><Fig>{data.reps}</Fig> reps</>,
+      ]);
     case "lbc":
-      return `${data.sets} sets · ${data.climbSec}s on · ${data.dutyCycle} rest`;
+      return joinDots([
+        <><Fig>{data.sets}</Fig> sets</>,
+        <><Fig>{data.climbSec}s</Fig> on</>,
+        <><Fig>{data.dutyCycle}</Fig> rest</>,
+      ]);
     case "performance":
-      return `${data.grade} · ${data.tries} tries · ${data.success === "Yes" ? "sent" : "no send"}`;
+      return joinDots([
+        <Fig>{data.grade}</Fig>,
+        <><Fig>{data.tries}</Fig> tries</>,
+        data.success === "Yes" ? "sent" : "no send",
+      ]);
     case "wbl":
-      return `Top ${data.topV} · ${data.durationMin} min`;
+      return joinDots([<>Top <Fig>{data.topV}</Fig></>, <><Fig>{data.durationMin}</Fig> min</>]);
     case "hard-bouldering":
     case "limit-bouldering":
-      return `${data.level} · ${data.durationMin} min`;
+      return joinDots([data.level, <><Fig>{data.durationMin}</Fig> min</>]);
     case "campus": {
       const n = data.sets.length;
-      return `${n} set${n === 1 ? "" : "s"}`;
+      return <><Fig>{n}</Fig> set{n === 1 ? "" : "s"}</>;
     }
     case "injury": {
       const parts: string[] = [];
@@ -79,33 +150,24 @@ function gymSummary(data: GymData): string {
       return parts.join(" · ") || "—";
     }
     case "stretching": {
-      const parts: string[] = [];
-      if (data.reps && data.holdSec) parts.push(`${data.reps} × ${data.holdSec}s`);
-      else if (data.reps) parts.push(`${data.reps} reps`);
-      else if (data.holdSec) parts.push(`${data.holdSec}s hold`);
+      const parts: ReactNode[] = [];
+      if (data.reps && data.holdSec) parts.push(<><Fig>{data.reps}</Fig> × <Fig>{data.holdSec}s</Fig></>);
+      else if (data.reps) parts.push(<><Fig>{data.reps}</Fig> reps</>);
+      else if (data.holdSec) parts.push(<><Fig>{data.holdSec}s</Fig> hold</>);
       if (data.stretches && data.stretches.length > 0) parts.push(data.stretches.join(", "));
-      return parts.join(" · ") || "—";
+      return parts.length > 0 ? joinDots(parts) : "—";
     }
     case "cardio": {
-      const parts: string[] = [`${data.mode} · ${data.durationMin} min`];
+      const parts: ReactNode[] = [data.mode, <><Fig>{data.durationMin}</Fig> min</>];
       if (data.intensity) parts.push(data.intensity);
-      return parts.join(" · ");
+      return joinDots(parts);
     }
     case "freeform": {
       const count = data.sections.reduce((n, s) => n + s.entries.length, 0);
       if (count === 0) return data.title || "—";
-      return `${data.title} · ${count} ${count === 1 ? "entry" : "entries"}`;
+      return joinDots([data.title, <><Fig>{count}</Fig> {count === 1 ? "entry" : "entries"}</>]);
     }
   }
-}
-
-function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function formatTime(ts: number): string {
@@ -123,6 +185,64 @@ function formatDuration(startedAt: number, completedAt: number): string {
   if (m === 0) return `${s}s`;
   if (s === 0) return `${m}m`;
   return `${m}m ${s}s`;
+}
+
+// ─── Weeks ────────────────────────────────────────────────────────────────────
+
+const DAY_MS = 86_400_000;
+
+/** Local midnight of the Monday that starts the week containing `ts`. */
+function weekStart(ts: number): number {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.getTime();
+}
+
+function dayKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function weekLabel(start: number, now: number): string {
+  const thisWeek = weekStart(now);
+  if (start === thisWeek) return "This week";
+  // Seven days back can land an hour off across a DST change, so compare weeks, not timestamps.
+  if (start === weekStart(thisWeek - DAY_MS)) return "Last week";
+  const a = new Date(start);
+  // Noon on Sunday, so a DST change inside the week can't pull the end back to Saturday.
+  const b = new Date(start + 6 * DAY_MS + DAY_MS / 2);
+  const month = (d: Date) => d.toLocaleDateString(undefined, { month: "short" });
+  const range = a.getMonth() === b.getMonth()
+    ? `${month(a)} ${a.getDate()}–${b.getDate()}`
+    : `${month(a)} ${a.getDate()} – ${month(b)} ${b.getDate()}`;
+  return b.getFullYear() === new Date(now).getFullYear() ? range : `${range}, ${b.getFullYear()}`;
+}
+
+function weekTally(items: TimelineItem[]): string {
+  const workouts = items.filter((i) => i.kind === "session").length;
+  const climbDays = items.filter((i) => i.kind === "climbs").length;
+  const parts: string[] = [];
+  if (workouts > 0) parts.push(`${workouts} workout${workouts === 1 ? "" : "s"}`);
+  if (climbDays > 0) parts.push(`${climbDays} climbing day${climbDays === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
+/** Weekday over day number; blank for later entries on the same day, like a paper log. */
+function DateColumn({ ts, show }: { ts: number; show: boolean }) {
+  const d = new Date(ts);
+  return (
+    <div className="w-9 shrink-0 self-start flex flex-col items-center leading-none pt-0.5" aria-hidden={!show}>
+      {show && (
+        <>
+          <span className="text-[11px] font-medium text-gray-500">
+            {d.toLocaleDateString(undefined, { weekday: "short" })}
+          </span>
+          <span className="font-num text-xl text-white mt-1">{d.getDate()}</span>
+        </>
+      )}
+    </div>
+  );
 }
 
 // ─── Timeline types ───────────────────────────────────────────────────────────
@@ -143,34 +263,37 @@ function gradeRangeOf(grades: string[], scale: readonly string[]): string | null
   return min === max ? scale[min] : `${scale[min]}–${scale[max]}`;
 }
 
-function climbDaySummary(climbs: ClimbRecord[]): string {
+function climbDaySummary(climbs: ClimbRecord[]): ReactNode[] {
   const sport = climbs.filter((c) => c.type === "sport").map((c) => c.grade);
   const boulder = climbs.filter((c) => c.type === "boulder").map((c) => c.grade);
-  const parts: string[] = [];
+  const parts: ReactNode[] = [];
   if (sport.length > 0) {
     const range = gradeRangeOf(sport, SPORT_GRADES);
-    parts.push(`${sport.length} route${sport.length !== 1 ? "s" : ""}${range ? ` · ${range}` : ""}`);
+    parts.push(<><Fig>{sport.length}</Fig> route{sport.length !== 1 ? "s" : ""}</>);
+    if (range) parts.push(<Fig>{range}</Fig>);
   }
   if (boulder.length > 0) {
     const range = gradeRangeOf(boulder, BOULDER_GRADES);
-    parts.push(`${boulder.length} problem${boulder.length !== 1 ? "s" : ""}${range ? ` · ${range}` : ""}`);
+    parts.push(<><Fig>{boulder.length}</Fig> problem{boulder.length !== 1 ? "s" : ""}</>);
+    if (range) parts.push(<Fig>{range}</Fig>);
   }
-  return parts.join(" · ");
+  return parts;
 }
 
 // ─── Style badge ──────────────────────────────────────────────────────────────
 
-const STYLE_COLORS: Record<string, string> = {
-  onsight: "bg-green-500/20 text-green-400",
-  flash:   "bg-blue-500/20 text-blue-400",
-  redpoint:"bg-red-500/20 text-red-400",
-  attempt: "bg-gray-700 text-gray-500",
+const STYLE_TONES: Record<string, ChipTone> = {
+  onsight: "green",
+  flash: "blue",
+  redpoint: "red",
+  attempt: "muted",
 };
 
-// ─── ClimbDayCard ─────────────────────────────────────────────────────────────
+// ─── Rows ─────────────────────────────────────────────────────────────────────
 
-function ClimbDayCard({ climbs, onRouteClick, defaultExpanded = false }: {
+function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }: {
   climbs: ClimbRecord[];
+  showDate: boolean;
   onRouteClick: (routeName: string) => void;
   defaultExpanded?: boolean;
 }) {
@@ -185,41 +308,26 @@ function ClimbDayCard({ climbs, onRouteClick, defaultExpanded = false }: {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
+    <>
       <button
-        className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
+        className={ROW_BUTTON}
+        aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       >
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white font-semibold text-sm">{formatDate(ts)}</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              hasOutdoor ? "bg-teal-500/20 text-teal-400" : "bg-orange-500/20 text-orange-400"
-            }`}>
-              {hasOutdoor ? "Outdoor" : "Indoor"}
-            </span>
+        <DateColumn ts={ts} show={showDate} />
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <Chip tone={hasOutdoor ? "teal" : "orange"}>{hasOutdoor ? "Outdoor" : "Indoor"}</Chip>
             {locations.length > 0 && (
-              <span className="text-gray-400 text-xs truncate max-w-[180px]">
-                {locations.join(" · ")}
-              </span>
+              <span className="text-gray-300 text-sm truncate">{locations.join(" · ")}</span>
             )}
           </div>
-          {summary && <p className="text-gray-400 text-xs mt-0.5">{summary}</p>}
+          {summary.length > 0 && <p className="text-gray-400 text-[13px]">{joinDots(summary)}</p>}
         </div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          className={`text-gray-600 flex-shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
+        <Chevron className={`transition-transform ${expanded ? "rotate-90" : ""}`} />
       </button>
       {expanded && (
-        <div className="border-t border-gray-700 px-4 py-2 flex flex-col gap-2">
+        <div className="ml-12 mr-3 mb-2 border-l border-gray-700 pl-3 flex flex-col">
           {climbs.map((c) => {
             const falls = c.style === "redpoint" ? c.climbs - 1 : 0;
             const styleLabel =
@@ -229,120 +337,102 @@ function ClimbDayCard({ climbs, onRouteClick, defaultExpanded = false }: {
             return (
               <button
                 key={c.id}
-                className="flex flex-col gap-0.5 text-left w-full hover:bg-gray-700/50 rounded px-1 -mx-1 py-0.5 transition-colors"
+                className="flex flex-col gap-0.5 text-left w-full hover:bg-gray-700/40 rounded-lg px-2 -mx-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
                 onClick={() => onRouteClick(c.route)}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-300 text-xs flex-1 truncate">{c.route}</span>
-                  <span className="text-gray-500 text-xs font-mono">{c.grade}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STYLE_COLORS[c.style] ?? STYLE_COLORS.attempt}`}>
-                    {styleLabel}
-                  </span>
+                  <span className="text-gray-200 text-sm flex-1 truncate">{c.route}</span>
+                  <span className="font-num text-gray-300 text-sm">{c.grade}</span>
+                  <Chip tone={STYLE_TONES[c.style] ?? "muted"}>{styleLabel}</Chip>
                 </div>
                 {c.notes && (
-                  <p className="text-gray-500 text-xs italic pl-0.5">"{c.notes}"</p>
+                  <p className="text-gray-500 text-xs italic">"{c.notes}"</p>
                 )}
               </button>
             );
           })}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-function NoteCard({ record, onEdit }: { record: NoteRecord; onEdit: (n: NoteRecord) => void }) {
+function NoteRow({ record, showDate, onEdit }: {
+  record: NoteRecord;
+  showDate: boolean;
+  onEdit: (n: NoteRecord) => void;
+}) {
   const ts = new Date(`${record.date}T12:00:00`).getTime();
   return (
-    <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
-      <button
-        className="w-full text-left px-4 py-3 flex items-start justify-between gap-3"
-        onClick={() => onEdit(record)}
-      >
-        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white font-semibold text-sm">{formatDate(ts)}</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-500/20 text-purple-300">
-              {record.category || "Note"}
-            </span>
-          </div>
-          <p className="text-gray-300 text-sm mt-1 whitespace-pre-wrap break-words">
-            {record.text}
-          </p>
-        </div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          className="text-gray-600 flex-shrink-0 mt-1"
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </button>
-    </div>
+    <button className={ROW_BUTTON} onClick={() => onEdit(record)}>
+      <DateColumn ts={ts} show={showDate} />
+      <div className="flex flex-col items-start gap-1 min-w-0 flex-1">
+        <Chip tone="purple">{record.category || "Note"}</Chip>
+        <p className="text-gray-200 text-sm whitespace-pre-wrap break-words">
+          {record.text}
+        </p>
+      </div>
+      <Chevron />
+    </button>
   );
 }
 
-function SessionCard({ record, onEdit }: { record: SessionRecord; onEdit: (r: SessionRecord) => void }) {
+function sessionTone(record: SessionRecord): ChipTone {
+  if (record.gymData === undefined) return "neutral";
+  return record.workoutType === "injury" ? "red" : "orange";
+}
+
+function SessionRow({ record, showDate, onEdit }: {
+  record: SessionRecord;
+  showDate: boolean;
+  onEdit: (r: SessionRecord) => void;
+}) {
   const label = workoutLabel(record);
   const duration = formatDuration(record.startedAt, record.completedAt);
   const isGym = record.gymData !== undefined;
   const nextSummary = isGym ? null : sessionNextSummary(record);
 
   return (
-    <div className="bg-gray-800 rounded-xl overflow-hidden shrink-0">
-      <button
-        className="w-full text-left px-4 py-3 flex items-center justify-between gap-3"
-        onClick={() => onEdit(record)}
-      >
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-white font-semibold text-sm">{formatDate(record.startedAt)}</span>
-            <span className="text-gray-400 text-xs">{formatTime(record.startedAt)}</span>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              isGym ? "bg-orange-500/20 text-orange-400" : "bg-gray-700 text-gray-300"
-            }`}>
-              {label}
+    <button className={ROW_BUTTON} onClick={() => onEdit(record)}>
+      <DateColumn ts={record.startedAt} show={showDate} />
+      <div className="flex flex-col gap-1 min-w-0 flex-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <Chip tone={sessionTone(record)}>{label}</Chip>
+          {!isGym && <span className="font-num text-sm text-gray-100">{duration}</span>}
+          {nextSummary && (nextSummary.up > 0 || nextSummary.down > 0) && (
+            <span className="font-num text-sm flex items-center gap-1.5">
+              {nextSummary.up > 0 && <span className="text-green-400">↑{nextSummary.up}</span>}
+              {nextSummary.down > 0 && <span className="text-red-400">↓{nextSummary.down}</span>}
             </span>
-            {!isGym && <span className="text-gray-400 text-xs">{duration}</span>}
-            {nextSummary && (nextSummary.up > 0 || nextSummary.down > 0) && (
-              <span className="text-xs font-medium tabular-nums flex items-center gap-1.5">
-                {nextSummary.up > 0 && <span className="text-green-400">↑{nextSummary.up}</span>}
-                {nextSummary.down > 0 && <span className="text-red-400">↓{nextSummary.down}</span>}
-              </span>
-            )}
-            {record.bailed && <span className="text-yellow-400 text-xs font-medium">Bailed</span>}
-            {record.imported && <span className="text-indigo-400 text-xs font-medium">Imported</span>}
-            {record.notes && (
-              <span className="text-gray-500 text-xs italic truncate max-w-[160px]">"{record.notes}"</span>
-            )}
-          </div>
-          {isGym && record.gymData && (
-            <p className="text-gray-400 text-xs mt-0.5">{gymSummary(record.gymData)}</p>
           )}
+          {record.bailed && <span className="text-yellow-400 text-xs font-medium">Bailed</span>}
+          {record.imported && <span className="text-gray-500 text-xs font-medium">Imported</span>}
+          <span className="ml-auto pl-1 text-gray-500 text-[11px] whitespace-nowrap">
+            {formatTime(record.startedAt)}
+          </span>
         </div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-gray-600 flex-shrink-0"
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </button>
-    </div>
+        {isGym && record.gymData && (
+          <p className="text-gray-400 text-[13px]">{gymSummary(record.gymData)}</p>
+        )}
+        {record.notes && (
+          <p className="text-gray-500 text-xs italic truncate">"{record.notes}"</p>
+        )}
+      </div>
+      <Chevron />
+    </button>
   );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
+const PILL_ROW = "flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+function subChipClass(selected: boolean): string {
+  return `shrink-0 h-8 px-3 rounded-full text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
+    selected
+      ? "bg-accent-500/15 text-accent-300 ring-1 ring-inset ring-accent-400/50"
+      : "text-gray-400 border border-gray-700 hover:text-gray-200"
+  }`;
 }
 
 export function HistoryScreen({
@@ -358,6 +448,7 @@ export function HistoryScreen({
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const [now] = useState(() => Date.now());
   const { filter, query } = view;
   const selectedTags = useMemo(() => new Set(view.tags), [view.tags]);
   const workoutTypes = useMemo(() => new Set(view.types), [view.types]);
@@ -449,16 +540,27 @@ export function HistoryScreen({
     return all;
   }, [sessions, climbs, notes, filter, selectedTags, workoutTypes, query]);
 
+  // The timeline is newest-first, so each week's entries are already contiguous.
+  const weeks = useMemo(() => {
+    const out: { start: number; label: string; items: TimelineItem[] }[] = [];
+    for (const item of timeline) {
+      const start = weekStart(item.ts);
+      const last = out[out.length - 1];
+      if (last && last.start === start) last.items.push(item);
+      else out.push({ start, label: weekLabel(start, now), items: [item] });
+    }
+    return out;
+  }, [timeline, now]);
+
   const searching = normalizeQuery(query) !== "";
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <ClockIcon className="text-white" aria-label="Workout History" />
-        <h1 className="text-white font-bold text-lg">History</h1>
+      <header className="bg-gray-800 pl-4 pr-2 pt-4 pb-3 flex items-center gap-1">
+        <h1 className="text-white font-bold text-xl">History</h1>
         <button
           onClick={onAddNote}
-          className="ml-auto text-gray-400 hover:text-white transition-colors p-1"
+          className="ml-auto text-gray-400 hover:text-white transition-colors p-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           aria-label="Add note"
           title="Add note"
         >
@@ -468,7 +570,7 @@ export function HistoryScreen({
           onClick={onShowSettings}
           aria-label="Open settings"
           data-testid="open-settings"
-          className="text-gray-400 hover:text-white transition-colors p-1"
+          className="text-gray-400 hover:text-white transition-colors p-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           <GearIcon size={22} />
         </button>
@@ -483,13 +585,13 @@ export function HistoryScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search history"
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="w-full h-10 bg-gray-800 border border-gray-700 rounded-lg px-3 pr-10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent-500"
             />
             {query !== "" && (
               <button
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors p-1"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors p-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                   fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -498,7 +600,7 @@ export function HistoryScreen({
               </button>
             )}
           </div>
-          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className={PILL_ROW}>
             {(["all", "workouts", "climbs", "notes"] as const).map((f) => (
               <button
                 key={f}
@@ -511,10 +613,11 @@ export function HistoryScreen({
                     types: f === "workouts" ? view.types : [],
                   })
                 }
-                className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                aria-pressed={filter === f}
+                className={`shrink-0 h-9 px-3.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
                   filter === f
-                    ? f === "notes" ? "bg-purple-600 text-white" : "bg-indigo-600 text-white"
-                    : "bg-gray-800 text-gray-400 border border-gray-700"
+                    ? "bg-accent-500 text-gray-950 font-semibold"
+                    : "bg-gray-800 text-gray-400 border border-gray-700 hover:text-gray-200"
                 }`}
               >
                 {f === "all" ? "All" : f === "workouts" ? "Workouts" : f === "climbs" ? "Climbs" : "Notes"}
@@ -523,32 +626,26 @@ export function HistoryScreen({
           </div>
           {/* Workout type sub-filter */}
           {filter === "workouts" && (typeGroups.hangboard.length > 0 || typeGroups.gym.length > 0) && (
-            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className={PILL_ROW}>
               {typeGroups.hangboard.map((t) => (
                 <button
                   key={t}
                   onClick={() => toggleWorkoutType(t)}
-                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
-                    workoutTypes.has(t)
-                      ? "bg-indigo-500/30 text-indigo-200 ring-1 ring-inset ring-indigo-400/40"
-                      : "bg-gray-800 text-gray-500 border border-gray-700"
-                  }`}
+                  aria-pressed={workoutTypes.has(t)}
+                  className={subChipClass(workoutTypes.has(t))}
                 >
                   {workoutTypeLabel(t)}
                 </button>
               ))}
               {typeGroups.hangboard.length > 0 && typeGroups.gym.length > 0 && (
-                <div className="shrink-0 w-px self-stretch bg-gray-700 mx-0.5" />
+                <div className="shrink-0 w-px h-5 bg-gray-700 mx-0.5" />
               )}
               {typeGroups.gym.map((t) => (
                 <button
                   key={t}
                   onClick={() => toggleWorkoutType(t)}
-                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
-                    workoutTypes.has(t)
-                      ? "bg-indigo-500/30 text-indigo-200 ring-1 ring-inset ring-indigo-400/40"
-                      : "bg-gray-800 text-gray-500 border border-gray-700"
-                  }`}
+                  aria-pressed={workoutTypes.has(t)}
+                  className={subChipClass(workoutTypes.has(t))}
                 >
                   {workoutTypeLabel(t)}
                 </button>
@@ -556,7 +653,7 @@ export function HistoryScreen({
               {workoutTypes.size > 0 && (
                 <button
                   onClick={() => setWorkoutTypes(new Set())}
-                  className="shrink-0 text-gray-500 hover:text-gray-300 text-[11px] font-medium transition-colors whitespace-nowrap px-1"
+                  className="shrink-0 h-8 text-gray-500 hover:text-gray-300 text-xs font-medium transition-colors whitespace-nowrap px-2"
                 >
                   clear
                 </button>
@@ -565,16 +662,13 @@ export function HistoryScreen({
           )}
           {/* Note tag sub-filter */}
           {filter === "notes" && noteTags.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className={PILL_ROW}>
               {noteTags.map((tag) => (
                 <button
                   key={tag}
                   onClick={() => toggleTag(tag)}
-                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap ${
-                    selectedTags.has(tag)
-                      ? "bg-purple-500/30 text-purple-200 ring-1 ring-inset ring-purple-400/40"
-                      : "bg-gray-800 text-gray-500 border border-gray-700"
-                  }`}
+                  aria-pressed={selectedTags.has(tag)}
+                  className={subChipClass(selectedTags.has(tag))}
                 >
                   {tag}
                 </button>
@@ -582,7 +676,7 @@ export function HistoryScreen({
               {selectedTags.size > 0 && (
                 <button
                   onClick={() => setSelectedTags(new Set())}
-                  className="shrink-0 text-gray-500 hover:text-gray-300 text-[11px] font-medium transition-colors whitespace-nowrap px-1"
+                  className="shrink-0 h-8 text-gray-500 hover:text-gray-300 text-xs font-medium transition-colors whitespace-nowrap px-2"
                 >
                   clear
                 </button>
@@ -594,7 +688,7 @@ export function HistoryScreen({
 
       <main
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3"
+        className="flex-1 overflow-y-auto px-4 pt-4 pb-6 flex flex-col gap-5"
       >
         {loading && <p className="text-gray-500 text-center py-12">Loading…</p>}
         {!loading && timeline.length === 0 && (
@@ -619,20 +713,45 @@ export function HistoryScreen({
             )}
           </div>
         )}
-        {timeline.map((item) =>
-          item.kind === "session" ? (
-            <SessionCard key={item.record.id} record={item.record} onEdit={onEdit} />
-          ) : item.kind === "climbs" ? (
-            <ClimbDayCard
-              key={`${item.date}-${searching}`}
-              climbs={item.climbs}
-              onRouteClick={setSelectedRoute}
-              defaultExpanded={searching}
-            />
-          ) : (
-            <NoteCard key={item.record.id} record={item.record} onEdit={onEditNote} />
-          )
-        )}
+        {weeks.map((week) => {
+          const tally = weekTally(week.items);
+          return (
+            <section key={week.start} className="shrink-0 flex flex-col gap-2">
+              <div className="flex items-baseline justify-between gap-3 px-1">
+                <h2 className="text-sm font-semibold text-gray-300">{week.label}</h2>
+                {tally && <span className="text-xs text-gray-500">{tally}</span>}
+              </div>
+              <ul className="bg-gray-800 rounded-2xl overflow-hidden">
+                {week.items.map((item, i) => {
+                  const prev = week.items[i - 1];
+                  const newDay = !prev || dayKey(prev.ts) !== dayKey(item.ts);
+                  return (
+                    <li
+                      key={item.kind === "climbs" ? `${item.date}-${searching}` : item.record.id}
+                      className={i === 0 ? "" : newDay
+                        ? "border-t border-gray-700/60"
+                        // Same-day rows share the date column, so their divider starts after it.
+                        : "relative before:absolute before:top-0 before:left-12 before:right-0 before:h-px before:bg-gray-700/40"}
+                    >
+                      {item.kind === "session" ? (
+                        <SessionRow record={item.record} showDate={newDay} onEdit={onEdit} />
+                      ) : item.kind === "climbs" ? (
+                        <ClimbDayRow
+                          climbs={item.climbs}
+                          showDate={newDay}
+                          onRouteClick={setSelectedRoute}
+                          defaultExpanded={searching}
+                        />
+                      ) : (
+                        <NoteRow record={item.record} showDate={newDay} onEdit={onEditNote} />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
       </main>
 
       {selectedRoute && (
