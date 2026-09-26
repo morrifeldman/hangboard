@@ -3,6 +3,8 @@ import { useWorkoutStore } from "../store/useWorkoutStore";
 import { BREAK_SECS } from "../data/workout";
 import { useTimer } from "../hooks/useTimer";
 import { WeightAdjuster } from "./WeightAdjuster";
+import { isWarmup } from "../data/holds";
+import { WarmupBadge } from "./WarmupBadge";
 
 type Props = {
   setNoteValue: string;
@@ -62,7 +64,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   // from the prep screen so the heads-up lands during the break between holds.
   const nextLast = betweenHolds && nextHold ? lastSessionWeights[nextHold.id] : undefined;
   const upNextDiff =
-    betweenHolds && nextHold && !nextHold.isRestOnly && nextLast
+    betweenHolds && nextHold && !nextHold.isRestOnly && !isWarmup(nextHold) && nextLast
       ? effectiveWeight(nextHold.id, 1) - nextLast.set1
       : 0;
 
@@ -70,11 +72,14 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const barLabel = hold.isRestOnly ? hold.name.toUpperCase() : "BREAK";
 
 
+  const upNextIsWarmup = betweenSets ? isWarmup(hold) : !!nextHold && isWarmup(nextHold);
+
   const progress = breakDuration > 0 ? Math.max(0, Math.min(1, remaining / breakDuration)) : 0;
   const hasNotes = setNoteValue !== "" || holdNoteValue !== "";
 
   return (
     <div className="flex flex-col items-center gap-3 px-4 w-full max-w-sm">
+      {upNextIsWarmup && <WarmupBadge className="self-end" />}
       <div className="w-full flex justify-between">
         <div>
           <p className="text-gray-500 text-xs uppercase tracking-wide">Last</p>
@@ -154,7 +159,13 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         </div>
       )}
 
-      {betweenHolds && nextHold && !nextHold.isRestOnly && (() => {
+      {betweenHolds && nextHold && isWarmup(hold) && !isWarmup(nextHold) && (
+        <p className="text-teal-300 text-sm font-medium" data-testid="warmup-complete">
+          Warm-up done. Main hangs next.
+        </p>
+      )}
+
+      {betweenHolds && nextHold && !nextHold.isRestOnly && !isWarmup(nextHold) && (() => {
         const nextStored = storedMap[nextHold.id] ?? { set1: nextHold.defaultSet1Weight, set2: nextHold.defaultSet2Weight };
         return (
           <div className="w-full bg-gray-800 rounded-xl p-3 space-y-1">

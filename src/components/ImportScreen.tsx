@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
+import { isWarmup } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
 import { addSession, updateSession, deleteSession } from "../lib/history";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 import { formatWeight } from "../lib/format";
 import { holdNextDirection } from "../lib/weightCues";
 import { BackChevronIcon } from "./icons";
+import { WeightStepper } from "./WeightStepper";
 
 /** Small tap target to toggle set completion. */
 function SetDot({ completed, onClick }: { completed: boolean; onClick: () => void }) {
@@ -219,32 +221,15 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     setWeights3(defaultWeights(newHolds));
   };
 
-  const updateWeight = (index: number, raw: string) => {
-    const value = parseFloat(raw);
-    setWeights((prev) => {
+  const setAt = (setter: typeof setWeights) => (index: number, value: number) =>
+    setter((prev) => {
       const next = [...prev];
-      next[index] = isNaN(value) ? 0 : value;
+      next[index] = value;
       return next;
     });
-  };
-
-  const updateWeight2 = (index: number, raw: string) => {
-    const value = parseFloat(raw);
-    setWeights2((prev) => {
-      const next = [...prev];
-      next[index] = isNaN(value) ? 0 : value;
-      return next;
-    });
-  };
-
-  const updateWeight3 = (index: number, raw: string) => {
-    const value = parseFloat(raw);
-    setWeights3((prev) => {
-      const next = [...prev];
-      next[index] = isNaN(value) ? 0 : value;
-      return next;
-    });
-  };
+  const updateWeight = setAt(setWeights);
+  const updateWeight2 = setAt(setWeights2);
+  const updateWeight3 = setAt(setWeights3);
 
   const buildHoldRecords = (): SessionHoldRecord[] =>
     holds.map((hold, i) => {
@@ -390,18 +375,16 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             <span className="text-gray-400 text-sm w-12 flex-shrink-0">Offset</span>
             <div className="flex items-center gap-2">
               <span className="text-gray-500 text-sm">Set 2 is</span>
-              <input
-                type="number"
-                step="0.5"
+              <WeightStepper
+                label="Set 2 offset"
                 value={set2Offset}
-                onChange={(e) => {
-                  const newOffset = parseFloat(e.target.value) || 0;
+                formatValue={String}
+                onChange={(newOffset) => {
                   setSet2Offset(newOffset);
                   setWeights2(weights.map((w, i) =>
                     (holds[i].isRestOnly || holds[i].skipProgression) ? 0 : w + newOffset
                   ));
                 }}
-                className="w-16 bg-gray-800 text-white text-right rounded-lg px-3 py-2 text-sm font-mono border border-gray-700 focus:outline-none focus:border-gray-500"
               />
               <span className="text-gray-500 text-sm">lbs heavier</span>
             </div>
@@ -413,12 +396,6 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Hold rows */}
         <div className="bg-gray-800 rounded-xl overflow-hidden">
-          <div className="px-4 py-2 border-b border-gray-700 flex items-center justify-between">
-            <span className="text-gray-500 text-xs uppercase tracking-wide">Hold</span>
-            <span className="text-gray-500 text-xs uppercase tracking-wide text-right">
-              {workoutType === "repeaters" ? "Set 1 / Set 2" : "Set 1 / Set 2 / Set 3"}
-            </span>
-          </div>
           {holds.map((hold, i) => {
             const w = weights[i] ?? 0;
             const w2 = weights2[i] ?? 0;
@@ -451,11 +428,25 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
             const isCompleted = co?.set1 ?? (!editing || (origHoldMap.get(hold.id)?.set1.completed ?? true));
             const set2Completed = co?.set2 ?? (!editing || (origHoldMap.get(hold.id)?.set2?.completed ?? true));
             const set3Completed = co?.set3 ?? (!editing || (origHoldMap.get(hold.id)?.set3?.completed ?? true));
+            const warmup = isWarmup(hold);
+            const sectionStart =
+              warmup && i === 0 ? "Warm-up"
+              : !warmup && i > 0 && isWarmup(holds[i - 1]) ? "Main hangs"
+              : null;
             return (
               <div
                 key={hold.id}
                 className="px-4 py-2.5 flex flex-col border-b border-gray-700 last:border-0"
               >
+                {sectionStart && (
+                  <p
+                    className={`-mx-4 -mt-2.5 mb-2.5 px-4 py-1.5 border-b border-gray-700 bg-gray-900/40 text-[10px] font-semibold uppercase tracking-wider ${
+                      warmup ? "text-teal-300" : "text-gray-400"
+                    }`}
+                  >
+                    {sectionStart}
+                  </p>
+                )}
                 <div className="flex items-center gap-3">
                   {/* Hold name */}
                   {editing ? (
@@ -479,51 +470,35 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
                       {hold.name}
                     </span>
                   )}
-                  {/* Weight display */}
                   {hold.isRestOnly || hold.skipProgression ? (
                     <span className="text-gray-500 text-xs font-mono">BW</span>
-                  ) : numSets >= 3 ? (
+                  ) : numSets === 1 && (
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
-                      <input type="number" step="0.5" value={w}
-                        onChange={(e) => updateWeight(i, e.target.value)}
-                        className={`w-14 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
-                      />
-                      {editing && <SetDot completed={set2Completed} onClick={() => toggleCompletion(hold.id, "set2")} />}
-                      <input type="number" step="0.5" value={w2}
-                        onChange={(e) => updateWeight2(i, e.target.value)}
-                        className={`w-14 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set2Completed ? "text-white" : "text-red-400/70 line-through"}`}
-                      />
-                      {editing && <SetDot completed={set3Completed} onClick={() => toggleCompletion(hold.id, "set3")} />}
-                      <input type="number" step="0.5" value={w3}
-                        onChange={(e) => updateWeight3(i, e.target.value)}
-                        className={`w-14 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set3Completed ? "text-white" : "text-red-400/70 line-through"}`}
-                      />
-                    </div>
-                  ) : numSets >= 2 ? (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
-                      <input type="number" step="0.5" value={w}
-                        onChange={(e) => updateWeight(i, e.target.value)}
-                        className={`w-[4.5rem] bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
-                      />
-                      <span className="text-gray-600 text-xs">→</span>
-                      {editing && <SetDot completed={set2Completed} onClick={() => toggleCompletion(hold.id, "set2")} />}
-                      <input type="number" step="0.5" value={w2}
-                        onChange={(e) => updateWeight2(i, e.target.value)}
-                        className={`w-[4.5rem] bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${set2Completed ? "text-white" : "text-red-400/70 line-through"}`}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {editing && <SetDot completed={isCompleted} onClick={() => toggleCompletion(hold.id, "set1")} />}
-                      <input type="number" step="0.5" value={w}
-                        onChange={(e) => updateWeight(i, e.target.value)}
-                        className={`w-20 bg-gray-700 text-right rounded px-2 py-1 text-sm font-mono border border-gray-600 focus:outline-none focus:border-gray-500 ${isCompleted ? "text-white" : "text-red-400/70 line-through"}`}
-                      />
+                      <WeightStepper label={`${hold.name} weight`} value={w} struck={!isCompleted}
+                        onChange={(v) => updateWeight(i, v)} />
                     </div>
                   )}
                 </div>
+                {/* Multi-set steppers get their own row: three of them beside the hold name would overflow a phone screen. */}
+                {!hold.isRestOnly && !hold.skipProgression && numSets >= 2 && (
+                  <div className={`mt-1.5 grid gap-3 ${numSets >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+                    {([
+                      [w, isCompleted, "set1", updateWeight],
+                      [w2, set2Completed, "set2", updateWeight2],
+                      [w3, set3Completed, "set3", updateWeight3],
+                    ] as const).slice(0, numSets).map(([value, completed, setKey, update], s) => (
+                      <div key={setKey} className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1">
+                          {editing && <SetDot completed={completed} onClick={() => toggleCompletion(hold.id, setKey)} />}
+                          <span className="text-gray-500 text-[10px] uppercase tracking-wide">Set {s + 1}</span>
+                        </div>
+                        <WeightStepper label={`${hold.name} set ${s + 1}`} value={value} struck={!completed}
+                          onChange={(v) => update(i, v)} />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {/* Next-session target captured when the workout was saved */}
                 {editing && nextLabel && (
                   <p className={`text-xs font-mono text-right mt-1 ${nextClass}`}>

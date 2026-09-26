@@ -6,6 +6,8 @@ import { useTimer } from "../hooks/useTimer";
 import { useAudio } from "../hooks/useAudio";
 import { TimerRing } from "./TimerRing";
 import { formatWeight } from "../lib/format";
+import { isWarmup } from "../data/holds";
+import { WarmupBadge } from "./WarmupBadge";
 
 export function PrepTimer() {
   const setNumber = useWorkoutStore((s) => s.setNumber);
@@ -18,6 +20,7 @@ export function PrepTimer() {
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
 
   const hold = currentHold();
+  const warmup = isWarmup(hold);
   const weight = effectiveWeight(hold.id, setNumber);
   const audio = useAudio();
   const prepDuration = hold.prepSecs ?? PREP_SECS;
@@ -38,6 +41,7 @@ export function PrepTimer() {
 
   return (
     <div className="flex flex-col items-center gap-3">
+      {warmup && <WarmupBadge />}
       <p className="text-white font-bold text-xl" data-testid="hold-name">{hold.name}</p>
       <TimerRing
         remaining={remaining}
@@ -48,7 +52,7 @@ export function PrepTimer() {
         paused={paused}
       />
       <p className="text-gray-300 text-lg font-semibold tabular-nums">
-        {formatWeight(weight)}
+        {warmup ? "Bodyweight" : formatWeight(weight)}
       </p>
       {(hold.numSets ?? 2) > 1 && (
         <p className="text-gray-500 text-sm">Set {setNumber} of {hold.numSets ?? 2}</p>

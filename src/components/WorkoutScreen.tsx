@@ -7,6 +7,7 @@ import { addSession, buildSessionRecord } from "../lib/history";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { currentPhaseFullSecs, remainingWorkoutSecs, finishClockTime } from "../lib/workoutTime";
 import { SET1_REPS, SET2_REPS } from "../data/workout";
+import { isWarmup } from "../data/holds";
 
 function fmtTime(s: number): string {
   const t = Math.max(0, Math.round(s));
@@ -396,6 +397,8 @@ export function WorkoutScreen() {
             <div
               key={h.id}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
+                i > 0 && isWarmup(holds[i - 1]) && !isWarmup(h) ? "ml-2" : ""
+              } ${
                 isHoldDone(i)
                   ? "bg-white/50"
                   : i === holdIndex

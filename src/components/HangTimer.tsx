@@ -4,6 +4,8 @@ import { useTimer } from "../hooks/useTimer";
 import { useAudio } from "../hooks/useAudio";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { TimerRing } from "./TimerRing";
+import { isWarmup } from "../data/holds";
+import { WarmupBadge } from "./WarmupBadge";
 
 export function HangTimer() {
   const phase = useWorkoutStore((s) => s.phase);
@@ -67,6 +69,7 @@ export function HangTimer() {
 
   return (
     <div className="flex flex-col items-center gap-3">
+      {isWarmup(hold) && <WarmupBadge />}
       <p className="text-white font-bold text-xl">{hold.name}</p>
       <TimerRing
         remaining={remaining}

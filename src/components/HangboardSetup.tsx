@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { WorkoutId } from "../store/useWorkoutStore";
+import { isWarmup } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
+import { SectionLabel } from "./WarmupBadge";
 import { formatWeight, formatOffset } from "../lib/format";
 import { HANG_SECS, REST_SECS, BREAK_SECS, SET1_REPS, SET2_REPS } from "../data/workout";
 import { initAudio } from "../lib/audio";
@@ -131,6 +133,10 @@ export function HangboardSetup() {
   }, []);
 
   const holds = currentHolds();
+  const warmupHolds = holds.filter(isWarmup);
+  const mainHolds = holds.filter((h) => !isWarmup(h));
+  const mainInc = mainHolds.find((h) => h.setIncrement)?.setIncrement;
+  const mainDetail = mainInc ? `+${mainInc} lb per set` : undefined;
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
 
   // Most recent hangboard session of this type (any completion state) — baseline for the
@@ -206,7 +212,31 @@ export function HangboardSetup() {
         </p>
       )}
 
-      {holds.map((hold) => {
+      {warmupHolds.length > 0 && (
+        <>
+          <SectionLabel warmup detail="Bodyweight">Warm-up</SectionLabel>
+          <div className="bg-gray-800/50 rounded-xl divide-y divide-gray-700/60 shrink-0">
+            {warmupHolds.map((hold) => (
+              <div
+                key={hold.id}
+                className="px-4 py-2.5 flex items-center justify-between gap-3"
+                data-testid={`hold-row-${hold.id}`}
+              >
+                <div className="min-w-0">
+                  <p className="text-gray-200 text-sm font-medium">{hold.name}</p>
+                  <p className="text-gray-500 text-xs">
+                    {[repLabel(hold), timingLabel(hold)].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+              </div>
+            ))}
+          </div>
+          <SectionLabel detail={mainDetail}>Main hangs</SectionLabel>
+        </>
+      )}
+
+      {mainHolds.map((hold) => {
         const stored = storedMap[hold.id] ?? {
           set1: hold.defaultSet1Weight,
           set2: hold.defaultSet2Weight,

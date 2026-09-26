@@ -4,6 +4,8 @@ import { HOLDS, HOLDS_B, HOLDS_TEST, SET1_REPS, SET2_REPS } from "../data/workou
 import type { HoldDefinition } from "../data/workout";
 import * as SM from "../lib/stateMachine";
 import { totalWorkoutSecs } from "../lib/workoutTime";
+import { overrideKeyFor, plannedWeight, sessionSetWeight } from "../lib/setWeights";
+import type { SetOverrides } from "../lib/setWeights";
 
 import type { WorkoutPhase } from "../lib/stateMachine";
 import { IS_TEST_MODE } from "../lib/testMode";
@@ -12,36 +14,10 @@ export type { WorkoutPhase };
 export type WorkoutId = "repeaters" | "max-hang" | "test";
 
 export type StoredWeights = Record<string, { set1: number; set2: number }>;
-type Overrides = Record<string, { set1: number | null; set2: number | null; set3?: number | null }>;
-
-function overrideKeyFor(setNum: number): "set1" | "set2" | "set3" {
-  return setNum <= 1 ? "set1" : setNum === 2 ? "set2" : "set3";
-}
+type Overrides = Record<string, SetOverrides>;
 
 /** Per-hold weights from a prior session, used for the "vs last time" cue. */
 export type SessionWeightLookup = Record<string, { set1: number; set2: number; set3?: number }>;
-
-/**
- * The weight for a given set, derived from a stored {set1,set2} pair (or hold defaults).
- * For holds with a `setIncrement` (max hang), sets above 1 are derived from set1 + N·increment.
- * Pure — the single source of truth for both the active session and the next-session target.
- */
-function computeWeight(
-  hold: HoldDefinition | undefined,
-  stored: { set1: number; set2: number } | undefined,
-  setNum: number,
-): number {
-  const storedKey = setNum <= 1 ? "set1" : "set2";
-  let base = stored
-    ? stored[storedKey]
-    : storedKey === "set1"
-      ? (hold?.defaultSet1Weight ?? 0)
-      : (hold?.defaultSet2Weight ?? 0);
-  if (hold?.setIncrement && setNum > 1) {
-    base = (stored?.set1 ?? hold.defaultSet1Weight ?? 0) + (setNum - 1) * hold.setIncrement;
-  }
-  return base;
-}
 
 interface WorkoutStore {
   // Persisted
@@ -132,11 +108,6 @@ export const useWorkoutStore = create<WorkoutStore>()(
       currentHold: () => holdsFor(get().selectedWorkout)[get().holdIndex],
 
       effectiveWeight: (holdId, setNum) => {
-        // Overrides use per-set keys so set2 and set3 can be adjusted independently.
-        const override = get().overrides[holdId];
-        const overrideVal = override?.[overrideKeyFor(setNum)] ?? null;
-        if (overrideVal !== null) return overrideVal;
-
         const holds = holdsFor(get().selectedWorkout);
         const hold = holds.find((h) => h.id === holdId);
         // Read from the start-of-session snapshot so next-session edits don't affect the live workout.
@@ -144,14 +115,14 @@ export const useWorkoutStore = create<WorkoutStore>()(
         const snap = get().sessionWeights;
         const persisted = get().selectedWorkout === "max-hang" ? get().weightsB : get().weights;
         const storedMap = Object.keys(snap).length ? snap : persisted;
-        return computeWeight(hold, storedMap[holdId], setNum);
+        return sessionSetWeight(hold, storedMap[holdId], get().overrides[holdId], setNum);
       },
 
       nextSessionWeight: (holdId, setNum) => {
         const holds = holdsFor(get().selectedWorkout);
         const hold = holds.find((h) => h.id === holdId);
         const persisted = get().selectedWorkout === "max-hang" ? get().weightsB : get().weights;
-        return computeWeight(hold, persisted[holdId], setNum);
+        return plannedWeight(hold, persisted[holdId], setNum);
       },
 
       setSelectedWorkout: (id) => {

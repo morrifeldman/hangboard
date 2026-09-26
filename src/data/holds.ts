@@ -6,6 +6,9 @@ export interface HoldDefinition {
   set1Reps: number;
   set2Reps: number;
   skipProgression?: boolean;
+  // Bodyweight warm-up before the main hangs. Workout A's jug also skips
+  // progression, but it's a working hold there, so this is separate.
+  warmup?: boolean;
   // Per-hold timer overrides (default: global PREP_SECS / HANG_SECS / BREAK_SECS constants)
   prepSecs?: number;
   hangSecs?: number;
@@ -20,6 +23,10 @@ export interface HoldDefinition {
   prepBetweenReps?: boolean;
   // Per-set weight increment (e.g. 5 → set1=base, set2=base+5, set3=base+10)
   setIncrement?: number;
+}
+
+export function isWarmup(hold: HoldDefinition): boolean {
+  return hold.warmup === true;
 }
 
 export const HOLDS: HoldDefinition[] = [

@@ -1,3 +1,4 @@
+import { isWarmup } from "./holds";
 import type { HoldDefinition } from "./holds";
 
 export const HOLDS_B: HoldDefinition[] = [
@@ -7,42 +8,42 @@ export const HOLDS_B: HoldDefinition[] = [
     name: "Jug",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 30, numSets: 1, repsPerSet: 3, restSecs: 30,
-    skipProgression: true, prepBetweenReps: true,
+    skipProgression: true, warmup: true, prepBetweenReps: true,
   },
   {
     id: "b-pullup",
     name: "Pull-ups",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     isRestOnly: true, breakSecs: 60, numSets: 2,
-    skipProgression: true,
+    skipProgression: true, warmup: true,
   },
   {
     id: "b-big-chisel",
     name: "Big Edge — Chisel",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 45, numSets: 1, repsPerSet: 2, restSecs: 45,
-    skipProgression: true, prepBetweenReps: true,
+    skipProgression: true, warmup: true, prepBetweenReps: true,
   },
   {
     id: "b-big-hc",
     name: "Big Edge — Half Crimp",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 45, numSets: 1, repsPerSet: 2, restSecs: 45,
-    skipProgression: true, prepBetweenReps: true,
+    skipProgression: true, warmup: true, prepBetweenReps: true,
   },
   {
     id: "b-big-open",
     name: "Big Edge — Open",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 45, numSets: 1, repsPerSet: 2, restSecs: 45,
-    skipProgression: true, prepBetweenReps: true,
+    skipProgression: true, warmup: true, prepBetweenReps: true,
   },
   {
     id: "b-small-chisel-wu",
     name: "Small Edge — Chisel",
     defaultSet1Weight: 0, defaultSet2Weight: 0, set1Reps: 1, set2Reps: 1,
     hangSecs: 10, breakSecs: 120, numSets: 1, repsPerSet: 1,
-    skipProgression: true,
+    skipProgression: true, warmup: true,
   },
   // ── Main hangs (Small Edge) ──────────────────────────────────────────────
   {
@@ -64,3 +65,10 @@ export const HOLDS_B: HoldDefinition[] = [
     hangSecs: 10, breakSecs: 120, numSets: 3, repsPerSet: 1, setIncrement: 5,
   },
 ];
+
+const WARMUP_IDS = new Set(HOLDS_B.filter(isWarmup).map((h) => h.id));
+
+/** For saved sessions, which only keep the hold id. */
+export function isWarmupHoldId(holdId: string): boolean {
+  return WARMUP_IDS.has(holdId);
+}

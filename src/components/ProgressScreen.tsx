@@ -27,7 +27,7 @@ import type { TrendPoint, CalendarDay } from "../lib/progressData";
 import { buildGradeTrend, gradeLabel } from "../lib/gradeTrends";
 import type { Granularity } from "../lib/gradeTrends";
 import { HOLDS } from "../data/holds";
-import { HOLDS_B } from "../data/workout-b";
+import { HOLDS_B, isWarmupHoldId } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
 import {
   getSchedule,
@@ -692,8 +692,18 @@ export function ProgressScreen({
 
                 {session.holds.length > 0 && (
                   <div className="flex flex-col gap-1.5">
-                    {session.holds.map((hold) => (
+                    {session.holds.map((hold, i) => isWarmupHoldId(hold.holdId) ? (
                       <div key={hold.holdId} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">{hold.holdName}</span>
+                        <span className="text-xs text-gray-500">BW</span>
+                      </div>
+                    ) : (
+                      <div
+                        key={hold.holdId}
+                        className={`flex items-center justify-between ${
+                          i > 0 && isWarmupHoldId(session.holds[i - 1].holdId) ? "mt-1 pt-2 border-t border-gray-700/60" : ""
+                        }`}
+                      >
                         <span className="text-sm text-gray-200">{hold.holdName}</span>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-gray-500">
