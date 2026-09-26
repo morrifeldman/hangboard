@@ -87,7 +87,8 @@ function repLabel(hold: HoldDefinition): string {
   const numSets = hold.numSets ?? 2;
   if (hold.isRestOnly) return numSets > 1 ? `× ${numSets} sets` : "";
   if (hold.repsPerSet !== undefined) {
-    return numSets === 1 ? `${hold.repsPerSet} rep` : `${hold.repsPerSet} rep × ${numSets} sets`;
+    const reps = `${hold.repsPerSet} ${hold.repsPerSet === 1 ? "rep" : "reps"}`;
+    return numSets === 1 ? reps : `${reps} × ${numSets} sets`;
   }
   const { set1Reps, set2Reps } = hold;
   if (set1Reps === set2Reps) return `${set1Reps} reps × ${numSets} sets`;
@@ -229,7 +230,9 @@ export function HangboardSetup() {
                     <p className="text-gray-500 text-xs">{holdSummary(hold)}</p>
                   )}
                 </div>
-                <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+                {warmupDetail && (
+                  <span className="text-xs font-semibold text-gray-400 tabular-nums">BW</span>
+                )}
               </div>
             ))}
           </div>
