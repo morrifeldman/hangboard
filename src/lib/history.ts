@@ -1,12 +1,13 @@
 import { openDB, type IDBPDatabase } from "idb";
 import type { HoldDefinition } from "../data/holds";
+import type { LiftEntry } from "./lifts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type GymWorkoutType =
   | "arc" | "cir" | "pe-route" | "lbc" | "wbl"
   | "performance" | "hard-bouldering" | "limit-bouldering" | "campus" | "injury"
-  | "cardio" | "stretching" | "freeform";
+  | "cardio" | "stretching" | "freeform" | "lifts";
 
 export type FreeformEntry = { key: string; value: string };
 export type FreeformSection = { name: string; entries: FreeformEntry[] };
@@ -27,7 +28,8 @@ export type GymData =
   | { type: "injury";           bodyPart?: string; severity?: string }
   | { type: "cardio";           mode: string; durationMin: number; intensity?: string }
   | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number }
-  | { type: "freeform";         title: string; sections: FreeformSection[] };
+  | { type: "freeform";         title: string; sections: FreeformSection[] }
+  | { type: "lifts";            lifts: LiftEntry[] };
 
 export type SessionSetRecord = {
   weight: number;

@@ -9,6 +9,11 @@ import { Audio, initAudio } from "../lib/audio";
 import { Haptics } from "../lib/haptics";
 import { BackChevronIcon, NoteIcon, ClockIcon, DumbbellIcon, GearIcon } from "./icons";
 import { HangboardSetup } from "./HangboardSetup";
+import { LiftsForm } from "./LiftsForm";
+import { emptyLiftRow, liftRowHasEntries, liftRowToDraft, liftRowsFromEntries } from "../lib/liftRows";
+import type { LiftRow } from "../lib/liftRows";
+import { commitLifts, currentLiftName } from "../lib/lifts";
+import type { LiftDraft } from "../lib/lifts";
 
 const FIELD_CLS =
   "h-11 bg-gray-800 text-white rounded-lg px-3 text-base border border-gray-700 [color-scheme:dark] focus:outline-none focus:border-accent-500";
@@ -315,6 +320,9 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   const [hangboardMode, setHangboardMode] = useState(false);
   const gymDefaults = useWorkoutStore((s) => s.gymDefaults);
   const setGymDefaults = useWorkoutStore((s) => s.setGymDefaults);
+  const liftLibrary = useWorkoutStore((s) => s.lifts);
+  const addLift = useWorkoutStore((s) => s.addLift);
+  const setLiftBase = useWorkoutStore((s) => s.setLiftBase);
 
   const initialWorkoutType: GymWorkoutType =
     initialRecord?.gymData?.type ?? "arc";
@@ -329,7 +337,8 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   const [fields, setFields] = useState<Record<string, string>>(() =>
     initialRecord?.gymData &&
     initialRecord.gymData.type !== "freeform" &&
-    initialRecord.gymData.type !== "campus"
+    initialRecord.gymData.type !== "campus" &&
+    initialRecord.gymData.type !== "lifts"
       ? gymDataToFields(initialRecord.gymData)
       : (gymDefaults[initialWorkoutType] ?? {})
   );
@@ -368,6 +377,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   // Reveal the full B/L/R hand-sequence code under each compact row.
   const [showCodes, setShowCodes] = useState(false);
 
+  const [liftRows, setLiftRows] = useState<LiftRow[]>(() =>
+    initialRecord?.gymData?.type === "lifts"
+      ? liftRowsFromEntries(
+          initialRecord.gymData.lifts.map((e) => ({ ...e, name: currentLiftName(e, liftLibrary) })),
+        )
+      : [emptyLiftRow()],
+  );
+
   const [freeformKeys, setFreeformKeys] = useState<string[]>([]);
   const [freeformSectionNames, setFreeformSectionNames] = useState<string[]>([]);
   const [lastFreeform, setLastFreeform] = useState<SessionRecord | undefined>();
@@ -394,12 +411,19 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   const freeformGymData =
     workoutType === "freeform" ? buildFreeformGymData(freeformTitle, freeformSections) : null;
   const campusGymData = isCampus ? buildCampusGymData(campusSets) : null;
+  const isLifts = workoutType === "lifts";
+  const liftDrafts = isLifts ? liftRows.map(liftRowToDraft) : [];
+  const liftsValid =
+    liftDrafts.length > 0 &&
+    liftDrafts.every((d): d is LiftDraft => d !== null && (!editing || d.liftId !== undefined));
   const valid =
     workoutType === "freeform"
       ? freeformGymData !== null
       : isCampus
         ? campusGymData !== null
-        : isFormValid(def, fields);
+        : isLifts
+          ? liftsValid
+          : isFormValid(def, fields);
 
   // Per-ladder-name sequence options: presets ∪ previously-logged.
   const sequencesFor = (name: string): string[] =>
@@ -416,6 +440,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     if (workoutType === "campus") {
       return JSON.stringify(campusSets) !== JSON.stringify(campusTemplateSets());
     }
+    if (workoutType === "lifts") return liftRows.some(liftRowHasEntries);
     // Compare only non-blank values (cleared/backspaced fields leave "" behind,
     // and saved defaults can contain "" too), independent of key order.
     const meaningful = (m: Record<string, string>) =>
@@ -434,6 +459,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       setCampusSets(campusTemplateSets());
       setNoteOpen(new Set());
     }
+    if (t === "lifts") setLiftRows([emptyLiftRow()]);
   };
 
   const clearSwitchTimer = () => {
@@ -590,12 +616,18 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   };
 
   const handleSave = async () => {
-    const gymData =
+    // Lift ids are settled here, but the library itself only changes once the session is stored.
+    const committed = isLifts && liftsValid
+      ? commitLifts(liftLibrary, liftDrafts as LiftDraft[], () => crypto.randomUUID())
+      : null;
+    const gymData: GymData | null =
       workoutType === "freeform"
         ? freeformGymData
         : workoutType === "campus"
           ? campusGymData
-          : buildGymData(def, fields);
+          : isLifts
+            ? committed && { type: "lifts", lifts: committed.entries }
+            : buildGymData(def, fields);
     if (!gymData) return;
     setSaving(true);
     try {
@@ -623,10 +655,16 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
           ...(sessionNotes ? { notes: sessionNotes } : {}),
         };
         await addSession(record);
+        // Only a new session moves the library on. Editing an old one must not
+        // roll a lift's base back to whatever was planned back then.
+        if (committed) {
+          committed.created.forEach(addLift);
+          committed.entries.forEach((e) => setLiftBase(e.liftId, e.nextBase));
+        }
       }
       // Freeform shape doesn't fit the flat Record<string,string> defaults store;
       // "Use last freeform" handles carry-forward instead.
-      if (workoutType !== "freeform" && workoutType !== "campus") {
+      if (workoutType !== "freeform" && workoutType !== "campus" && workoutType !== "lifts") {
         setGymDefaults(workoutType, fields);
       }
       onSaved();
@@ -867,6 +905,8 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
               {freeformSectionNames.map((n) => <option key={n} value={n} />)}
             </datalist>
           </div>
+        ) : isLifts ? (
+          <LiftsForm rows={liftRows} onChange={setLiftRows} library={liftLibrary} editing={editing} />
         ) : isCampus ? (
           <div className="flex flex-col gap-3">
             <CampusRestTimer />

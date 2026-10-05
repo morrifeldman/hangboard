@@ -5,6 +5,7 @@ import type { SessionRecord } from "../history";
 import type { ClimbRecord } from "../climbs";
 import type { ScheduleRecord } from "../schedules";
 import type { NoteRecord } from "../notes";
+import type { LiftDefinition } from "../lifts";
 
 const SAMPLE_SESSION: SessionRecord = {
   id: "s1",
@@ -51,6 +52,16 @@ const SAMPLE_NOTE: NoteRecord = {
   createdAt: 1_700_000_000_000,
 };
 
+const SAMPLE_LIFT: LiftDefinition = {
+  id: "l1",
+  name: "Squat",
+  baseWeight: 225,
+  sets: 3,
+  reps: 5,
+  repDiff: 0,
+  weightDiff: 0,
+};
+
 const FULL_INPUT = {
   sessions: [SAMPLE_SESSION],
   climbs: [SAMPLE_CLIMB],
@@ -60,6 +71,7 @@ const FULL_INPUT = {
   weightsB: { "b-hc": { set1: 50, set2: 55 } },
   selectedWorkout: "repeaters" as const,
   gymDefaults: { arc: { climbMin: "20" } },
+  lifts: [SAMPLE_LIFT],
   mountainProjectUrl: "https://example.com/user.csv",
   now: 1_700_000_000_000,
 };
@@ -106,6 +118,7 @@ describe("validateBackup", () => {
       weightsB: {},
       selectedWorkout: "max-hang",
       gymDefaults: {},
+      lifts: [],
       mountainProjectUrl: "",
       now: 0,
     });
@@ -163,6 +176,29 @@ describe("validateBackup", () => {
     const result = validateBackup(parsed);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/notes/);
+  });
+
+  it("round-trips the lift library", () => {
+    const f = buildBackup(FULL_INPUT);
+    const result = validateBackup(JSON.parse(JSON.stringify(f)));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.file.data.lifts).toEqual([SAMPLE_LIFT]);
+  });
+
+  it("treats a missing lifts field as an empty library (legacy backups)", () => {
+    const parsed = JSON.parse(JSON.stringify(buildBackup(FULL_INPUT)));
+    delete parsed.data.lifts;
+    const result = validateBackup(parsed);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.file.data.lifts).toEqual([]);
+  });
+
+  it("rejects a non-array lifts field", () => {
+    const parsed = JSON.parse(JSON.stringify(buildBackup(FULL_INPUT)));
+    parsed.data.lifts = { squat: 225 };
+    const result = validateBackup(parsed);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/lifts/);
   });
 
   it("rejects null", () => {

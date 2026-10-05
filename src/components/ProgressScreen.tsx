@@ -15,7 +15,8 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
-import { GearIcon } from "./icons";
+import { GearIcon, PencilIcon } from "./icons";
+import { useWorkoutStore } from "../store/useWorkoutStore";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 import { PyramidPreview } from "./pyramid/PyramidPreview";
 import {
@@ -29,6 +30,7 @@ import type { Granularity } from "../lib/gradeTrends";
 import { HOLDS, warmupVolume } from "../data/holds";
 import { HOLDS_B, isWarmupHoldId } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
+import { buildLiftTrend, formatLiftsSummary, formatScheme, withCurrentLiftNames } from "../lib/lifts";
 import {
   getSchedule,
   normalizeDayTypes,
@@ -44,6 +46,8 @@ export type ProgressView = {
   workout: "repeaters" | "max-hang";
   hold: number;
   granularity: Granularity;
+  /** Null shows the first lift in the library. */
+  lift: string | null;
 };
 
 type Props = {
@@ -53,6 +57,7 @@ type Props = {
   onShowSettings: () => void;
   onShowPyramid: () => void;
   onShowSchedule: () => void;
+  onEditLift: (liftId: string) => void;
 };
 
 // ─── Chart helpers ────────────────────────────────────────────────────────────
@@ -199,9 +204,15 @@ export function ProgressScreen({
   onShowSettings,
   onShowPyramid,
   onShowSchedule,
+  onEditLift,
 }: Props) {
-  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [storedSessions, setSessions] = useState<SessionRecord[]>([]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
+  const liftLibrary = useWorkoutStore((s) => s.lifts);
+  const sessions = useMemo(
+    () => storedSessions.map((r) => withCurrentLiftNames(r, liftLibrary)),
+    [storedSessions, liftLibrary],
+  );
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayTypes, setTodayTypes] = useState<ScheduleDayType[]>([]);
@@ -273,6 +284,17 @@ export function ProgressScreen({
     [sessions, selectedHold, workoutType]
   );
   const chartPoints = useMemo(() => toChartPoints(trend), [trend]);
+
+  // A deleted lift can linger in the URL; fall back rather than chart nothing.
+  const selectedLift = liftLibrary.find((l) => l.id === view.lift) ?? liftLibrary[0];
+  const liftChartPoints = useMemo(
+    () => (selectedLift ? toChartPoints(buildLiftTrend(sessions, selectedLift.id)) : []),
+    [sessions, selectedLift],
+  );
+  const openSession = (sessionId: string) => {
+    const record = sessions.find((s) => s.id === sessionId);
+    if (record) onEditSession(record);
+  };
 
   const climbDateSet = useMemo(
     () => new Set(climbs.map((c) => c.date)),
@@ -568,6 +590,93 @@ export function ProgressScreen({
               )}
             </div>
           </section>
+
+          {selectedLift && (
+            <section className="flex flex-col gap-2.5">
+              <SectionHeading>Lifts</SectionHeading>
+              <div className="bg-gray-800 rounded-2xl px-4 py-3">
+                {liftChartPoints.length < 2 ? (
+                  <div className="h-[160px] flex items-center justify-center">
+                    <p className="text-gray-600 text-sm">
+                      {liftChartPoints.length === 0
+                        ? `No ${selectedLift.name} sessions yet`
+                        : "Need at least 2 sessions to show trend"}
+                    </p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={160}>
+                    <LineChart data={liftChartPoints} margin={{ top: 20, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis
+                        dataKey="label"
+                        tick={AXIS_TICK}
+                        tickLine={false}
+                        axisLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        domain={[
+                          (min: number) => Math.max(0, Math.floor((min - 5) / 10) * 10),
+                          (max: number) => Math.ceil((max + 5) / 10) * 10,
+                        ]}
+                        allowDecimals={false}
+                        tick={AXIS_NUM_TICK}
+                        tickLine={false}
+                        axisLine={false}
+                        width={36}
+                      />
+                      <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        labelStyle={{ color: "#9ca3af" }}
+                        formatter={(v: number | undefined) => [v != null ? `${v} lb` : "—", "Top set"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="weight"
+                        stroke={
+                          liftChartPoints[liftChartPoints.length - 1].weight >= liftChartPoints[0].weight
+                            ? ACCENT_HEX
+                            : "#6b7280"
+                        }
+                        strokeWidth={2}
+                        dot={(props) => <CustomDot {...props} onClick={openSession} />}
+                        activeDot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* The list doubles as the chart's picker, so there are no lift pills. */}
+              <div className="bg-gray-800 rounded-2xl divide-y divide-gray-700/60" data-testid="lift-library">
+                {liftLibrary.map((lift) => {
+                  const selected = lift.id === selectedLift.id;
+                  return (
+                    <div key={lift.id} className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => onViewChange({ lift: lift.id })}
+                        aria-pressed={selected}
+                        className="flex-1 min-w-0 text-left px-4 py-3 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400"
+                      >
+                        <span className={`block text-sm font-semibold truncate ${selected ? "text-accent-400" : "text-gray-200"}`}>
+                          {lift.name}
+                        </span>
+                        <span className="block text-sm text-gray-400 font-num">{formatScheme(lift)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onEditLift(lift.id)}
+                        aria-label={`Edit ${lift.name}`}
+                        className="shrink-0 p-3 mr-1 rounded-lg text-gray-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+                      >
+                        <PencilIcon size={18} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
@@ -825,6 +934,7 @@ function sessionTypeLabel(type: SessionRecord["workoutType"]): string {
   if (type === "limit-bouldering") return "Limit Bouldering";
   if (type === "injury") return "Injury";
   if (type === "stretching") return "Stretching";
+  if (type === "lifts") return "Lifts";
   return type;
 }
 
@@ -869,6 +979,7 @@ function gymDataSummary(data: NonNullable<SessionRecord["gymData"]>): string {
     if (data.stretches && data.stretches.length > 0) parts.push(data.stretches.join(", "));
     return parts.length > 0 ? parts.join(" · ") : "Logged";
   }
+  if (data.type === "lifts") return formatLiftsSummary(data.lifts);
   return "";
 }
 

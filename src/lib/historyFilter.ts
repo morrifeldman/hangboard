@@ -18,6 +18,7 @@ export const GYM_LABELS: Record<string, string> = {
   "cardio":           "Cardio",
   "stretching":       "Stretching",
   "freeform":         "Freeform",
+  "lifts":            "Lifts",
 };
 
 /** Hangboard workout types, in fixed display order (before gym types). */

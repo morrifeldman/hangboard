@@ -19,6 +19,8 @@ import {
   noteMatchesQuery,
 } from "../lib/historyFilter";
 import { shortLocation } from "../lib/format";
+import { formatLiftSets, withCurrentLiftNames } from "../lib/lifts";
+import { useWorkoutStore } from "../store/useWorkoutStore";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import { PRBadge } from "./PRBadge";
 import { GearIcon, NoteIcon } from "./icons";
@@ -164,6 +166,11 @@ function gymSummary(data: GymData): ReactNode {
       if (data.intensity) parts.push(data.intensity);
       return joinDots(parts);
     }
+    case "lifts":
+      if (data.lifts.length === 0) return "—";
+      return joinDots(
+        data.lifts.map((l) => <>{l.name} {formatLiftSets(l) ? <Fig>{formatLiftSets(l)}</Fig> : "skipped"}</>),
+      );
     case "freeform": {
       const count = data.sections.reduce((n, s) => n + s.entries.length, 0);
       if (count === 0) return data.title || "—";
@@ -447,7 +454,13 @@ export function HistoryScreen({
   onEditNote,
   onShowSettings,
 }: Props) {
-  const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [storedSessions, setSessions] = useState<SessionRecord[]>([]);
+  const liftLibrary = useWorkoutStore((s) => s.lifts);
+  // Resolved once here so the rows, the search and the filters all agree on a lift's name.
+  const sessions = useMemo(
+    () => storedSessions.map((r) => withCurrentLiftNames(r, liftLibrary)),
+    [storedSessions, liftLibrary],
+  );
   const prsBySession = useMemo(() => sessionPRs(sessions), [sessions]);
   const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
   const [notes, setNotes] = useState<NoteRecord[]>([]);

@@ -24,6 +24,7 @@ import { PyramidScreen } from "./components/PyramidScreen";
 import { ScrollingPyramidsScreen } from "./components/ScrollingPyramidsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { NoteEditorScreen } from "./components/NoteEditorScreen";
+import { LiftEditorScreen } from "./components/LiftEditorScreen";
 import { ScheduleScreen } from "./components/ScheduleScreen";
 import { TabBar } from "./components/TabBar";
 import type { Tab } from "./components/TabBar";
@@ -111,6 +112,7 @@ type HomeSearch = {
   workout?: "max-hang";
   hold?: number;
   granularity?: "months" | "years";
+  lift?: string;
 };
 
 /** Defaults are left out of the URL, so the home screen stays a bare `/`. */
@@ -121,6 +123,7 @@ function validateHomeSearch(raw: Record<string, unknown>): HomeSearch {
   if (Number.isInteger(hold) && hold > 0) out.hold = hold;
   const g = GRANULARITIES.find((x) => x === raw.granularity);
   if (g && g !== "seasons") out.granularity = g;
+  if (typeof raw.lift === "string" && raw.lift !== "") out.lift = raw.lift;
   return out;
 }
 
@@ -136,6 +139,7 @@ const homeRoute = createRoute({
       workout: search.workout ?? "repeaters",
       hold: search.hold ?? 0,
       granularity: search.granularity ?? "seasons",
+      lift: search.lift ?? null,
     };
 
     // Picking a hold isn't a place you'd want to press back out of.
@@ -148,6 +152,7 @@ const homeRoute = createRoute({
           workout: next.workout === "repeaters" ? undefined : next.workout,
           hold: next.hold === 0 ? undefined : next.hold,
           granularity: next.granularity === "seasons" ? undefined : next.granularity,
+          lift: next.lift ?? undefined,
         },
       });
     };
@@ -160,6 +165,7 @@ const homeRoute = createRoute({
         onShowSettings={() => void navigate({ to: "/settings" })}
         onShowPyramid={() => void navigate({ to: "/pyramid" })}
         onShowSchedule={() => void navigate({ to: "/schedule" })}
+        onEditLift={(liftId) => void navigate({ to: `/lifts/${liftId}/edit` })}
       />
     );
   },
@@ -369,6 +375,21 @@ const editNoteRoute = createRoute({
   },
 });
 
+const editLiftRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lifts/$liftId/edit",
+  loader: ({ params }) => {
+    const lift = useWorkoutStore.getState().lifts.find((l) => l.id === params.liftId);
+    if (!lift) throw redirect({ to: "/" });
+    return lift;
+  },
+  component: function EditLift() {
+    const lift = editLiftRoute.useLoaderData();
+    const back = useGoBack("/");
+    return <LiftEditorScreen lift={lift} onBack={back} onDone={back} />;
+  },
+});
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -380,6 +401,7 @@ const routeTree = rootRoute.addChildren([
   editSessionRoute,
   newNoteRoute,
   editNoteRoute,
+  editLiftRoute,
 ]);
 
 export const router = createRouter({

@@ -8,6 +8,7 @@ import { getNotes, replaceAllNotes } from "./notes";
 import type { NoteRecord } from "./notes";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { StoredWeights } from "../store/useWorkoutStore";
+import type { LiftDefinition } from "./lifts";
 
 export type BackupSelectedWorkout = "repeaters" | "max-hang";
 
@@ -20,6 +21,7 @@ export type BackupData = {
   weightsB: StoredWeights;
   selectedWorkout: BackupSelectedWorkout;
   gymDefaults: Record<string, Record<string, string>>;
+  lifts: LiftDefinition[];
   mountainProjectUrl: string;
 };
 
@@ -41,6 +43,7 @@ export type BuildBackupArgs = {
   weightsB: StoredWeights;
   selectedWorkout: BackupSelectedWorkout;
   gymDefaults: Record<string, Record<string, string>>;
+  lifts: LiftDefinition[];
   mountainProjectUrl: string;
   now?: number;
 };
@@ -59,6 +62,7 @@ export function buildBackup(args: BuildBackupArgs): BackupFile {
       weightsB: args.weightsB,
       selectedWorkout: args.selectedWorkout,
       gymDefaults: args.gymDefaults,
+      lifts: args.lifts,
       mountainProjectUrl: args.mountainProjectUrl,
     },
   };
@@ -105,6 +109,12 @@ export function validateBackup(parsed: unknown): ValidateResult {
     return { ok: false, error: "data.selectedWorkout must be 'repeaters' or 'max-hang'." };
   }
   if (!isObject(data.gymDefaults)) return { ok: false, error: "data.gymDefaults must be an object." };
+  // The lift library was added after v1 of the backup format; older files may omit it.
+  if (data.lifts === undefined) {
+    data.lifts = [];
+  } else if (!Array.isArray(data.lifts)) {
+    return { ok: false, error: "data.lifts must be an array." };
+  }
   if (typeof data.mountainProjectUrl !== "string") {
     return { ok: false, error: "data.mountainProjectUrl must be a string." };
   }
@@ -129,6 +139,7 @@ export async function exportBackup(): Promise<BackupFile> {
     weightsB: s.weightsB,
     selectedWorkout: selected,
     gymDefaults: s.gymDefaults,
+    lifts: s.lifts,
     mountainProjectUrl: localStorage.getItem(MP_URL_KEY) ?? "",
   });
 }
@@ -144,6 +155,7 @@ export async function restoreBackup(file: BackupFile): Promise<void> {
     weightsB: data.weightsB,
     selectedWorkout: data.selectedWorkout,
     gymDefaults: data.gymDefaults,
+    lifts: data.lifts,
   });
   localStorage.setItem(MP_URL_KEY, data.mountainProjectUrl);
 }

@@ -127,6 +127,13 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     fieldDefs: [], // custom row editor, like freeform
   },
   {
+    id: "lifts",
+    label: "Lifts",
+    description: "Weight training from your own lift library — sets, reps and weight",
+    category: "power",
+    fieldDefs: [], // custom lift editor, like freeform
+  },
+  {
     id: "cardio",
     label: "Cardio",
     description: "Bike, run, or elliptical — zone 2 / aerobic conditioning",

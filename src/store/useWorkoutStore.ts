@@ -6,6 +6,7 @@ import * as SM from "../lib/stateMachine";
 import { totalWorkoutSecs } from "../lib/workoutTime";
 import { overrideKeyFor, plannedWeight, sessionSetWeight } from "../lib/setWeights";
 import type { SetOverrides } from "../lib/setWeights";
+import type { LiftDefinition } from "../lib/lifts";
 
 import type { WorkoutPhase } from "../lib/stateMachine";
 import { IS_TEST_MODE } from "../lib/testMode";
@@ -25,6 +26,7 @@ interface WorkoutStore {
   weightsB: StoredWeights;
   selectedWorkout: WorkoutId;
   gymDefaults: Record<string, Record<string, string>>;
+  lifts: LiftDefinition[];
 
   // Session (not persisted)
   phase: WorkoutPhase;
@@ -64,6 +66,10 @@ interface WorkoutStore {
   adjustNextWeight: (holdId: string, setNum: number, delta: number) => void;
   resetWeights: () => void;
   setGymDefaults: (workoutType: string, fields: Record<string, string>) => void;
+  addLift: (lift: LiftDefinition) => void;
+  updateLift: (id: string, patch: Partial<Omit<LiftDefinition, "id">>) => void;
+  deleteLift: (id: string) => void;
+  setLiftBase: (id: string, baseWeight: number) => void;
 }
 
 function defaultWeightsA(): StoredWeights {
@@ -91,6 +97,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
       weightsB: defaultWeightsB(),
       selectedWorkout: "repeaters",
       gymDefaults: {},
+      lifts: [],
 
       phase: "idle",
       holdIndex: 0,
@@ -226,6 +233,22 @@ export const useWorkoutStore = create<WorkoutStore>()(
       setGymDefaults: (workoutType, fields) => {
         set({ gymDefaults: { ...get().gymDefaults, [workoutType]: fields } });
       },
+
+      addLift: (lift) => {
+        set({ lifts: [...get().lifts, lift] });
+      },
+
+      updateLift: (id, patch) => {
+        set({ lifts: get().lifts.map((l) => (l.id === id ? { ...l, ...patch } : l)) });
+      },
+
+      deleteLift: (id) => {
+        set({ lifts: get().lifts.filter((l) => l.id !== id) });
+      },
+
+      setLiftBase: (id, baseWeight) => {
+        get().updateLift(id, { baseWeight });
+      },
     }),
     {
       name: "hangboard-weights",
@@ -234,6 +257,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
         weightsB: s.weightsB,
         selectedWorkout: s.selectedWorkout === "test" ? "repeaters" : s.selectedWorkout,
         gymDefaults: s.gymDefaults,
+        lifts: s.lifts,
       }),
     }
   )
