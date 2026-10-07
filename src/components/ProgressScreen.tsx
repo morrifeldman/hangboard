@@ -419,7 +419,7 @@ export function ProgressScreen({
                       <CalendarCell
                         key={di}
                         day={day}
-                        onSelect={() => setSelectedDate(day.date.toISOString().slice(0, 10))}
+                        onSelect={() => setSelectedDate(toLocalDateString(day.date))}
                       />
                     ))}
                   </div>

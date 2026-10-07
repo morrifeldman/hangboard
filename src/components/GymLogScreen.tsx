@@ -39,7 +39,7 @@ type Props = {
 };
 
 function todayString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateString(Date.now());
 }
 
 function localDateString(ts: number): string {
