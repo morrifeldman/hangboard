@@ -1,5 +1,5 @@
 import { formatWeight } from "../lib/format";
-import { WEIGHT_STEP, step } from "./WeightStepper";
+import { WEIGHT_STEP, step as stepBy } from "./WeightStepper";
 
 interface WeightCellProps {
   value: number;
@@ -12,6 +12,10 @@ interface WeightCellProps {
   onOpen: () => void;
   /** The last column anchors its editor to the right so it can't spill off the card. */
   align?: "center" | "end";
+  step?: number;
+  /** The −/+ buttons won't go below this. */
+  min?: number;
+  formatValue?: (n: number) => string;
 }
 
 /**
@@ -20,21 +24,22 @@ interface WeightCellProps {
  */
 export function WeightCell({
   value, onChange, label, completed, onToggleCompleted, pr = false, open, onOpen, align = "center",
+  step = WEIGHT_STEP, min = -Infinity, formatValue = formatWeight,
 }: WeightCellProps) {
   const tone = !completed ? "text-red-400/70 line-through" : pr ? "text-amber-300" : "text-white";
   const btnClass =
-    "w-10 h-9 flex-shrink-0 rounded-lg bg-gray-600 active:bg-gray-500 text-gray-100 text-lg leading-none select-none flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
+    "w-10 h-9 flex-shrink-0 rounded-lg bg-gray-600 active:bg-gray-500 text-gray-100 disabled:bg-gray-700 disabled:text-gray-500 text-lg leading-none select-none flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
 
   return (
     <div className="relative flex justify-center" data-weight-cell>
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`${label}, ${formatWeight(value)}${completed ? "" : ", failed"}`}
+        aria-label={`${label}, ${formatValue(value)}${completed ? "" : ", failed"}`}
         aria-expanded={open}
         className={`h-9 w-full rounded-lg font-num text-base active:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${tone} ${open ? "invisible" : ""}`}
       >
-        {formatWeight(value)}
+        {formatValue(value)}
       </button>
       {open && (
         <div
@@ -45,13 +50,13 @@ export function WeightCell({
           }`}
         >
           <div className="flex items-center gap-1">
-            <button type="button" className={btnClass} onClick={() => onChange(step(value, -WEIGHT_STEP))} aria-label={`${label} −${WEIGHT_STEP}`}>
+            <button type="button" className={btnClass} onClick={() => onChange(Math.max(min, stepBy(value, -step)))} disabled={value - step < min} aria-label={`${label} −${step}`}>
               −
             </button>
             <span className={`min-w-[2.75rem] text-center font-num text-lg select-none ${tone}`} aria-live="polite">
-              {formatWeight(value)}
+              {formatValue(value)}
             </span>
-            <button type="button" className={btnClass} onClick={() => onChange(step(value, WEIGHT_STEP))} aria-label={`${label} +${WEIGHT_STEP}`}>
+            <button type="button" className={btnClass} onClick={() => onChange(stepBy(value, step))} aria-label={`${label} +${step}`}>
               +
             </button>
           </div>

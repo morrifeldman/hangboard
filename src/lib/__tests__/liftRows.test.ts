@@ -37,7 +37,7 @@ describe("relinkLiftRow", () => {
 describe("liftRowToDraft", () => {
   const row = withScheme({ ...emptyLiftRow(), name: " Bench " }, scheme);
 
-  it("reads a filled-in row as numbers", () => {
+  it("reads the scheme as numbers", () => {
     expect(liftRowToDraft(row)).toMatchObject({
       name: "Bench",
       scheme: { baseWeight: 135, sets: 3 },
@@ -45,9 +45,8 @@ describe("liftRowToDraft", () => {
     });
   });
 
-  it("rejects a row without a name or with a blank set", () => {
+  it("rejects a row without a name or a usable scheme", () => {
     expect(liftRowToDraft({ ...row, name: "" })).toBeNull();
-    const blank = { ...row, sets: row.sets.map((s, i) => (i === 1 ? { ...s, weight: "" } : s)) };
-    expect(liftRowToDraft(blank)).toBeNull();
+    expect(liftRowToDraft({ ...row, scheme: { ...row.scheme, baseWeight: "" } })).toBeNull();
   });
 });

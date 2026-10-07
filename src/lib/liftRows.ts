@@ -3,14 +3,14 @@ import {
   parseScheme,
   schemeToFields,
 } from "./lifts";
-import type { LiftDefinition, LiftDraft, LiftEntry, SchemeFields } from "./lifts";
+import type { LiftDefinition, LiftDraft, LiftEntry, LiftSet, SchemeFields } from "./lifts";
 
-/** A lift being typed in. Fields stay strings so a half-typed number isn't snapped to 0. */
+/** A lift being filled in. The scheme stays text so a half-typed base isn't snapped to 0. */
 export type LiftRow = {
   liftId?: string;
   name: string;
   scheme: SchemeFields;
-  sets: { weight: string; reps: string; done: boolean }[];
+  sets: LiftSet[];
   nextBase: number;
 };
 
@@ -25,7 +25,7 @@ export function liftRowsFromEntries(entries: LiftEntry[]): LiftRow[] {
     liftId: e.liftId,
     name: e.name,
     scheme: schemeToFields(e.scheme),
-    sets: e.sets.map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: s.done })),
+    sets: e.sets.map((s) => ({ ...s })),
     nextBase: e.nextBase,
   }));
 }
@@ -34,17 +34,12 @@ export function liftRowHasEntries(row: LiftRow): boolean {
   return row.name.trim() !== "" || row.sets.some((s) => s.done);
 }
 
-/** Null until the row names a lift with a usable scheme and every set reads as a number. */
+/** Null until the row names a lift with a usable scheme. */
 export function liftRowToDraft(row: LiftRow): LiftDraft | null {
   const name = row.name.trim();
   const scheme = parseScheme(row.scheme);
   if (!name || !scheme || row.sets.length === 0) return null;
-  const sets = row.sets.map((s) => ({ weight: Number(s.weight), reps: Number(s.reps), done: s.done }));
-  const usable = sets.every(
-    (s) => Number.isFinite(s.weight) && s.weight >= 0 && Number.isInteger(s.reps) && s.reps >= 1,
-  );
-  if (!usable || row.sets.some((s) => s.weight.trim() === "" || s.reps.trim() === "")) return null;
-  return { ...(row.liftId ? { liftId: row.liftId } : {}), name, scheme, sets, nextBase: row.nextBase };
+  return { ...(row.liftId ? { liftId: row.liftId } : {}), name, scheme, sets: row.sets, nextBase: row.nextBase };
 }
 
 /** Lay out fresh sets for a new scheme, with the next base starting at the current base. */
@@ -53,9 +48,7 @@ export function withScheme(row: LiftRow, scheme: SchemeFields): LiftRow {
   return {
     ...row,
     scheme,
-    sets: parsed
-      ? generateSets(parsed).map((s) => ({ weight: String(s.weight), reps: String(s.reps), done: false }))
-      : [],
+    sets: parsed ? generateSets(parsed) : [],
     nextBase: parsed ? parsed.baseWeight : row.nextBase,
   };
 }

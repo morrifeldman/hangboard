@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useBlocker } from "@tanstack/react-router";
 import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
 import type { SessionRecord, GymData, GymWorkoutType, FreeformSection, CampusSet } from "../lib/history";
 import { GYM_WORKOUTS, GYM_CATEGORIES, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES, sequenceShortLabel, shortCodeToSequence, ladderDisplayName, rungShortLabel } from "../data/gymWorkouts";
@@ -377,13 +378,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   // Reveal the full B/L/R hand-sequence code under each compact row.
   const [showCodes, setShowCodes] = useState(false);
 
-  const [liftRows, setLiftRows] = useState<LiftRow[]>(() =>
+  const [initialLiftRows] = useState<LiftRow[]>(() =>
     initialRecord?.gymData?.type === "lifts"
       ? liftRowsFromEntries(
           initialRecord.gymData.lifts.map((e) => ({ ...e, name: currentLiftName(e, liftLibrary) })),
         )
       : [emptyLiftRow()],
   );
+  const [liftRows, setLiftRows] = useState<LiftRow[]>(initialLiftRows);
 
   const [freeformKeys, setFreeformKeys] = useState<string[]>([]);
   const [freeformSectionNames, setFreeformSectionNames] = useState<string[]>([]);
@@ -412,6 +414,21 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     workoutType === "freeform" ? buildFreeformGymData(freeformTitle, freeformSections) : null;
   const campusGymData = isCampus ? buildCampusGymData(campusSets) : null;
   const isLifts = workoutType === "lifts";
+  const liftsUnsaved =
+    isLifts &&
+    !hangboardMode &&
+    (editing
+      ? JSON.stringify(liftRows) !== JSON.stringify(initialLiftRows)
+      : liftRows.some(liftRowHasEntries));
+  // Saving and deleting navigate away on purpose, so they mustn't trip the guard.
+  const leavingRef = useRef(false);
+  // A lifts session is typed in set by set over a whole gym visit, so a stray
+  // tab tap or back press would cost a lot. Other gym types are a few fields.
+  const leaveGuard = useBlocker({
+    shouldBlockFn: () => liftsUnsaved && !leavingRef.current,
+    enableBeforeUnload: () => liftsUnsaved && !leavingRef.current,
+    withResolver: true,
+  });
   const liftDrafts = isLifts ? liftRows.map(liftRowToDraft) : [];
   const liftsValid =
     liftDrafts.length > 0 &&
@@ -667,6 +684,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       if (workoutType !== "freeform" && workoutType !== "campus" && workoutType !== "lifts") {
         setGymDefaults(workoutType, fields);
       }
+      leavingRef.current = true;
       onSaved();
     } catch (err) {
       console.error(err);
@@ -682,6 +700,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     }
     if (initialRecord) {
       await deleteSession(initialRecord.id).catch(console.error);
+      leavingRef.current = true;
       onDeleted?.();
     }
   };
@@ -1248,6 +1267,36 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
           </button>
         )}
       </div>
+      )}
+
+      {leaveGuard.status === "blocked" && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-50" onClick={leaveGuard.reset} />
+          <div
+            role="alertdialog"
+            aria-label="Unsaved lifts"
+            className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-2xl px-4 pt-5 pb-6 flex flex-col gap-3"
+          >
+            <p className="text-white font-semibold">Leave without saving?</p>
+            <p className="text-gray-400 text-sm -mt-1">
+              {editing ? "Your changes to these lifts will be lost." : "The lifts you've entered will be lost."}
+            </p>
+            <button
+              type="button"
+              onClick={leaveGuard.reset}
+              className="w-full h-12 rounded-xl font-semibold bg-accent-500 text-gray-900 text-base"
+            >
+              Keep editing
+            </button>
+            <button
+              type="button"
+              onClick={leaveGuard.proceed}
+              className="w-full h-11 rounded-xl font-semibold bg-gray-800 text-red-400 text-base"
+            >
+              Discard and leave
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

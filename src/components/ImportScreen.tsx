@@ -11,6 +11,7 @@ import { holdNextDirection } from "../lib/weightCues";
 import { BackChevronIcon } from "./icons";
 import { WeightStepper } from "./WeightStepper";
 import { WeightCell } from "./WeightCell";
+import { useOpenCell } from "../hooks/useOpenCell";
 import { PRBadge } from "./PRBadge";
 
 type Props = {
@@ -85,21 +86,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   );
   // Saved notes show as a one-line preview, so the editors start closed.
   const [expandedNoteHolds, setExpandedNoteHolds] = useState<Set<string>>(() => new Set());
-  const [openCell, setOpenCell] = useState<string | null>(null);
-  useEffect(() => {
-    if (!openCell) return;
-    const close = (e: Event) => {
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target as Element).closest("[data-weight-cell]")) {
-        setOpenCell(null);
-      }
-    };
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [openCell]);
+  const [openCell, setOpenCell] = useOpenCell();
 
   const toggleCompletion = (holdId: string, setKey: "set1" | "set2" | "set3") => {
     setCompletionOverrides((prev) => {
