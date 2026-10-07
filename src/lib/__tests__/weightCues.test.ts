@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { holdNextDirection, sessionNextSummary, overviewDelta } from "../weightCues";
+import { holdNextDirection, liftNextDirection, sessionNextSummary, overviewDelta } from "../weightCues";
 import type { SessionRecord, SessionHoldRecord, SessionNextTarget } from "../history";
 
 function makeHold(
@@ -121,5 +121,21 @@ describe("overviewDelta", () => {
     expect(overviewDelta(12.5, last, 1)).toBe(2.5);
     expect(overviewDelta(2.5, last, 2)).toBe(-2.5);
     expect(overviewDelta(10, last, 1)).toBe(0);
+  });
+});
+
+describe("liftNextDirection", () => {
+  const scheme = { baseWeight: 135, sets: 3, reps: 5, repDiff: 0, weightDiff: 0 };
+
+  it("points up when next time starts heavier", () => {
+    expect(liftNextDirection({ scheme, nextBase: 140 })).toBe("up");
+  });
+
+  it("points down when next time starts lighter", () => {
+    expect(liftNextDirection({ scheme, nextBase: 130 })).toBe("down");
+  });
+
+  it("says nothing when the base stays put", () => {
+    expect(liftNextDirection({ scheme, nextBase: 135 })).toBeNull();
   });
 });

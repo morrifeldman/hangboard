@@ -2,6 +2,8 @@ import type { Dispatch, SetStateAction } from "react";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { WeightCell } from "./WeightCell";
 import { useOpenCell } from "../hooks/useOpenCell";
+import { NextArrow } from "./NextArrow";
+import { liftNextDirection } from "../lib/weightCues";
 import {
   LIFT_WEIGHT_STEP,
   findLiftByName,
@@ -210,6 +212,12 @@ export function LiftsForm({ rows, onChange, library, editing }: Props) {
                   onDelta={(d) => update(i, (r) => ({ ...r, nextBase: Math.max(0, roundToPlate(r.nextBase + d)) }))}
                 />
               </div>
+            )}
+            {editing && parsed && (
+              <p className="border-t border-gray-700/60 px-3.5 py-2 text-xs text-gray-500">
+                Next base <span className="font-num">{row.nextBase}</span>
+                <NextArrow dir={liftNextDirection({ nextBase: row.nextBase, scheme: parsed })} />
+              </p>
             )}
           </div>
         );

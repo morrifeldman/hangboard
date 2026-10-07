@@ -1,4 +1,5 @@
 import type { SessionRecord, SessionHoldRecord } from "./history";
+import type { LiftEntry } from "./lifts";
 
 // Pure helpers for the "weight going up / down next time" cues shown on the
 // History cards, the session edit view, and the workout setup overview.
@@ -22,6 +23,12 @@ export function holdNextDirection(hold: SessionHoldRecord): WeightDirection | nu
   if (up) return "up";
   if (down) return "down";
   return null;
+}
+
+/** Whether a lift's base was raised or lowered for next time; null when it stayed put. */
+export function liftNextDirection(entry: Pick<LiftEntry, "nextBase" | "scheme">): WeightDirection | null {
+  const delta = entry.nextBase - entry.scheme.baseWeight;
+  return delta > 0 ? "up" : delta < 0 ? "down" : null;
 }
 
 /**

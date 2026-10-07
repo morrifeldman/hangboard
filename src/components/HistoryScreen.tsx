@@ -7,7 +7,8 @@ import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
-import { sessionNextSummary } from "../lib/weightCues";
+import { liftNextDirection, sessionNextSummary } from "../lib/weightCues";
+import { NextArrow } from "./NextArrow";
 import { sessionPRs } from "../lib/personalRecords";
 import {
   workoutLabel,
@@ -169,7 +170,12 @@ function gymSummary(data: GymData): ReactNode {
     case "lifts":
       if (data.lifts.length === 0) return "—";
       return joinDots(
-        data.lifts.map((l) => <>{l.name} {formatLiftSets(l) ? <Fig>{formatLiftSets(l)}</Fig> : "skipped"}</>),
+        data.lifts.map((l) => (
+          <>
+            {l.name} {formatLiftSets(l) ? <Fig>{formatLiftSets(l)}</Fig> : "skipped"}
+            <NextArrow dir={liftNextDirection(l)} />
+          </>
+        )),
       );
     case "freeform": {
       const count = data.sections.reduce((n, s) => n + s.entries.length, 0);
