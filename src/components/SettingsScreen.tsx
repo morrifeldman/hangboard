@@ -27,6 +27,8 @@ import {
 } from "../lib/notifications";
 import type { NotificationPrefs, PeriodicReminderSupport } from "../lib/notifications";
 import { BackChevronIcon } from "./icons";
+import { LeaveGuardSheet } from "./LeaveGuardSheet";
+import { useLeaveGuard } from "../hooks/useLeaveGuard";
 
 type Props = {
   onBack: () => void;
@@ -55,6 +57,9 @@ export function SettingsScreen({ onBack }: Props) {
   const [notifTest, setNotifTest] = useState<string | null>(null);
   const mpFileInputRef = useRef<HTMLInputElement>(null);
   const [mpUrl, setMpUrl] = useState(() => getMountainProjectUrl());
+  // The URL is only stored once an import with it succeeds.
+  const [savedMpUrl, setSavedMpUrl] = useState(mpUrl);
+  const leaveGuard = useLeaveGuard(mpUrl.trim() !== savedMpUrl);
   const [mpBusy, setMpBusy] = useState(false);
   const [mpStatus, setMpStatus] = useState<string | null>(null);
   const [mpError, setMpError] = useState<string | null>(null);
@@ -165,6 +170,8 @@ export function SettingsScreen({ onBack }: Props) {
     try {
       await restoreBackup(pending.file);
       // Reload so Zustand rehydrates cleanly and every screen picks up the new IDB state.
+      // The restore replaced the stored link too, so a half-typed one is moot.
+      leaveGuard.allowLeave();
       window.location.reload();
     } catch (err) {
       setRestoring(false);
@@ -189,6 +196,7 @@ export function SettingsScreen({ onBack }: Props) {
     try {
       const count = await refreshFromMountainProject(mpUrl);
       setMpUrl(mpUrl.trim());
+      setSavedMpUrl(mpUrl.trim());
       setMpStatus(`Imported ${count} climb${count === 1 ? "" : "s"}.`);
       await refreshClimbCount();
     } catch (err) {
@@ -203,6 +211,7 @@ export function SettingsScreen({ onBack }: Props) {
   const handleMpClear = () => {
     clearMountainProjectUrl();
     setMpUrl("");
+    setSavedMpUrl("");
     setMpStatus(null);
     setMpError(null);
   };
@@ -471,6 +480,7 @@ export function SettingsScreen({ onBack }: Props) {
         </section>
 
       </main>
+      <LeaveGuardSheet guard={leaveGuard} lost="The Mountain Project link you pasted" />
     </div>
   );
 }

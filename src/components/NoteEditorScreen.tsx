@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { addNote, updateNote, deleteNote, getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { BackChevronIcon } from "./icons";
+import { LeaveGuardSheet } from "./LeaveGuardSheet";
+import { useLeaveGuard } from "../hooks/useLeaveGuard";
 
 type Props = {
   onBack: () => void;
@@ -58,6 +60,9 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
     return false;
   }, [editing, initialRecord, dateValue, trimmedCategory, trimmedText]);
 
+  // A new note's date and starter category are defaults, so only its text is work.
+  const leaveGuard = useLeaveGuard(editing ? hasChanges : trimmedText !== "");
+
   const handleSave = async () => {
     if (!trimmedText) return;
     setSaving(true);
@@ -81,6 +86,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
         };
         await addNote(record);
       }
+      leaveGuard.allowLeave();
       onSaved();
     } catch (err) {
       console.error(err);
@@ -96,6 +102,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
     }
     if (initialRecord) {
       await deleteNote(initialRecord.id).catch(console.error);
+      leaveGuard.allowLeave();
       onDeleted?.();
     }
   };
@@ -205,6 +212,10 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
           </button>
         )}
       </div>
+      <LeaveGuardSheet
+        guard={leaveGuard}
+        lost={editing ? "Your changes to this note" : "The note you've written"}
+      />
     </div>
   );
 }

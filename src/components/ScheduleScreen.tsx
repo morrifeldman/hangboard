@@ -21,6 +21,8 @@ import type { SessionRecord } from "../lib/history";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { useScrollRestore } from "../hooks/useScrollRestore";
+import { LeaveGuardSheet } from "./LeaveGuardSheet";
+import { useLeaveGuard } from "../hooks/useLeaveGuard";
 
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -320,10 +322,13 @@ function EditSheet({
     orderedSelected.length !== day.dayTypes.length ||
     orderedSelected.some((t, i) => t !== day.dayTypes[i]);
   const dirty = noteChanged || typesChanged;
+  // Save, Clear and Cancel just close the sheet, so only leaving the screen is guarded.
+  const leaveGuard = useLeaveGuard(dirty);
 
   const loggedLine = loggedSummary(day);
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
       onClick={onCancel}
@@ -439,6 +444,8 @@ function EditSheet({
         </div>
       </div>
     </div>
+    <LeaveGuardSheet guard={leaveGuard} lost={`Your changes to ${dateLabel}`} />
+    </>
   );
 }
 

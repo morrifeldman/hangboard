@@ -13,6 +13,8 @@ import { WeightStepper } from "./WeightStepper";
 import { WeightCell } from "./WeightCell";
 import { useOpenCell } from "../hooks/useOpenCell";
 import { PRBadge } from "./PRBadge";
+import { LeaveGuardSheet } from "./LeaveGuardSheet";
+import { useLeaveGuard } from "../hooks/useLeaveGuard";
 
 type Props = {
   onBack: () => void;
@@ -43,6 +45,18 @@ function defaultWeights(holds: readonly HoldDefinition[]): number[] {
   return holds.map((h) => h.defaultSet1Weight);
 }
 
+const DEFAULT_SET2_OFFSET = 10;
+
+/** The set 1, 2 and 3 weights a new log of this type starts from. */
+function startingWeights(type: "repeaters" | "max-hang", set2Offset: number): [number[], number[], number[]] {
+  const holds = type === "repeaters" ? HOLDS : HOLDS_B;
+  return [
+    defaultWeights(holds),
+    holds.map((h) => (type === "repeaters" ? h.defaultSet1Weight + set2Offset : h.defaultSet2Weight)),
+    defaultWeights(holds),
+  ];
+}
+
 export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
   // "beginner" sessions are treated as "repeaters" in the edit UI (same hold structure)
@@ -56,19 +70,21 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   );
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">(initialType);
   const [weights, setWeights] = useState<number[]>(() =>
-    initialRecord ? initialRecord.holds.map((h) => h.set1.weight) : defaultWeights(HOLDS)
+    initialRecord
+      ? initialRecord.holds.map((h) => h.set1.weight)
+      : startingWeights(initialType, DEFAULT_SET2_OFFSET)[0]
   );
   const [weights2, setWeights2] = useState<number[]>(() =>
     initialRecord
       ? initialRecord.holds.map((h) => h.set2?.weight ?? h.set1.weight)
-      : HOLDS.map((h) => h.defaultSet1Weight + 10)
+      : startingWeights(initialType, DEFAULT_SET2_OFFSET)[1]
   );
   const [weights3, setWeights3] = useState<number[]>(() =>
     initialRecord
       ? initialRecord.holds.map((h) => h.set3?.weight ?? h.set1.weight)
-      : defaultWeights(HOLDS)
+      : startingWeights(initialType, DEFAULT_SET2_OFFSET)[2]
   );
-  const [set2Offset, setSet2Offset] = useState(10);
+  const [set2Offset, setSet2Offset] = useState(DEFAULT_SET2_OFFSET);
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
   const [holdNotesState, setHoldNotesState] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -185,13 +201,24 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   const handleTypeChange = (type: "repeaters" | "max-hang") => {
     setWorkoutType(type);
-    const newHolds = type === "repeaters" ? HOLDS : HOLDS_B;
-    setWeights(defaultWeights(newHolds));
-    setWeights2(newHolds.map((h) =>
-      type === "repeaters" ? h.defaultSet1Weight + set2Offset : h.defaultSet2Weight
-    ));
-    setWeights3(defaultWeights(newHolds));
+    const [w1, w2, w3] = startingWeights(type, set2Offset);
+    setWeights(w1);
+    setWeights2(w2);
+    setWeights3(w3);
   };
+
+  const hasNotes =
+    sessionNotes.trim() !== "" ||
+    Object.values(holdNotesState).some((n) => n.trim() !== "") ||
+    Object.values(setNotesState).some((n) => [n.set1, n.set2, n.set3].some((x) => x?.trim()));
+  const leaveGuard = useLeaveGuard(
+    editing
+      ? hasChanges
+      : hasNotes ||
+          set2Offset !== DEFAULT_SET2_OFFSET ||
+          JSON.stringify([weights, weights2, weights3]) !==
+            JSON.stringify(startingWeights(workoutType, DEFAULT_SET2_OFFSET)),
+  );
 
   const setAt = (setter: typeof setWeights) => (index: number, value: number) =>
     setter((prev) => {
@@ -267,6 +294,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
         };
         await addSession(record);
       }
+      leaveGuard.allowLeave();
       onSaved();
     } catch (err) {
       console.error(err);
@@ -282,6 +310,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     }
     if (initialRecord) {
       await deleteSession(initialRecord.id).catch(console.error);
+      leaveGuard.allowLeave();
       onDeleted?.();
     }
   };
@@ -615,6 +644,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           </button>
         )}
       </div>
+      <LeaveGuardSheet
+        guard={leaveGuard}
+        lost={editing ? "Your changes to this session" : "The hangboard session you've entered"}
+      />
     </div>
   );
 }

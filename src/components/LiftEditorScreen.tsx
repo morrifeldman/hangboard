@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { BackChevronIcon } from "./icons";
+import { LeaveGuardSheet } from "./LeaveGuardSheet";
+import { useLeaveGuard } from "../hooks/useLeaveGuard";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { LIFT_WEIGHT_STEP, findLiftByName, generateSets, parseScheme, schemeToFields } from "../lib/lifts";
 import type { LiftDefinition, SchemeFields } from "../lib/lifts";
@@ -33,11 +35,15 @@ export function LiftEditorScreen({ lift, onBack, onDone }: Props) {
   // Logging links a typed name to a library lift, so two lifts can't share one.
   const clash = findLiftByName(library.filter((l) => l.id !== lift.id), trimmed);
   const valid = trimmed !== "" && scheme !== null && !clash;
+  const leaveGuard = useLeaveGuard(
+    name !== lift.name || JSON.stringify(fields) !== JSON.stringify(schemeToFields(lift)),
+  );
   const preview = scheme ? generateSets(scheme).map((s) => `${s.reps}@${s.weight}`).join(", ") : "";
 
   const handleSave = () => {
     if (!valid || !scheme) return;
     updateLift(lift.id, { name: trimmed, ...scheme });
+    leaveGuard.allowLeave();
     onDone();
   };
 
@@ -48,6 +54,7 @@ export function LiftEditorScreen({ lift, onBack, onDone }: Props) {
       return;
     }
     deleteLift(lift.id);
+    leaveGuard.allowLeave();
     onDone();
   };
 
@@ -112,6 +119,7 @@ export function LiftEditorScreen({ lift, onBack, onDone }: Props) {
         </button>
         <p className="text-center text-xs text-gray-500">Deleting keeps the sessions you've logged.</p>
       </div>
+      <LeaveGuardSheet guard={leaveGuard} lost={`Your changes to ${lift.name}`} />
     </div>
   );
 }

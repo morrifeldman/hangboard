@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useBlocker } from "@tanstack/react-router";
 import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
 import type { SessionRecord, GymData, GymWorkoutType, FreeformSection, CampusSet } from "../lib/history";
 import { GYM_WORKOUTS, GYM_CATEGORIES, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES, sequenceShortLabel, shortCodeToSequence, ladderDisplayName, rungShortLabel } from "../data/gymWorkouts";
@@ -10,6 +9,8 @@ import { Audio, initAudio } from "../lib/audio";
 import { Haptics } from "../lib/haptics";
 import { BackChevronIcon, NoteIcon, ClockIcon, DumbbellIcon, GearIcon } from "./icons";
 import { HangboardSetup } from "./HangboardSetup";
+import { LeaveGuardSheet } from "./LeaveGuardSheet";
+import { useLeaveGuard } from "../hooks/useLeaveGuard";
 import { LiftsForm } from "./LiftsForm";
 import { emptyLiftRow, liftRowHasEntries, liftRowToDraft, liftRowsFromEntries } from "../lib/liftRows";
 import type { LiftRow } from "../lib/liftRows";
@@ -110,6 +111,29 @@ function buildFreeformGymData(title: string, sections: FreeformSection[]): GymDa
   }
   if (totalEntries === 0) return null;
   return { type: "freeform", title: trimmedTitle, sections: cleanedSections };
+}
+
+// What a freeform log actually says, ignoring blank rows and stray spaces.
+function freeformFingerprint(title: string, sections: FreeformSection[]): string {
+  return JSON.stringify([
+    title.trim(),
+    sections
+      .map((s) => [
+        s.name.trim(),
+        s.entries.filter((e) => e.key.trim() || e.value.trim()).map((e) => [e.key.trim(), e.value.trim()]),
+      ])
+      .filter(([name, entries]) => name !== "" || entries.length > 0),
+  ]);
+}
+
+// Compare only non-blank values (cleared/backspaced fields leave "" behind,
+// and saved defaults can contain "" too), independent of key order.
+function meaningfulFields(m: Record<string, string>): string {
+  return JSON.stringify(
+    Object.entries(m)
+      .filter(([, v]) => v.trim() !== "")
+      .sort(([a], [b]) => a.localeCompare(b))
+  );
 }
 
 function campusTemplateSets(): CampusSet[] {
@@ -378,14 +402,17 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   // Reveal the full B/L/R hand-sequence code under each compact row.
   const [showCodes, setShowCodes] = useState(false);
 
-  const [initialLiftRows] = useState<LiftRow[]>(() =>
+  const [liftRows, setLiftRows] = useState<LiftRow[]>(() =>
     initialRecord?.gymData?.type === "lifts"
       ? liftRowsFromEntries(
           initialRecord.gymData.lifts.map((e) => ({ ...e, name: currentLiftName(e, liftLibrary) })),
         )
       : [emptyLiftRow()],
   );
-  const [liftRows, setLiftRows] = useState<LiftRow[]>(initialLiftRows);
+
+  const [freeformBaseline, setFreeformBaseline] = useState(() =>
+    freeformFingerprint(freeformTitle, freeformSections),
+  );
 
   const [freeformKeys, setFreeformKeys] = useState<string[]>([]);
   const [freeformSectionNames, setFreeformSectionNames] = useState<string[]>([]);
@@ -414,21 +441,6 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     workoutType === "freeform" ? buildFreeformGymData(freeformTitle, freeformSections) : null;
   const campusGymData = isCampus ? buildCampusGymData(campusSets) : null;
   const isLifts = workoutType === "lifts";
-  const liftsUnsaved =
-    isLifts &&
-    !hangboardMode &&
-    (editing
-      ? JSON.stringify(liftRows) !== JSON.stringify(initialLiftRows)
-      : liftRows.some(liftRowHasEntries));
-  // Saving and deleting navigate away on purpose, so they mustn't trip the guard.
-  const leavingRef = useRef(false);
-  // A lifts session is typed in set by set over a whole gym visit, so a stray
-  // tab tap or back press would cost a lot. Other gym types are a few fields.
-  const leaveGuard = useBlocker({
-    shouldBlockFn: () => liftsUnsaved && !leavingRef.current,
-    enableBeforeUnload: () => liftsUnsaved && !leavingRef.current,
-    withResolver: true,
-  });
   const liftDrafts = isLifts ? liftRows.map(liftRowToDraft) : [];
   const liftsValid =
     liftDrafts.length > 0 &&
@@ -449,25 +461,32 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   // Does the current type hold work that switching away would discard?
   const currentTypeHasEntries = (): boolean => {
     if (workoutType === "freeform") {
-      return (
-        freeformTitle.trim() !== "" ||
-        freeformSections.some((s) => s.entries.some((e) => e.key.trim() || e.value.trim()))
-      );
+      return freeformFingerprint(freeformTitle, freeformSections) !== freeformBaseline;
     }
     if (workoutType === "campus") {
       return JSON.stringify(campusSets) !== JSON.stringify(campusTemplateSets());
     }
     if (workoutType === "lifts") return liftRows.some(liftRowHasEntries);
-    // Compare only non-blank values (cleared/backspaced fields leave "" behind,
-    // and saved defaults can contain "" too), independent of key order.
-    const meaningful = (m: Record<string, string>) =>
-      JSON.stringify(
-        Object.entries(m)
-          .filter(([, v]) => v.trim() !== "")
-          .sort(([a], [b]) => a.localeCompare(b))
-      );
-    return meaningful(fields) !== meaningful(gymDefaults[workoutType] ?? {});
+    return meaningfulFields(fields) !== meaningfulFields(gymDefaults[workoutType] ?? {});
   };
+
+  // An edit is unsaved once anything differs from the record as it opened.
+  const formSnapshot = JSON.stringify([
+    dateValue,
+    timeValue,
+    sessionNotes.trim(),
+    meaningfulFields(fields),
+    freeformFingerprint(freeformTitle, freeformSections),
+    campusSets,
+    liftRows,
+  ]);
+  const [savedSnapshot] = useState(formSnapshot);
+  const leaveGuard = useLeaveGuard(
+    !hangboardMode &&
+      (editing
+        ? formSnapshot !== savedSnapshot
+        : currentTypeHasEntries() || sessionNotes.trim() !== ""),
+  );
 
   const applyWorkoutType = (t: GymWorkoutType) => {
     setWorkoutType(t);
@@ -540,13 +559,14 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
   const useLastFreeform = () => {
     if (!lastFreeform || lastFreeform.gymData?.type !== "freeform") return;
     const gd = lastFreeform.gymData;
+    const sections = gd.sections.map((s) => ({
+      name: s.name,
+      entries: s.entries.map((e) => ({ key: e.key, value: "" })),
+    }));
     setFreeformTitle(gd.title);
-    setFreeformSections(
-      gd.sections.map((s) => ({
-        name: s.name,
-        entries: s.entries.map((e) => ({ key: e.key, value: "" })),
-      }))
-    );
+    setFreeformSections(sections);
+    // Carried-forward headings aren't the person's work yet; only what they add is.
+    setFreeformBaseline(freeformFingerprint(gd.title, sections));
   };
 
   const setFreeformSectionName = (sIdx: number, name: string) =>
@@ -684,7 +704,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       if (workoutType !== "freeform" && workoutType !== "campus" && workoutType !== "lifts") {
         setGymDefaults(workoutType, fields);
       }
-      leavingRef.current = true;
+      leaveGuard.allowLeave();
       onSaved();
     } catch (err) {
       console.error(err);
@@ -700,7 +720,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     }
     if (initialRecord) {
       await deleteSession(initialRecord.id).catch(console.error);
-      leavingRef.current = true;
+      leaveGuard.allowLeave();
       onDeleted?.();
     }
   };
@@ -1269,35 +1289,16 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       </div>
       )}
 
-      {leaveGuard.status === "blocked" && (
-        <>
-          <div className="fixed inset-0 bg-black/60 z-50" onClick={leaveGuard.reset} />
-          <div
-            role="alertdialog"
-            aria-label="Unsaved lifts"
-            className="fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-2xl px-4 pt-5 pb-6 flex flex-col gap-3"
-          >
-            <p className="text-white font-semibold">Leave without saving?</p>
-            <p className="text-gray-400 text-sm -mt-1">
-              {editing ? "Your changes to these lifts will be lost." : "The lifts you've entered will be lost."}
-            </p>
-            <button
-              type="button"
-              onClick={leaveGuard.reset}
-              className="w-full h-12 rounded-xl font-semibold bg-accent-500 text-gray-900 text-base"
-            >
-              Keep editing
-            </button>
-            <button
-              type="button"
-              onClick={leaveGuard.proceed}
-              className="w-full h-11 rounded-xl font-semibold bg-gray-800 text-red-400 text-base"
-            >
-              Discard and leave
-            </button>
-          </div>
-        </>
-      )}
+      <LeaveGuardSheet
+        guard={leaveGuard}
+        lost={
+          editing
+            ? "Your changes to this session"
+            : isLifts
+              ? "The lifts you've entered"
+              : `Your ${def.label} entry`
+        }
+      />
     </div>
   );
 }
