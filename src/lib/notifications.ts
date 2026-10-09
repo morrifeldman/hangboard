@@ -1,31 +1,28 @@
+import { getSchedule, normalizeDayTypes } from "./schedules";
+import { getMeta, setMeta } from "./history";
 import {
-  getSchedule,
-  normalizeDayTypes,
-  SCHEDULE_TYPE_META,
-} from "./schedules";
+  REMINDER_CONFIG_KEY,
+  REMINDER_LAST_FIRED_KEY,
+  REMINDER_NOTIFICATION_TAG,
+  reminderText,
+  shouldFireReminder,
+} from "./reminderCore";
 import { toLocalDateString } from "./dates";
-import { setMeta } from "./history";
 
-/**
- * Key in the shared IDB `meta` store holding `{ enabled, time }`. The service
- * worker reads this to decide whether to fire a background reminder, since it
- * has no access to `localStorage`. The app mirrors prefs here on every change.
- */
-export const REMINDER_CONFIG_KEY = "reminder-config";
+export { REMINDER_CONFIG_KEY };
+
 /** Tag used for the daily Periodic Background Sync registration. */
 export const REMINDER_SYNC_TAG = "daily-reminder";
 
 export type NotificationPrefs = {
   enabled: boolean;
   time: string; // "HH:MM"
-  lastFiredDate: string | null; // YYYY-MM-DD
 };
 
 const STORAGE_KEY = "cairn-notification-prefs";
 const DEFAULT_PREFS: NotificationPrefs = {
   enabled: false,
   time: "07:00",
-  lastFiredDate: null,
 };
 
 function isPrefs(v: unknown): v is NotificationPrefs {
@@ -33,8 +30,7 @@ function isPrefs(v: unknown): v is NotificationPrefs {
   const o = v as Record<string, unknown>;
   return (
     typeof o.enabled === "boolean" &&
-    typeof o.time === "string" &&
-    (o.lastFiredDate === null || typeof o.lastFiredDate === "string")
+    typeof o.time === "string"
   );
 }
 
@@ -44,7 +40,8 @@ export function getPrefs(): NotificationPrefs {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_PREFS };
     const parsed = JSON.parse(raw);
-    if (isPrefs(parsed)) return parsed;
+    // Old stored JSON may carry a `lastFiredDate`; ignored (IDB meta owns it).
+    if (isPrefs(parsed)) return { enabled: parsed.enabled, time: parsed.time };
   } catch {
     // fall through
   }
@@ -147,31 +144,6 @@ export async function requestPermission(): Promise<NotificationPermission | "uns
 
 // ─── Pure ────────────────────────────────────────────────────────────────────
 
-/** "HH:MM" → minutes since midnight. Invalid input returns NaN. */
-export function parseHHMM(s: string): number {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
-  if (!m) return NaN;
-  const h = Number(m[1]);
-  const mm = Number(m[2]);
-  if (h < 0 || h > 23 || mm < 0 || mm > 59) return NaN;
-  return h * 60 + mm;
-}
-
-export function shouldFireToday(
-  prefs: NotificationPrefs,
-  now: Date,
-  hasPlanToday: boolean,
-): boolean {
-  if (!prefs.enabled) return false;
-  if (!hasPlanToday) return false;
-  const today = toLocalDateString(now);
-  if (prefs.lastFiredDate === today) return false;
-  const target = parseHHMM(prefs.time);
-  if (Number.isNaN(target)) return false;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return nowMinutes >= target;
-}
-
 /**
  * Fire a notification right now so the user can confirm delivery works. Prefers
  * the service worker (matches the real background path); falls back to a
@@ -206,26 +178,20 @@ export async function maybeFireDailyReminder(now: Date = new Date()): Promise<vo
   if (Notification.permission !== "granted") return;
 
   const todayKey = toLocalDateString(now);
-  if (prefs.lastFiredDate === todayKey) return;
-  const target = parseHHMM(prefs.time);
-  if (Number.isNaN(target)) return;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  if (nowMinutes < target) return;
+  const lastFired = (await getMeta<string>(REMINDER_LAST_FIRED_KEY)) ?? null;
+  const dayTypes = normalizeDayTypes(await getSchedule(todayKey));
+  if (!shouldFireReminder({ ...prefs, lastFired, now, dayTypes })) return;
 
-  const plan = await getSchedule(todayKey);
-  const dayTypes = normalizeDayTypes(plan);
-  if (dayTypes.length === 0) return;
-
-  const labels = dayTypes.map((t) => SCHEDULE_TYPE_META[t].label).join(" + ");
+  const { title, body } = reminderText(dayTypes);
   try {
-    new Notification(`Today: ${labels} day`, {
-      body: "Open Cairn to plan, log, or jump in.",
-      tag: "cairn-daily",
+    new Notification(title, {
+      body,
+      tag: REMINDER_NOTIFICATION_TAG,
       icon: "/icons/icon-192.png",
     });
   } catch {
     // Some browsers throw if the page is not in a permitted context
     return;
   }
-  setPrefs({ lastFiredDate: todayKey });
+  await setMeta(REMINDER_LAST_FIRED_KEY, todayKey);
 }

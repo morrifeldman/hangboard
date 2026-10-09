@@ -2,6 +2,16 @@
 import { clientsClaim } from "workbox-core";
 import { createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
+import {
+  DB_NAME,
+  REMINDER_CONFIG_KEY,
+  REMINDER_LAST_FIRED_KEY,
+  REMINDER_NOTIFICATION_TAG,
+  shouldFireReminder,
+  reminderText,
+  type ReminderConfig,
+} from "./lib/reminderCore";
+import { toLocalDateString } from "./lib/dates";
 
 // `self` is typed as WorkerGlobalScope by the WebWorker lib; alias to the
 // service-worker scope for the SW-specific APIs without redeclaring.
@@ -24,33 +34,24 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html")));
 
 // ─── Daily reminder (Periodic Background Sync) ────────────────────────────────
 //
-// Self-contained on purpose: the SW must not import DOM-dependent app modules
-// (localStorage, Notification, etc. don't exist here). We read config + today's
+// Imports only ./lib/reminderCore (pure, DOM-free). We read config + today's
 // plan straight from IndexedDB and show the notification via the registration.
 
-const DB_NAME = "hangboard-history";
 const REMINDER_SYNC_TAG = "daily-reminder";
-const NOTIFICATION_TAG = "cairn-daily"; // same tag as foreground → collapses duplicates
-const CONFIG_KEY = "reminder-config";
-const LAST_FIRED_KEY = "reminder-last-fired";
-
-const TYPE_LABELS: Record<string, string> = {
-  power: "Power",
-  endurance: "Endurance",
-  hangboard: "Hangboard",
-  outdoor: "Outdoor",
-  bouldering: "Bouldering",
-  stretching: "Stretching",
-  rest: "Rest",
-};
-
-type ReminderConfig = { enabled: boolean; time: string };
+const NOTIFICATION_TAG = REMINDER_NOTIFICATION_TAG; // same tag as foreground → collapses duplicates
+const CONFIG_KEY = REMINDER_CONFIG_KEY;
+const LAST_FIRED_KEY = REMINDER_LAST_FIRED_KEY;
 
 function openHistoryDB(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
     // Open at the current version — the app creates/upgrades the schema.
     const req = indexedDB.open(DB_NAME);
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Never block an app schema upgrade behind this short-lived connection.
+      db.onversionchange = () => db.close();
+      resolve(db);
+    };
     req.onerror = () => resolve(null);
   });
 }
@@ -97,58 +98,50 @@ function idbPut(db: IDBDatabase, store: string, value: unknown, key: IDBValidKey
   });
 }
 
-function toLocalDateString(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
-}
-
-function parseHHMM(s: string): number {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
-  if (!m) return NaN;
-  const h = Number(m[1]);
-  const mm = Number(m[2]);
-  if (h < 0 || h > 23 || mm < 0 || mm > 59) return NaN;
-  return h * 60 + mm;
-}
-
 type SchedulePlan = { dayTypes?: string[] };
 
 async function runDailyReminder(now: Date = new Date()): Promise<void> {
   const db = await openHistoryDB();
   if (!db) return;
-  if (
-    !db.objectStoreNames.contains("meta") ||
-    !db.objectStoreNames.contains("schedules")
-  ) {
+  try {
+    if (
+      !db.objectStoreNames.contains("meta") ||
+      !db.objectStoreNames.contains("schedules")
+    ) {
+      return;
+    }
+
+    const config = await idbGet<ReminderConfig>(db, "meta", CONFIG_KEY);
+    if (!config?.enabled) return;
+
+    const todayKey = toLocalDateString(now);
+    const lastFired = await idbGet<string>(db, "meta", LAST_FIRED_KEY);
+    const plan = await idbGetByIndex<SchedulePlan>(db, "schedules", "by-date", todayKey);
+    const dayTypes = plan?.dayTypes ?? [];
+
+    if (
+      !shouldFireReminder({
+        enabled: config.enabled,
+        time: config.time,
+        lastFired,
+        now,
+        dayTypes,
+      })
+    ) {
+      return;
+    }
+
+    const { title, body } = reminderText(dayTypes);
+    await sw.registration.showNotification(title, {
+      body,
+      tag: NOTIFICATION_TAG,
+      icon: "/icons/icon-192.png",
+    });
+
+    await idbPut(db, "meta", todayKey, LAST_FIRED_KEY);
+  } finally {
     db.close();
-    return;
   }
-
-  const config = await idbGet<ReminderConfig>(db, "meta", CONFIG_KEY);
-  if (!config?.enabled) return db.close();
-
-  const todayKey = toLocalDateString(now);
-  const lastFired = await idbGet<string>(db, "meta", LAST_FIRED_KEY);
-  if (lastFired === todayKey) return db.close();
-
-  const target = parseHHMM(config.time);
-  if (Number.isNaN(target)) return db.close();
-  if (now.getHours() * 60 + now.getMinutes() < target) return db.close();
-
-  const plan = await idbGetByIndex<SchedulePlan>(db, "schedules", "by-date", todayKey);
-  const dayTypes = plan?.dayTypes ?? [];
-  if (dayTypes.length === 0) return db.close();
-
-  const labels = dayTypes.map((t) => TYPE_LABELS[t] ?? t).join(" + ");
-  await sw.registration.showNotification(`Today: ${labels} day`, {
-    body: "Open Cairn to plan, log, or jump in.",
-    tag: NOTIFICATION_TAG,
-    icon: "/icons/icon-192.png",
-  });
-
-  await idbPut(db, "meta", todayKey, LAST_FIRED_KEY);
-  db.close();
 }
 
 sw.addEventListener("periodicsync", (event) => {

@@ -12,8 +12,8 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-void maybeFireDailyReminder()
-void ensureReminderRegistered()
+maybeFireDailyReminder().catch(console.error)
+ensureReminderRegistered().catch(console.error)
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') void maybeFireDailyReminder()
+  if (document.visibilityState === 'visible') maybeFireDailyReminder().catch(console.error)
 })

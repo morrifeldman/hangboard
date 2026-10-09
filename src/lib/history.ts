@@ -80,6 +80,15 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 export function getDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
+      // A newer tab/SW wants to upgrade: release our connection so it isn't
+      // blocked forever, and reopen lazily on next use.
+      blocking() {
+        void dbPromise?.then((db) => db.close()).catch(() => {});
+        dbPromise = null;
+      },
+      terminated() {
+        dbPromise = null;
+      },
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE)) {
           const store = db.createObjectStore(STORE, { keyPath: "id" });

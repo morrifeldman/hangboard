@@ -20,5 +20,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/sw.ts", "src/sw-env.d.ts"]
+  "include": ["src/sw.ts", "src/lib/reminderCore.ts", "src/lib/dates.ts", "src/sw-env.d.ts"]
 }
