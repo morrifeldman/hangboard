@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { SPORT_GRADES, BOULDER_GRADES } from "../../constants/climbGrades";
 import { deduplicateForTimeline } from "../../lib/deduplication";
-import { getStyleColor } from "../../lib/climbUtils";
+import { getFilteredClimbs, getStyleColor } from "../../lib/climbUtils";
+import { formatDateKey } from "../../lib/dates";
 import type { ClimbRecord } from "../../lib/climbs";
 import type { ViewKey } from "../../constants/climbGrades";
 
@@ -14,33 +15,11 @@ type Props = {
 };
 
 export function TimelineVisualization({ climbs, currentView, showSendsOnly, timeRange, onClimbClick }: Props) {
-  const parts = currentView.split("-");
-  const setting = parts[0];
-  const type = parts.slice(1).join("-");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Filter by view, apply time range, then deduplicate
-  let viewFiltered = climbs.filter((c) => c.setting === setting && c.type === type);
-
-  if (viewFiltered.length === 0) return null;
-
-  const dates = viewFiltered.map((c) => new Date(c.date).getTime()).sort((a, b) => a - b);
-  const minDate = dates[0];
-  const maxDate = dates[dates.length - 1];
-  const totalRange = maxDate - minDate;
-
-  if (totalRange > 0) {
-    const startDate = minDate + (totalRange * timeRange[0]) / 100;
-    const endDate = minDate + (totalRange * timeRange[1]) / 100;
-    viewFiltered = viewFiltered.filter((c) => {
-      const t = new Date(c.date).getTime();
-      return t >= startDate && t <= endDate;
-    });
-  }
-
-  const deduped = deduplicateForTimeline(viewFiltered);
+  // Filter by view and time range, then deduplicate
+  const deduped = deduplicateForTimeline(getFilteredClimbs(climbs, currentView, timeRange));
   const filtered = showSendsOnly ? deduped.filter((c) => c.style !== "attempt") : deduped;
-
-  if (filtered.length === 0) return null;
 
   // Group by date
   const climbsByDate: Record<string, ClimbRecord[]> = {};
@@ -48,6 +27,16 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
     (climbsByDate[c.date] ??= []).push(c);
   }
   const sortedDates = Object.keys(climbsByDate).sort();
+  const datesKey = sortedDates.join();
+
+  // Keep the newest dates in view whenever the set of dates changes.
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [datesKey]);
+
+  if (filtered.length === 0) return null;
 
   // Grade range
   const isBoulder = currentView.includes("boulder");
@@ -62,14 +51,6 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
 
   const timelineHeight = 200;
   const gradeHeight = timelineHeight / relevantGrades.length;
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
-    }
-  }, [sortedDates]);
 
   return (
     <div className="mb-6">
@@ -98,7 +79,7 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
               <div key={date} className="flex-shrink-0 w-14">
                 <div className="h-8 mb-2 flex items-end justify-center">
                   <div className="text-xs text-gray-500 text-center transform -rotate-45 origin-bottom">
-                    {new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {formatDateKey(date, { year: false })}
                   </div>
                 </div>
 

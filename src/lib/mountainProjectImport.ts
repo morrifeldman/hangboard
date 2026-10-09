@@ -1,3 +1,4 @@
+import { todayDateString } from "./dates";
 import { normalizeGrade } from "./climbGradeUtils";
 import type { ClimbRecord } from "./climbs";
 import type { ClimbStyle } from "../constants/climbGrades";
@@ -93,7 +94,7 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
         setting: isIndoor(row.Location) ? "indoor" : "outdoor",
         style: convertStyle(row["Lead Style"]),
         climbs: parsePitches(row.Pitches),
-        date: row.Date || new Date().toISOString().split("T")[0],
+        date: row.Date || todayDateString(),
         notes: row.Notes || "",
       });
     }

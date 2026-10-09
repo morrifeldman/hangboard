@@ -20,6 +20,7 @@ import {
   noteMatchesQuery,
 } from "../lib/historyFilter";
 import { shortLocation } from "../lib/format";
+import { dateKeyToTime, startOfWeek, toLocalDateString } from "../lib/dates";
 import { formatLiftSets, withCurrentLiftNames } from "../lib/lifts";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { RouteHistoryModal } from "./RouteHistoryModal";
@@ -208,15 +209,7 @@ const DAY_MS = 86_400_000;
 
 /** Local midnight of the Monday that starts the week containing `ts`. */
 function weekStart(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return d.getTime();
-}
-
-function dayKey(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  return startOfWeek(ts).getTime();
 }
 
 function weekLabel(start: number, now: number): string {
@@ -312,7 +305,7 @@ function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }
   onRouteClick: (routeName: string) => void;
   defaultExpanded?: boolean;
 }) {
-  const ts = new Date(`${climbs[0].date}T12:00:00`).getTime();
+  const ts = dateKeyToTime(climbs[0].date);
   const hasOutdoor = climbs.some((c) => c.setting === "outdoor");
   const locations = [...new Set(
     climbs
@@ -377,7 +370,7 @@ function NoteRow({ record, showDate, onEdit }: {
   showDate: boolean;
   onEdit: (n: NoteRecord) => void;
 }) {
-  const ts = new Date(`${record.date}T12:00:00`).getTime();
+  const ts = dateKeyToTime(record.date);
   return (
     <button className={ROW_BUTTON} onClick={() => onEdit(record)}>
       <DateColumn ts={ts} show={showDate} />
@@ -522,7 +515,7 @@ export function HistoryScreen({
     const climbItems: TimelineItem[] = [...climbsByDate.entries()].map(([date, cs]) => ({
       kind: "climbs",
       date,
-      ts: new Date(`${date}T12:00:00`).getTime(),
+      ts: dateKeyToTime(date),
       climbs: cs,
     }));
     const sessionItems: TimelineItem[] = sessions.map((record) => ({
@@ -534,7 +527,7 @@ export function HistoryScreen({
       kind: "note",
       record,
       // Anchor to noon on the date; offset by createdAt within the day so multiple notes order stably
-      ts: new Date(`${record.date}T12:00:00`).getTime() + (record.createdAt % 86_400_000) / 1000,
+      ts: dateKeyToTime(record.date) + (record.createdAt % 86_400_000) / 1000,
     }));
     let all = [...sessionItems, ...climbItems, ...noteItems].sort((a, b) => b.ts - a.ts);
 
@@ -748,7 +741,7 @@ export function HistoryScreen({
               <ul className="bg-gray-800 rounded-2xl overflow-hidden">
                 {week.items.map((item, i) => {
                   const prev = week.items[i - 1];
-                  const newDay = !prev || dayKey(prev.ts) !== dayKey(item.ts);
+                  const newDay = !prev || toLocalDateString(prev.ts) !== toLocalDateString(item.ts);
                   return (
                     <li
                       key={item.kind === "climbs" ? `${item.date}-${searching}` : item.record.id}

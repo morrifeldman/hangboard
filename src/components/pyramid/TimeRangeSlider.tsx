@@ -1,16 +1,19 @@
 import type { ClimbRecord } from "../../lib/climbs";
 import { getDateRangeInfo } from "../../lib/climbUtils";
+import { formatDateKey, toLocalDateString } from "../../lib/dates";
+import type { ViewKey } from "../../constants/climbGrades";
 
 type Props = {
   climbs: ClimbRecord[];
+  currentView: ViewKey;
   timeRange: [number, number];
   setTimeRange: (v: [number, number]) => void;
 };
 
-export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
+export function TimeRangeSlider({ climbs, currentView, timeRange, setTimeRange }: Props) {
   if (climbs.length === 0) return null;
 
-  const dateInfo = getDateRangeInfo(climbs, timeRange);
+  const dateInfo = getDateRangeInfo(climbs, currentView, timeRange);
 
   const handleDragStart = (isStart: boolean) => (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -77,13 +80,13 @@ export function TimeRangeSlider({ climbs, timeRange, setTimeRange }: Props) {
 
       {dateInfo && (
         <div className="flex justify-between text-xs text-gray-500 mt-2">
-          <span>{dateInfo.startDate.toLocaleDateString()}</span>
+          <span>{formatDateKey(toLocalDateString(dateInfo.startDate))}</span>
           <span className="font-medium">
             {dateInfo.isFullRange
               ? "All time"
               : `${Math.round(timeRange[1] - timeRange[0])}% of history`}
           </span>
-          <span>{dateInfo.endDate.toLocaleDateString()}</span>
+          <span>{formatDateKey(toLocalDateString(dateInfo.endDate))}</span>
         </div>
       )}
     </div>

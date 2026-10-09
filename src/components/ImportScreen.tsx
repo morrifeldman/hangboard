@@ -15,6 +15,7 @@ import { useOpenCell } from "../hooks/useOpenCell";
 import { PRBadge } from "./PRBadge";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
 import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { toLocalDateString, toLocalTimeString, todayDateString } from "../lib/dates";
 
 type Props = {
   onBack: () => void;
@@ -22,24 +23,6 @@ type Props = {
   initialRecord?: SessionRecord;
   onDeleted?: () => void;
 };
-
-function todayString(): string {
-  return localDateString(Date.now());
-}
-
-function localDateString(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function localTimeString(ts: number): string {
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function nowTimeString(): string {
-  return localTimeString(Date.now());
-}
 
 function defaultWeights(holds: readonly HoldDefinition[]): number[] {
   return holds.map((h) => h.defaultSet1Weight);
@@ -63,10 +46,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const initialType: "repeaters" | "max-hang" = initialRecord?.workoutType === "max-hang" ? "max-hang" : "repeaters";
 
   const [dateValue, setDateValue] = useState(() =>
-    initialRecord ? localDateString(initialRecord.startedAt) : todayString()
+    initialRecord ? toLocalDateString(initialRecord.startedAt) : todayDateString()
   );
   const [timeValue, setTimeValue] = useState(() =>
-    initialRecord ? localTimeString(initialRecord.startedAt) : nowTimeString()
+    initialRecord ? toLocalTimeString(initialRecord.startedAt) : toLocalTimeString(Date.now())
   );
   const [workoutType, setWorkoutType] = useState<"repeaters" | "max-hang">(initialType);
   const [weights, setWeights] = useState<number[]>(() =>
@@ -152,8 +135,8 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   // In edit mode, detect whether anything has changed from the initial record
   const hasChanges = useMemo(() => {
     if (!editing || !initialRecord) return true; // new record — always saveable
-    if (dateValue !== localDateString(initialRecord.startedAt)) return true;
-    if (timeValue !== localTimeString(initialRecord.startedAt)) return true;
+    if (dateValue !== toLocalDateString(initialRecord.startedAt)) return true;
+    if (timeValue !== toLocalTimeString(initialRecord.startedAt)) return true;
     if (sessionNotes !== (initialRecord.notes ?? "")) return true;
     for (const [holdId, co] of Object.entries(completionOverrides)) {
       const h = initialRecord.holds.find((x) => x.holdId === holdId);

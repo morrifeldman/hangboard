@@ -26,7 +26,7 @@ export function PyramidVisualization({
   onClimbClick,
   onAddClimbClick,
 }: Props) {
-  const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, false, timeRange);
+  const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, timeRange);
   const deduplicatedClimbs = deduplicateForPyramid(viewAndTimeFiltered);
   const finalClimbs = showSendsOnly
     ? deduplicatedClimbs.filter((c) => c.style !== "attempt")

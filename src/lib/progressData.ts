@@ -1,4 +1,5 @@
 import type { SessionRecord } from "./history";
+import { addDays, startOfWeek, toLocalDateString } from "./dates";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -127,32 +128,24 @@ export function buildCalendar(
   const dayMap = new Map<string, Set<WorkoutBucket>>();
   for (const s of sessions) {
     const d = new Date(s.startedAt);
-    const key = isoDate(d);
+    const key = toLocalDateString(d);
     if (!dayMap.has(key)) dayMap.set(key, new Set());
     dayMap.get(key)!.add(sessionCategory(s));
   }
 
   // Find the Monday of the current ISO week
   const today = new Date();
-  const todayKey = isoDate(today);
-  const dayOfWeek = today.getDay(); // 0=Sun … 6=Sat
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const thisMonday = new Date(today);
-  thisMonday.setHours(0, 0, 0, 0);
-  thisMonday.setDate(today.getDate() + diffToMonday);
-
-  // Start 11 weeks before this Monday
-  const startMonday = new Date(thisMonday);
-  startMonday.setDate(thisMonday.getDate() - 11 * 7);
+  const todayKey = toLocalDateString(today);
+  // Start 11 weeks before this week's Monday
+  const startMonday = addDays(startOfWeek(today), -11 * 7);
 
   const weeks: CalendarDay[][] = [];
 
   for (let w = 0; w < 12; w++) {
     const week: CalendarDay[] = [];
     for (let d = 0; d < 7; d++) {
-      const date = new Date(startMonday);
-      date.setDate(startMonday.getDate() + w * 7 + d);
-      const key = isoDate(date);
+      const date = addDays(startMonday, w * 7 + d);
+      const key = toLocalDateString(date);
       const types = dayMap.get(key);
       const gym = types?.has("gym") ?? false;
       const cardio = types?.has("cardio") ?? false;
@@ -206,10 +199,3 @@ export function calendarMonthLabels(weeks: CalendarDay[][]): string[] {
 
   return labels;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-

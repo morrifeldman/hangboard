@@ -1,5 +1,6 @@
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
+import { dateKeyToTime, toLocalDateString } from "./dates";
 import { addSession, getSessions } from "./history";
 import type { SessionRecord, SessionHoldRecord } from "./history";
 
@@ -15,7 +16,7 @@ function repeaters(
   delta: number, // kg added to every hold's defaults
   opts: { notes?: string; bailed?: boolean; imported?: boolean; durationMins?: number } = {}
 ): SessionRecord {
-  const start = opts.imported ? new Date(`${new Date(ts(daysBack)).toISOString().slice(0, 10)}T12:00:00`).getTime() : ts(daysBack);
+  const start = opts.imported ? dateKeyToTime(toLocalDateString(ts(daysBack))) : ts(daysBack);
   const end = opts.imported ? start : start + (opts.durationMins ?? 46) * 60_000;
 
   const holds: SessionHoldRecord[] = HOLDS.map((hold) => ({

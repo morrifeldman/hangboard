@@ -2,8 +2,8 @@ import {
   getSchedule,
   normalizeDayTypes,
   SCHEDULE_TYPE_META,
-  toLocalDateString,
 } from "./schedules";
+import { toLocalDateString } from "./dates";
 import { setMeta } from "./history";
 
 /**

@@ -1,6 +1,8 @@
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import type { ClimbRecord } from "./climbs";
+import { VIEWS } from "../constants/climbGrades";
 import type { ClimbStyle, ViewKey } from "../constants/climbGrades";
+import { dateKeyToTime } from "./dates";
 
 export function getStyleColor(style: ClimbStyle): string {
   switch (style) {
@@ -40,71 +42,65 @@ export function buildPyramid(filteredClimbs: ClimbRecord[], currentView: ViewKey
   }));
 }
 
+function viewDef(view: ViewKey) {
+  return VIEWS.find((v) => v.key === view)!;
+}
+
+/** Climbs matching a pyramid view (setting + type). */
+export function climbsInView(climbs: ClimbRecord[], view: ViewKey): ClimbRecord[] {
+  const { setting, type } = viewDef(view);
+  return climbs.filter((c) => c.setting === setting && c.type === type);
+}
+
+/**
+ * The slider's [startPct, endPct] mapped onto the span of dates in `climbs`.
+ * The filter and the slider's date labels both use this, so they always agree.
+ */
+function timeWindow(climbs: ClimbRecord[], timeRange: [number, number]) {
+  if (climbs.length === 0) return null;
+  const times = climbs.map((c) => dateKeyToTime(c.date));
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+  const span = max - min;
+  return {
+    min,
+    max,
+    start: min + (span * timeRange[0]) / 100,
+    end: min + (span * timeRange[1]) / 100,
+  };
+}
+
+/** Climbs in `view` whose date falls inside the slider window. */
 export function getFilteredClimbs(
   climbs: ClimbRecord[],
-  currentView: ViewKey,
-  showSendsOnly: boolean,
+  view: ViewKey,
   timeRange: [number, number],
 ): ClimbRecord[] {
-  const parts = currentView.split("-");
-  const setting = parts[0];
-  const type = parts.slice(1).join("-"); // handles "outdoor-sport" → setting="outdoor", type="sport"
-  let filtered = climbs.filter((c) => c.setting === setting && c.type === type);
-
-  if (showSendsOnly) {
-    filtered = filtered.filter((c) => c.style !== "attempt");
-  }
-
-  if (filtered.length > 0) {
-    const dates = filtered.map((c) => new Date(c.date).getTime()).sort((a, b) => a - b);
-    const minDate = dates[0];
-    const maxDate = dates[dates.length - 1];
-    const totalRange = maxDate - minDate;
-
-    if (totalRange > 0) {
-      const startDate = minDate + (totalRange * timeRange[0]) / 100;
-      const endDate = minDate + (totalRange * timeRange[1]) / 100;
-      filtered = filtered.filter((c) => {
-        const t = new Date(c.date).getTime();
-        return t >= startDate && t <= endDate;
-      });
-    }
-  }
-
-  return filtered;
+  const inView = climbsInView(climbs, view);
+  const w = timeWindow(inView, timeRange);
+  if (!w) return inView;
+  return inView.filter((c) => {
+    const t = dateKeyToTime(c.date);
+    return t >= w.start && t <= w.end;
+  });
 }
 
 export type DateRangeInfo = {
   startDate: Date;
   endDate: Date;
   isFullRange: boolean;
-  totalMinDate?: Date;
-  totalMaxDate?: Date;
 };
 
 export function getDateRangeInfo(
   climbs: ClimbRecord[],
+  view: ViewKey,
   timeRange: [number, number],
 ): DateRangeInfo | null {
-  if (climbs.length === 0) return null;
-
-  const allDates = climbs.map((c) => new Date(c.date).getTime()).sort((a, b) => a - b);
-  const minDate = allDates[0];
-  const maxDate = allDates[allDates.length - 1];
-  const totalRange = maxDate - minDate;
-
-  if (totalRange === 0) {
-    return { startDate: new Date(minDate), endDate: new Date(maxDate), isFullRange: true };
-  }
-
-  const startDate = new Date(minDate + (totalRange * timeRange[0]) / 100);
-  const endDate = new Date(minDate + (totalRange * timeRange[1]) / 100);
-
+  const w = timeWindow(climbsInView(climbs, view), timeRange);
+  if (!w) return null;
   return {
-    startDate,
-    endDate,
-    isFullRange: timeRange[0] === 0 && timeRange[1] === 100,
-    totalMinDate: new Date(minDate),
-    totalMaxDate: new Date(maxDate),
+    startDate: new Date(w.start),
+    endDate: new Date(w.end),
+    isFullRange: w.min === w.max || (timeRange[0] === 0 && timeRange[1] === 100),
   };
 }

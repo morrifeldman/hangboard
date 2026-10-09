@@ -8,6 +8,7 @@ import { Legend } from "./pyramid/Legend";
 import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
 import { EditClimbModal } from "./pyramid/modals/EditClimbModal";
 import { AddClimbModal } from "./pyramid/modals/AddClimbModal";
+import { todayDateString } from "../lib/dates";
 import { getClimbs, addClimb, updateClimb, deleteClimb } from "../lib/climbs";
 import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
 import type { ClimbRecord } from "../lib/climbs";
@@ -16,7 +17,9 @@ import { useScrollRestore } from "../hooks/useScrollRestore";
 
 type NewClimbData = Omit<ClimbRecord, "id">;
 
-const INITIAL_CLIMB: NewClimbData = {
+// A function, not a constant: "today" must be read when the form opens, not
+// when the module first loaded (the PWA can stay open across midnight).
+const initialClimb = (): NewClimbData => ({
   route: "",
   grade: "",
   location: "",
@@ -24,9 +27,9 @@ const INITIAL_CLIMB: NewClimbData = {
   setting: "outdoor",
   style: "redpoint",
   climbs: 1,
-  date: new Date().toISOString().split("T")[0],
+  date: todayDateString(),
   notes: "",
-};
+});
 
 type Props = { onBack: () => void; onShowScrollingPyramids: () => void };
 
@@ -38,7 +41,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [selectedClimb, setSelectedClimb] = useState<ClimbRecord | null>(null);
   const [editingClimb, setEditingClimb] = useState<ClimbRecord | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newClimb, setNewClimb] = useState<NewClimbData>(INITIAL_CLIMB);
+  const [newClimb, setNewClimb] = useState<NewClimbData>(initialClimb);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useScrollRestore<HTMLElement>("pyramid", climbs.length > 0);
   const [showCounts, setShowCounts] = useState(false);
@@ -55,7 +58,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
     if (!newClimb.route || !newClimb.grade) return;
     const record: ClimbRecord = { ...newClimb, id: crypto.randomUUID() };
     await addClimb(record);
-    setNewClimb(INITIAL_CLIMB);
+    setNewClimb(initialClimb());
     setShowAddForm(false);
     await reload();
   };
@@ -131,7 +134,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
       />
 
       <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
-        <TimeRangeSlider climbs={climbs} timeRange={timeRange} setTimeRange={setTimeRange} />
+        <TimeRangeSlider climbs={climbs} currentView={currentView} timeRange={timeRange} setTimeRange={setTimeRange} />
 
         <PyramidVisualization
           climbs={climbs}

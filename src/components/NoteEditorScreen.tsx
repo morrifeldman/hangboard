@@ -4,6 +4,7 @@ import type { NoteRecord } from "../lib/notes";
 import { BackChevronIcon } from "./icons";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
 import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { todayDateString } from "../lib/dates";
 
 type Props = {
   onBack: () => void;
@@ -12,11 +13,6 @@ type Props = {
   onDeleted?: () => void;
 };
 
-function todayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 // Starter categories suggested as pills before any have been used. Free text,
 // so users can still type their own — these just seed the common ones.
 const SUGGESTED_CATEGORIES = ["Health", "Recovery", "Training", "Goals", "Resources"];
@@ -24,7 +20,7 @@ const SUGGESTED_CATEGORIES = ["Health", "Recovery", "Training", "Goals", "Resour
 export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
   const editing = initialRecord !== undefined;
 
-  const [dateValue, setDateValue] = useState(() => initialRecord?.date ?? todayString());
+  const [dateValue, setDateValue] = useState(() => initialRecord?.date ?? todayDateString());
   const [category, setCategory] = useState(() => initialRecord?.category ?? "Health");
   const [text, setText] = useState(() => initialRecord?.text ?? "");
   const [saving, setSaving] = useState(false);

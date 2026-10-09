@@ -11,6 +11,7 @@ import { BackChevronIcon, NoteIcon, ClockIcon, DumbbellIcon, GearIcon } from "./
 import { HangboardSetup } from "./HangboardSetup";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
 import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { toLocalDateString, toLocalTimeString, todayDateString } from "../lib/dates";
 import { LiftsForm } from "./LiftsForm";
 import { emptyLiftRow, liftRowHasEntries, liftRowToDraft, liftRowsFromEntries } from "../lib/liftRows";
 import type { LiftRow } from "../lib/liftRows";
@@ -39,20 +40,6 @@ type Props = {
   mode?: "tab" | "edit";
   onShowSettings?: () => void;
 };
-
-function todayString(): string {
-  return localDateString(Date.now());
-}
-
-function localDateString(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function localTimeString(ts: number): string {
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
 
 // Extract field values from existing gymData into a flat string map for editing.
 // Arrays are joined with "," — round-trips via the multi-select renderer.
@@ -353,10 +340,10 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     initialRecord?.gymData?.type ?? "arc";
 
   const [dateValue, setDateValue] = useState(() =>
-    initialRecord ? localDateString(initialRecord.startedAt) : todayString()
+    initialRecord ? toLocalDateString(initialRecord.startedAt) : todayDateString()
   );
   const [timeValue, setTimeValue] = useState(() =>
-    initialRecord ? localTimeString(initialRecord.startedAt) : localTimeString(Date.now())
+    initialRecord ? toLocalTimeString(initialRecord.startedAt) : toLocalTimeString(Date.now())
   );
   const [workoutType, setWorkoutType] = useState<GymWorkoutType>(initialWorkoutType);
   const [fields, setFields] = useState<Record<string, string>>(() =>

@@ -62,7 +62,7 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
       if (STYLE_PRIORITY[climb.style] < STYLE_PRIORITY[existing.style]) {
         existing.style = climb.style;
       }
-      if (new Date(climb.date) >= new Date(existing.date)) {
+      if (climb.date >= existing.date) {
         existing.date = climb.date;
         existing.grade = climb.grade;
         existing.type = climb.type;

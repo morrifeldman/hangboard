@@ -1,6 +1,7 @@
 import { getStyleColor } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
 import { STONE_EDGE } from "../stone";
+import { formatDateKey } from "../../../lib/dates";
 
 const STYLE_COLORS: Record<string, string> = {
   onsight: "bg-green-500/20 text-green-400",
@@ -62,7 +63,7 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Date</label>
-                <p className="text-gray-200">{new Date(climb.date).toLocaleDateString()}</p>
+                <p className="text-gray-200">{formatDateKey(climb.date)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Climbs</label>
@@ -97,9 +98,7 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
                   return (
                     <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === climb.id ? "bg-gray-700/60" : ""}`}>
                       <span className="text-gray-300 text-xs flex-1">
-                        {new Date(`${c.date}T12:00:00`).toLocaleDateString("en-US", {
-                          month: "short", day: "numeric", year: "numeric",
-                        })}
+                        {formatDateKey(c.date)}
                       </span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STYLE_COLORS[c.style] ?? STYLE_COLORS.attempt}`}>
                         {styleLabel}

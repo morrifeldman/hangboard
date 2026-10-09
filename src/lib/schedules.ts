@@ -1,6 +1,7 @@
 import { getDB } from "./history";
 import type { SessionRecord } from "./history";
 import type { ClimbRecord } from "./climbs";
+import { addDays, toLocalDateString } from "./dates";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -120,26 +121,6 @@ export function typeMatches(
 }
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
-
-export function toLocalDateString(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Monday-anchored start of week, set to local midnight. */
-export function startOfWeek(d: Date): Date {
-  const out = new Date(d);
-  out.setHours(0, 0, 0, 0);
-  const day = out.getDay(); // 0=Sun … 6=Sat
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  out.setDate(out.getDate() + diffToMonday);
-  return out;
-}
-
-export function addDays(d: Date, n: number): Date {
-  const out = new Date(d);
-  out.setDate(out.getDate() + n);
-  return out;
-}
 
 export function buildScheduleWeeks(
   startDate: Date,

@@ -35,8 +35,8 @@ import {
   getSchedule,
   normalizeDayTypes,
   SCHEDULE_TYPE_META,
-  toLocalDateString,
 } from "../lib/schedules";
+import { toLocalDateString } from "../lib/dates";
 import type { ScheduleDayType } from "../lib/schedules";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

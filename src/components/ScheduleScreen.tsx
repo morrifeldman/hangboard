@@ -1,15 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { GearIcon, NoteIcon } from "./icons";
 import {
-  addDays,
   buildScheduleWeeks,
   deleteScheduleByDate,
   getSchedules,
   SCHEDULE_TYPE_META,
   SCHEDULE_TYPE_ORDER,
-  startOfWeek,
   upsertSchedule,
 } from "../lib/schedules";
+import { addDays, startOfWeek } from "../lib/dates";
 import type {
   ScheduleDay,
   ScheduleDayType,

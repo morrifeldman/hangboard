@@ -14,11 +14,7 @@ import type { ClimbRecord } from "./climbs";
 import type { ClimbStyle } from "../constants/climbGrades";
 import { getDB } from "./history";
 import type { SessionRecord } from "./history";
-import {
-  addDays,
-  startOfWeek,
-  toLocalDateString,
-} from "./schedules";
+import { addDays, startOfWeek, toLocalDateString } from "./dates";
 import type { ScheduleDayType, ScheduleRecord } from "./schedules";
 import { IS_TEST_MODE } from "./testMode";
 

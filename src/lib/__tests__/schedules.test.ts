@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { toLocalDateString, startOfWeek } from "../dates";
 import {
-  toLocalDateString,
-  startOfWeek,
   buildScheduleWeeks,
   normalizeDayTypes,
   typeMatches,

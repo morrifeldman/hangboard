@@ -4,7 +4,7 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
 import type { SeasonWindow, WindowKind } from "../lib/pyramidData";
-import { getFilteredClimbs } from "../lib/climbUtils";
+import { climbsInView } from "../lib/climbUtils";
 import type { PyramidRow } from "../lib/climbUtils";
 import { deduplicateForPyramid } from "../lib/deduplication";
 import { SPORT_GRADES } from "../constants/climbGrades";
@@ -47,7 +47,7 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
   // when the toggle is on (skip seasons where the user only ever bailed) and
   // all climbs when the toggle is off (show project-only seasons too).
   const viewClimbs = useMemo(
-    () => getFilteredClimbs(climbs, view, false, [0, 100]),
+    () => climbsInView(climbs, view),
     [climbs, view],
   );
   const viewSends = useMemo(
