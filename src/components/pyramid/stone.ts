@@ -26,5 +26,5 @@ const GLOW_RGB: Record<ClimbStyle, string> = {
 
 export function prGlow(style: ClimbStyle): string {
   const rgb = GLOW_RGB[style];
-  return `0 0 6px 1px rgba(${rgb},0.9), 0 0 14px 4px rgba(${rgb},0.45)`;
+  return `0 0 0 2px #111827, 0 0 0 3.5px rgba(255,255,255,0.85), 0 0 8px 4px rgba(${rgb},0.8), 0 0 18px 6px rgba(${rgb},0.4)`;
 }
