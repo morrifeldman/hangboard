@@ -1,7 +1,7 @@
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import { dateKeyToTime, toLocalDateString } from "./dates";
-import { addSession, getSessions } from "./history";
+import { saveSession, getSessions } from "./history";
 import type { SessionRecord, SessionHoldRecord } from "./history";
 
 function ts(daysBack: number, hour = 9): number {
@@ -103,6 +103,6 @@ async function doSeed(): Promise<void> {
   ];
 
   for (const s of sessions) {
-    await addSession(s);
+    await saveSession(s);
   }
 }

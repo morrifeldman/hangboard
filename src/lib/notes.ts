@@ -1,4 +1,4 @@
-import { getDB } from "./history";
+import { recordStore } from "./db";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -12,45 +12,18 @@ export type NoteRecord = {
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
-const STORE = "notes";
+const notes = recordStore<NoteRecord>("notes");
 
-export async function addNote(record: NoteRecord): Promise<void> {
-  const db = await getDB();
-  await db.put(STORE, record);
-}
+/** Insert or replace a note. */
+export const saveNote = notes.put;
+export const deleteNote = notes.remove;
+/** One note by id, or undefined once it has been deleted. */
+export const getNote = notes.get;
 
 /** Returns all notes sorted newest-first by date, then by createdAt. */
 export async function getNotes(): Promise<NoteRecord[]> {
-  const db = await getDB();
-  const all = (await db.getAll(STORE)) as NoteRecord[];
-  return all.sort((a, b) => {
+  return (await notes.all()).sort((a, b) => {
     if (a.date !== b.date) return a.date < b.date ? 1 : -1;
     return b.createdAt - a.createdAt;
   });
-}
-
-/** One note by id, or undefined once it has been deleted. */
-export async function getNote(id: string): Promise<NoteRecord | undefined> {
-  const db = await getDB();
-  return (await db.get(STORE, id)) as NoteRecord | undefined;
-}
-
-export async function updateNote(record: NoteRecord): Promise<void> {
-  const db = await getDB();
-  await db.put(STORE, record);
-}
-
-export async function deleteNote(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete(STORE, id);
-}
-
-export async function replaceAllNotes(records: NoteRecord[]): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction(STORE, "readwrite");
-  await tx.store.clear();
-  for (const r of records) {
-    await tx.store.put(r);
-  }
-  await tx.done;
 }

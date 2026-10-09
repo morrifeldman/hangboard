@@ -1,4 +1,4 @@
-import { getDB } from "./history";
+import { getDB } from "./db";
 import type { SessionRecord } from "./history";
 import type { ClimbRecord } from "./climbs";
 import { addDays, toLocalDateString } from "./dates";
@@ -255,30 +255,10 @@ export async function upsertSchedule(input: {
   return record;
 }
 
-export async function deleteSchedule(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete(STORE, id);
-}
-
 export async function deleteScheduleByDate(date: string): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(STORE, "readwrite");
   const existing = (await tx.store.index("by-date").get(date)) as ScheduleRecord | undefined;
   if (existing) await tx.store.delete(existing.id);
-  await tx.done;
-}
-
-export async function clearSchedules(): Promise<void> {
-  const db = await getDB();
-  await db.clear(STORE);
-}
-
-export async function replaceAllSchedules(records: ScheduleRecord[]): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction(STORE, "readwrite");
-  await tx.store.clear();
-  for (const r of records) {
-    await tx.store.put(r);
-  }
   await tx.done;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { addNote, updateNote, deleteNote, getNotes } from "../lib/notes";
+import { saveNote, deleteNote, getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { BackChevronIcon } from "./icons";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
@@ -71,7 +71,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
           ...(trimmedCategory ? { category: trimmedCategory } : {}),
         };
         if (!trimmedCategory) delete updated.category;
-        await updateNote(updated);
+        await saveNote(updated);
       } else {
         const record: NoteRecord = {
           id: crypto.randomUUID(),
@@ -80,7 +80,7 @@ export function NoteEditorScreen({ onBack, onSaved, initialRecord, onDeleted }: 
           createdAt: Date.now(),
           ...(trimmedCategory ? { category: trimmedCategory } : {}),
         };
-        await addNote(record);
+        await saveNote(record);
       }
       leaveGuard.allowLeave();
       onSaved();

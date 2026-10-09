@@ -5,7 +5,7 @@ import type { HoldDefinition } from "../data/workout";
 import * as SM from "../lib/stateMachine";
 import type { SessionState } from "../lib/stateMachine";
 import { currentPhaseFullSecs, totalWorkoutSecs } from "../lib/workoutTime";
-import { addSession, buildSessionRecord } from "../lib/history";
+import { saveSession, buildSessionRecord } from "../lib/history";
 import { overrideKeyFor, plannedWeight, sessionSetWeight } from "../lib/setWeights";
 import type { SetOverrides } from "../lib/setWeights";
 import type { LiftDefinition } from "../lib/lifts";
@@ -268,7 +268,7 @@ export const useWorkoutStore = create<WorkoutStore>()(
             setNotes: s.setNotes,
             failedSets: s.failedSets,
           });
-          addSession(record).catch(console.error);
+          saveSession(record).catch(console.error);
         }
         set({ ...IDLE_SESSION, phaseSeq: s.phaseSeq + 1 });
       },

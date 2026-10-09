@@ -3,7 +3,7 @@ import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
 import { isWarmup, plannedReps, warmupVolume } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
-import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
+import { saveSession, deleteSession, getSessions } from "../lib/history";
 import { bestsBefore, isPR } from "../lib/personalRecords";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 import { formatWeight } from "../lib/format";
@@ -263,7 +263,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           holds: holdRecords,
           notes: sessionNotes || undefined,
         };
-        await updateSession(updated);
+        await saveSession(updated);
       } else {
         const record: SessionRecord = {
           id: crypto.randomUUID(),
@@ -275,7 +275,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
           holds: holdRecords,
           ...(sessionNotes ? { notes: sessionNotes } : {}),
         };
-        await addSession(record);
+        await saveSession(record);
       }
       leaveGuard.allowLeave();
       onSaved();

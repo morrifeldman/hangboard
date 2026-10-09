@@ -9,7 +9,7 @@ import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
 import { EditClimbModal } from "./pyramid/modals/EditClimbModal";
 import { AddClimbModal } from "./pyramid/modals/AddClimbModal";
 import { todayDateString } from "../lib/dates";
-import { getClimbs, addClimb, updateClimb, deleteClimb } from "../lib/climbs";
+import { getClimbs, saveClimb, deleteClimb } from "../lib/climbs";
 import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
 import type { ClimbRecord } from "../lib/climbs";
 import type { ViewKey } from "../constants/climbGrades";
@@ -57,7 +57,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const handleAdd = async () => {
     if (!newClimb.route || !newClimb.grade) return;
     const record: ClimbRecord = { ...newClimb, id: crypto.randomUUID() };
-    await addClimb(record);
+    await saveClimb(record);
     setNewClimb(initialClimb());
     setShowAddForm(false);
     await reload();
@@ -65,7 +65,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
 
   const handleSaveEdit = async () => {
     if (!editingClimb || !editingClimb.route || !editingClimb.grade) return;
-    await updateClimb(editingClimb);
+    await saveClimb(editingClimb);
     setEditingClimb(null);
     await reload();
   };

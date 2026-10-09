@@ -1,5 +1,5 @@
 import { getSchedule, normalizeDayTypes } from "./schedules";
-import { getMeta, setMeta } from "./history";
+import { getMeta, setMeta } from "./db";
 import {
   REMINDER_CONFIG_KEY,
   REMINDER_LAST_FIRED_KEY,

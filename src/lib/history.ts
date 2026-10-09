@@ -1,7 +1,7 @@
-import { openDB, type IDBPDatabase } from "idb";
 import type { HoldDefinition } from "../data/holds";
 import { numSetsOf, repsFor } from "../data/holds";
 import { setKey } from "./stateMachine";
+import { recordStore } from "./db";
 import type { LiftEntry } from "./lifts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -69,73 +69,13 @@ export type SessionRecord = {
   gymData?: GymData;
 };
 
-// ─── IndexedDB setup ─────────────────────────────────────────────────────────
-
-const DB_NAME = "hangboard-history";
-const DB_VERSION = 5;
-const STORE = "sessions";
-/** Device-local key/value store (reminder config etc.) shared with the service worker. */
-const META_STORE = "meta";
-
-let dbPromise: Promise<IDBPDatabase> | null = null;
-
-export function getDB(): Promise<IDBPDatabase> {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
-      // A newer tab/SW wants to upgrade: release our connection so it isn't
-      // blocked forever, and reopen lazily on next use.
-      blocking() {
-        void dbPromise?.then((db) => db.close()).catch(() => {});
-        dbPromise = null;
-      },
-      terminated() {
-        dbPromise = null;
-      },
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE)) {
-          const store = db.createObjectStore(STORE, { keyPath: "id" });
-          store.createIndex("by-start", "startedAt");
-        }
-        if (!db.objectStoreNames.contains("climbs")) {
-          const climbStore = db.createObjectStore("climbs", { keyPath: "id" });
-          climbStore.createIndex("by-date", "date");
-        }
-        if (!db.objectStoreNames.contains("notes")) {
-          const noteStore = db.createObjectStore("notes", { keyPath: "id" });
-          noteStore.createIndex("by-date", "date");
-        }
-        if (!db.objectStoreNames.contains("schedules")) {
-          const schedStore = db.createObjectStore("schedules", { keyPath: "id" });
-          schedStore.createIndex("by-date", "date", { unique: true });
-        }
-        if (!db.objectStoreNames.contains(META_STORE)) {
-          // Out-of-line keys: db.put(META_STORE, value, key)
-          db.createObjectStore(META_STORE);
-        }
-      },
-    });
-  }
-  return dbPromise;
-}
-
-/** Read a device-local key/value entry from the shared `meta` store. */
-export async function getMeta<T>(key: string): Promise<T | undefined> {
-  const db = await getDB();
-  return (await db.get(META_STORE, key)) as T | undefined;
-}
-
-/** Write a device-local key/value entry to the shared `meta` store. */
-export async function setMeta(key: string, value: unknown): Promise<void> {
-  const db = await getDB();
-  await db.put(META_STORE, value, key);
-}
-
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
-export async function addSession(record: SessionRecord): Promise<void> {
-  const db = await getDB();
-  await db.put(STORE, record);
-}
+const sessions = recordStore<SessionRecord>("sessions");
+
+/** Insert or replace a session. */
+export const saveSession = sessions.put;
+export const deleteSession = sessions.remove;
 
 // Migrate legacy workout type values stored before the rename.
 function normalizeSession(s: SessionRecord): SessionRecord {
@@ -152,37 +92,14 @@ function normalizeSession(s: SessionRecord): SessionRecord {
 
 /** Returns all sessions sorted newest-first. */
 export async function getSessions(): Promise<SessionRecord[]> {
-  const db = await getDB();
-  const all = (await db.getAllFromIndex(STORE, "by-start")) as SessionRecord[];
-  return all.map(normalizeSession).reverse();
+  return (await sessions.allBy("by-start")).map(normalizeSession).reverse();
 }
 
 /** One session by id. Undefined once it has been deleted, which a stale
  *  deep link into the editor will hit. */
 export async function getSession(id: string): Promise<SessionRecord | undefined> {
-  const db = await getDB();
-  const record = (await db.get(STORE, id)) as SessionRecord | undefined;
+  const record = await sessions.get(id);
   return record && normalizeSession(record);
-}
-
-export async function deleteSession(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete(STORE, id);
-}
-
-export async function updateSession(record: SessionRecord): Promise<void> {
-  const db = await getDB();
-  await db.put(STORE, record);
-}
-
-export async function replaceAllSessions(records: SessionRecord[]): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction(STORE, "readwrite");
-  await tx.store.clear();
-  for (const r of records) {
-    await tx.store.put(r);
-  }
-  await tx.done;
 }
 
 // ─── Session record builder (pure — unit-testable) ───────────────────────────

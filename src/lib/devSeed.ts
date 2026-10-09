@@ -9,10 +9,10 @@
 // All seeded records use ids prefixed with `synthetic-` so the clear helper
 // (and any other tooling) can safely remove them without touching real data.
 
-import { addClimb, deleteClimb, getClimbs } from "./climbs";
+import { saveClimb, deleteClimb, getClimbs } from "./climbs";
 import type { ClimbRecord } from "./climbs";
 import type { ClimbStyle } from "../constants/climbGrades";
-import { getDB } from "./history";
+import { getDB } from "./db";
 import type { SessionRecord } from "./history";
 import { addDays, startOfWeek, toLocalDateString } from "./dates";
 import type { ScheduleDayType, ScheduleRecord } from "./schedules";
@@ -153,7 +153,7 @@ async function seed(scenario: Scenario = "default"): Promise<number> {
   await clearSynthetic();
   const seeds = build();
   for (let i = 0; i < seeds.length; i++) {
-    await addClimb({ ...seeds[i], id: `synthetic-${scenario}-${i + 1}` });
+    await saveClimb({ ...seeds[i], id: `synthetic-${scenario}-${i + 1}` });
   }
   // eslint-disable-next-line no-console
   console.log(`[devSeed] Seeded ${seeds.length} climbs (scenario: ${scenario})`);

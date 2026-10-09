@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addSession, updateSession, deleteSession, getSessions } from "../lib/history";
+import { saveSession, deleteSession, getSessions } from "../lib/history";
 import type { SessionRecord, GymData, GymWorkoutType, FreeformSection, CampusSet } from "../lib/history";
 import { GYM_WORKOUTS, GYM_CATEGORIES, CAMPUS_TEMPLATE, CAMPUS_RUNGS, CAMPUS_NAMES, CAMPUS_SEQUENCES, sequenceShortLabel, shortCodeToSequence, ladderDisplayName, rungShortLabel } from "../data/gymWorkouts";
 import type { GymWorkoutDef } from "../data/gymWorkouts";
@@ -666,7 +666,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
           gymData,
           notes: sessionNotes || undefined,
         };
-        await updateSession(updated);
+        await saveSession(updated);
       } else {
         const record: SessionRecord = {
           id: crypto.randomUUID(),
@@ -678,7 +678,7 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
           gymData,
           ...(sessionNotes ? { notes: sessionNotes } : {}),
         };
-        await addSession(record);
+        await saveSession(record);
         // Only a new session moves the library on. Editing an old one must not
         // roll a lift's base back to whatever was planned back then.
         if (committed) {

@@ -267,3 +267,37 @@ describe("backupFilename", () => {
     expect(backupFilename(t)).toBe("cairn-backup-2026-01-03.json");
   });
 });
+
+describe("validateBackup — per-record checks", () => {
+  const roundTrip = (over: Partial<typeof FULL_INPUT> = {}) =>
+    JSON.parse(JSON.stringify(buildBackup({ ...FULL_INPUT, ...over })));
+
+  it("rejects a climb with a non-YYYY-MM-DD date, naming the record", () => {
+    const res = validateBackup(roundTrip({ climbs: [{ ...SAMPLE_CLIMB, date: "10/12/2025" }] }));
+    expect(res).toEqual({ ok: false, error: "data.climbs[0]: date must be YYYY-MM-DD." });
+  });
+
+  it("rejects a record without an id", () => {
+    const { id: _id, ...noId } = SAMPLE_NOTE;
+    void _id;
+    const res = validateBackup(roundTrip({ notes: [noId as NoteRecord] }));
+    expect(res.ok).toBe(false);
+  });
+
+  it("rejects a session with non-numeric timestamps", () => {
+    const bad = { ...SAMPLE_SESSION, startedAt: "yesterday" } as unknown as SessionRecord;
+    expect(validateBackup(roundTrip({ sessions: [bad] })).ok).toBe(false);
+  });
+
+  it("rejects a weight entry that isn't a number pair", () => {
+    const res = validateBackup(roundTrip({ weights: { jug: { set1: 0, set2: "x" } } as never }));
+    expect(res).toEqual({ ok: false, error: "data.weights.jug must have numeric set1 and set2." });
+  });
+
+  it("keeps one schedule per date (the most recently updated)", () => {
+    const older = { ...SAMPLE_SCHEDULE, id: "a", updatedAt: 1 };
+    const newer = { ...SAMPLE_SCHEDULE, id: "b", updatedAt: 2 };
+    const res = validateBackup(roundTrip({ schedules: [newer, older] }));
+    expect(res.ok && res.file.data.schedules.map((s) => s.id)).toEqual(["b"]);
+  });
+});
