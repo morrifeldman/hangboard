@@ -1,3 +1,4 @@
+import type { ClimbStyle } from "../../constants/climbGrades";
 import { getStyleColor } from "../../lib/climbUtils";
 
 // A light top edge and a dark bottom edge make each flat tile read as a stacked
@@ -14,3 +15,16 @@ export const STYLE_LEGEND = [
   { style: "flash", label: "Flash", color: getStyleColor("flash") },
   { style: "redpoint", label: "Redpoint", color: getStyleColor("redpoint") },
 ] as const;
+
+// A soft glow in the tile's own colour marks a personal-record send.
+const GLOW_RGB: Record<ClimbStyle, string> = {
+  onsight: "34,197,94", // green-500
+  flash: "234,179,8", // yellow-500
+  redpoint: "239,68,68", // red-500
+  attempt: "156,163,175", // gray-400
+};
+
+export function prGlow(style: ClimbStyle): string {
+  const rgb = GLOW_RGB[style];
+  return `0 0 6px 1px rgba(${rgb},0.9), 0 0 14px 4px rgba(${rgb},0.45)`;
+}

@@ -1,5 +1,5 @@
 // Dev/test-only seeding helpers. Exposes:
-//   window.__seedSyntheticClimbs("default" | "wide" | "seasons" | "attempts")
+//   window.__seedSyntheticClimbs("default" | "wide" | "seasons" | "attempts" | "progression")
 //   window.__clearSyntheticClimbs()
 //   window.__seedSyntheticSessions()   // gym / cardio / stretching calendar buckets
 //   window.__clearSyntheticSessions()
@@ -18,7 +18,7 @@ import { addDays, startOfWeek, toLocalDateString } from "./dates";
 import type { ScheduleDayType, ScheduleRecord } from "./schedules";
 import { IS_TEST_MODE } from "./testMode";
 
-type Scenario = "default" | "wide" | "seasons" | "attempts";
+type Scenario = "default" | "wide" | "seasons" | "attempts" | "progression";
 
 type Seed = Omit<ClimbRecord, "id">;
 
@@ -130,6 +130,26 @@ const SCENARIOS: Record<Scenario, () => Seed[]> = {
       climbs: 3, date: "2026-04-04", notes: "send!",
     },
   ],
+
+  // A handful of sends a day over a few weeks, each style climbing in grade —
+  // exercises the personal-record stars on the route timeline.
+  progression: () => {
+    const days: Array<[date: string, sends: Array<[grade: string, style: ClimbStyle]>]> = [
+      ["2026-03-14", [["5.12a", "flash"], ["5.11a", "onsight"], ["5.10a", "flash"]]],
+      ["2026-03-15", [["5.11b", "flash"], ["5.11b", "onsight"]]],
+      ["2026-03-28", [["5.11d", "onsight"], ["5.11c", "redpoint"], ["5.11b", "flash"], ["5.10d", "flash"], ["5.10c", "flash"], ["5.11d", "redpoint"]]],
+      ["2026-04-04", [["5.12b", "redpoint"], ["5.11c", "onsight"], ["5.11a", "onsight"]]],
+      ["2026-04-05", [["5.11d", "redpoint"], ["5.11b", "redpoint"]]],
+      ["2026-04-11", [["5.12a", "onsight"], ["5.12b", "flash"], ["5.12c", "redpoint"]]],
+    ];
+    return days.flatMap(([date, sends]) =>
+      sends.map(([grade, style], i): Seed => ({
+        route: `Synthetic ${date} #${i + 1}`, grade, location: "Synthetic Crag",
+        type: "sport", setting: "outdoor", style,
+        climbs: style === "redpoint" ? 2 : 1, date, notes: "",
+      })),
+    );
+  },
 };
 
 async function clearSynthetic(): Promise<number> {

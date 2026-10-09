@@ -1,4 +1,4 @@
-import { STONE_EDGE, STYLE_LEGEND } from "./stone";
+import { prGlow, STONE_EDGE, STYLE_LEGEND } from "./stone";
 
 type Props = { showSendsOnly: boolean };
 
@@ -14,6 +14,10 @@ export function Legend({ showSendsOnly }: Props) {
           <span>{s.label}</span>
         </div>
       ))}
+      <div className="flex items-center gap-2">
+        <div className="w-3.5 h-3.5 rounded-[3px] bg-gray-400" style={{ boxShadow: prGlow("attempt") }} />
+        <span>PR</span>
+      </div>
     </div>
   );
 }
