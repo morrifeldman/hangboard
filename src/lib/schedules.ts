@@ -2,6 +2,7 @@ import { getDB } from "./db";
 import type { SessionRecord } from "./history";
 import type { ClimbRecord } from "./climbs";
 import { addDays, toLocalDateString } from "./dates";
+import { isHangboardSession } from "./sessionKind";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ export function typeMatches(
 
   switch (type) {
     case "hangboard":
-      return has("repeaters", "max-hang", "beginner");
+      return sessions.some(isHangboardSession);
     case "power":
       // wbl is a warm-up boulder ladder, not a power session — excluded here.
       return (

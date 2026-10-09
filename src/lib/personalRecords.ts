@@ -1,10 +1,10 @@
 import type { SessionHoldRecord, SessionRecord } from "./history";
 import { HOLDS, isWarmup } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
+import { isHangboardSession } from "./sessionKind";
 
 const WARMUP_IDS = new Set([...HOLDS, ...HOLDS_B].filter(isWarmup).map((h) => h.id));
 
-const isHangboard = (s: SessionRecord) => s.gymData === undefined;
 
 /** Heaviest weight actually completed on a hold; a failed set doesn't count toward a PR. */
 export function bestCompletedWeight(hold: SessionHoldRecord): number | null {
@@ -22,7 +22,7 @@ export function bestsBefore(
 ): Map<string, number> {
   const bests = new Map<string, number>();
   for (const s of sessions) {
-    if (!isHangboard(s) || s.id === excludeId || s.startedAt >= before) continue;
+    if (!isHangboardSession(s) || s.id === excludeId || s.startedAt >= before) continue;
     for (const h of s.holds) {
       const w = bestCompletedWeight(h);
       if (w !== null && w > (bests.get(h.holdId) ?? -Infinity)) bests.set(h.holdId, w);
@@ -44,7 +44,7 @@ export function isPR(holdId: string, weight: number | null, priorBests: Map<stri
 
 /** Session id → ids of the holds that set a PR in it. */
 export function sessionPRs(sessions: SessionRecord[]): Map<string, string[]> {
-  const chronological = sessions.filter(isHangboard).sort((a, b) => a.startedAt - b.startedAt);
+  const chronological = sessions.filter(isHangboardSession).sort((a, b) => a.startedAt - b.startedAt);
   const bests = new Map<string, number>();
   const out = new Map<string, string[]>();
   for (const s of chronological) {

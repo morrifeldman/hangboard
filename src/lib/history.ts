@@ -6,10 +6,13 @@ import type { LiftEntry } from "./lifts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type GymWorkoutType =
-  | "arc" | "cir" | "pe-route" | "lbc" | "wbl"
-  | "performance" | "hard-bouldering" | "limit-bouldering" | "campus" | "injury"
-  | "cardio" | "stretching" | "freeform" | "lifts";
+export const GYM_WORKOUT_TYPES = [
+  "arc", "cir", "pe-route", "lbc", "wbl",
+  "performance", "hard-bouldering", "limit-bouldering", "campus", "injury",
+  "cardio", "stretching", "freeform", "lifts",
+] as const;
+
+export type GymWorkoutType = (typeof GYM_WORKOUT_TYPES)[number];
 
 export type FreeformEntry = { key: string; value: string };
 export type FreeformSection = { name: string; entries: FreeformEntry[] };

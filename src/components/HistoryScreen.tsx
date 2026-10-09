@@ -7,9 +7,10 @@ import type { ClimbRecord } from "../lib/climbs";
 import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
-import { liftNextDirection, sessionNextSummary } from "../lib/weightCues";
+import { sessionNextSummary } from "../lib/weightCues";
 import { NextArrow } from "./NextArrow";
 import { sessionPRs } from "../lib/personalRecords";
+import { gymSummaryParts, type SummaryPart } from "../lib/sessionSummary";
 import {
   workoutLabel,
   workoutTypeLabel,
@@ -21,7 +22,7 @@ import {
 } from "../lib/historyFilter";
 import { shortLocation } from "../lib/format";
 import { dateKeyToTime, startOfWeek, toLocalDateString } from "../lib/dates";
-import { formatLiftSets, withCurrentLiftNames } from "../lib/lifts";
+import { withCurrentLiftNames } from "../lib/lifts";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import { PRBadge } from "./PRBadge";
@@ -106,84 +107,17 @@ const ROW_BUTTON =
 
 // ─── Summaries ────────────────────────────────────────────────────────────────
 
+function renderPart(part: SummaryPart): ReactNode {
+  return part.map((seg, i) => (
+    <Fragment key={i}>
+      {seg.fig ? <Fig>{seg.text}</Fig> : seg.text}
+      {seg.arrow !== undefined && <NextArrow dir={seg.arrow} />}
+    </Fragment>
+  ));
+}
+
 function gymSummary(data: GymData): ReactNode {
-  switch (data.type) {
-    case "arc": {
-      const parts: ReactNode[] = [<><Fig>{data.climbMin}</Fig> min</>];
-      if (data.routes) parts.push(<><Fig>{data.routes}</Fig> routes</>);
-      if (data.downclimb === "Yes") parts.push("downclimb");
-      else if (data.downclimb === "Some") parts.push("some downclimb");
-      if (data.maxGrade) parts.push(<>Max <Fig>{data.maxGrade}</Fig></>);
-      return joinDots(parts);
-    }
-    case "cir": {
-      const parts: ReactNode[] = [<><Fig>{data.repeats}</Fig> repeats</>];
-      if (data.climbRating) parts.push(data.climbRating);
-      parts.push(<>~<Fig>{data.avgRestSec}s</Fig> rest</>);
-      return joinDots(parts);
-    }
-    case "pe-route":
-      return joinDots([
-        <><Fig>{data.climbSec}s</Fig> on</>,
-        <><Fig>{data.dutyCycle}</Fig> rest</>,
-        <><Fig>{data.reps}</Fig> reps</>,
-      ]);
-    case "lbc":
-      return joinDots([
-        <><Fig>{data.sets}</Fig> sets</>,
-        <><Fig>{data.climbSec}s</Fig> on</>,
-        <><Fig>{data.dutyCycle}</Fig> rest</>,
-      ]);
-    case "performance":
-      return joinDots([
-        <Fig>{data.grade}</Fig>,
-        <><Fig>{data.tries}</Fig> tries</>,
-        data.success === "Yes" ? "sent" : "no send",
-      ]);
-    case "wbl":
-      return joinDots([<>Top <Fig>{data.topV}</Fig></>, <><Fig>{data.durationMin}</Fig> min</>]);
-    case "hard-bouldering":
-    case "limit-bouldering":
-      return joinDots([data.level, <><Fig>{data.durationMin}</Fig> min</>]);
-    case "campus": {
-      const n = data.sets.length;
-      return <><Fig>{n}</Fig> set{n === 1 ? "" : "s"}</>;
-    }
-    case "injury": {
-      const parts: string[] = [];
-      if (data.bodyPart) parts.push(data.bodyPart);
-      if (data.severity) parts.push(data.severity);
-      return parts.join(" · ") || "—";
-    }
-    case "stretching": {
-      const parts: ReactNode[] = [];
-      if (data.reps && data.holdSec) parts.push(<><Fig>{data.reps}</Fig> × <Fig>{data.holdSec}s</Fig></>);
-      else if (data.reps) parts.push(<><Fig>{data.reps}</Fig> reps</>);
-      else if (data.holdSec) parts.push(<><Fig>{data.holdSec}s</Fig> hold</>);
-      if (data.stretches && data.stretches.length > 0) parts.push(data.stretches.join(", "));
-      return parts.length > 0 ? joinDots(parts) : "—";
-    }
-    case "cardio": {
-      const parts: ReactNode[] = [data.mode, <><Fig>{data.durationMin}</Fig> min</>];
-      if (data.intensity) parts.push(data.intensity);
-      return joinDots(parts);
-    }
-    case "lifts":
-      if (data.lifts.length === 0) return "—";
-      return joinDots(
-        data.lifts.map((l) => (
-          <>
-            {l.name} {formatLiftSets(l) ? <Fig>{formatLiftSets(l)}</Fig> : "skipped"}
-            <NextArrow dir={liftNextDirection(l)} />
-          </>
-        )),
-      );
-    case "freeform": {
-      const count = data.sections.reduce((n, s) => n + s.entries.length, 0);
-      if (count === 0) return data.title || "—";
-      return joinDots([data.title, <><Fig>{count}</Fig> {count === 1 ? "entry" : "entries"}</>]);
-    }
-  }
+  return joinDots(gymSummaryParts(data).map(renderPart));
 }
 
 function formatTime(ts: number): string {

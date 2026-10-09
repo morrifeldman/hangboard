@@ -1,10 +1,11 @@
-import type { SessionRecord, GymData } from "./history";
+import type { SessionRecord, GymData, GymWorkoutType } from "./history";
+import { HANGBOARD_WORKOUT_TYPES } from "./sessionKind";
 import type { ClimbRecord } from "./climbs";
 import type { NoteRecord } from "./notes";
 
 // ─── Workout type labels ──────────────────────────────────────────────────────
 
-export const GYM_LABELS: Record<string, string> = {
+export const GYM_LABELS: Record<GymWorkoutType, string> = {
   "arc":              "ARC",
   "cir":              "CIR",
   "pe-route":         "PE Route Intervals",
@@ -21,17 +22,15 @@ export const GYM_LABELS: Record<string, string> = {
   "lifts":            "Lifts",
 };
 
-/** Hangboard workout types, in fixed display order (before gym types). */
-export const HANGBOARD_TYPES = ["repeaters", "max-hang", "beginner"] as const;
-
-const HANGBOARD_LABELS: Record<string, string> = {
+const HANGBOARD_LABELS: Record<(typeof HANGBOARD_WORKOUT_TYPES)[number], string> = {
   "repeaters": "Repeaters",
   "max-hang":  "Max Hang",
   "beginner":  "Beginner",
 };
 
 export function workoutTypeLabel(workoutType: string): string {
-  return HANGBOARD_LABELS[workoutType] ?? GYM_LABELS[workoutType] ?? workoutType;
+  const labels: Record<string, string> = { ...HANGBOARD_LABELS, ...GYM_LABELS };
+  return labels[workoutType] ?? workoutType;
 }
 
 export function workoutLabel(record: SessionRecord): string {
@@ -58,9 +57,9 @@ export function workoutTypeGroups(sessions: SessionRecord[]): {
   gym: string[];
 } {
   const counts = workoutTypeCounts(sessions);
-  const hangboard = HANGBOARD_TYPES.filter((t) => counts.has(t));
+  const hangboard = HANGBOARD_WORKOUT_TYPES.filter((t) => counts.has(t));
   const gym = [...counts.entries()]
-    .filter(([t]) => !(HANGBOARD_TYPES as readonly string[]).includes(t))
+    .filter(([t]) => !(HANGBOARD_WORKOUT_TYPES as readonly string[]).includes(t))
     .sort((a, b) => b[1] - a[1])
     .map(([t]) => t);
   return { hangboard: [...hangboard], gym };

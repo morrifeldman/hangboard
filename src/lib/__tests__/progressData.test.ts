@@ -4,6 +4,7 @@ import {
   buildCalendar,
   calendarMonthLabels,
 } from "../progressData";
+import { sessionPRs } from "../personalRecords";
 import type { SessionRecord } from "../history";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -39,27 +40,27 @@ function ts(dateStr: string): number {
 
 describe("buildTrend", () => {
   it("returns empty array for empty sessions", () => {
-    expect(buildTrend([], "jug", "repeaters")).toEqual([]);
+    expect(buildTrend([], "large-edge", "repeaters")).toEqual([]);
   });
 
   it("returns empty array when no sessions match workoutType", () => {
     const s = makeSession({ id: "1", workoutType: "max-hang", startedAt: ts("2024-01-10") });
-    expect(buildTrend([s], "jug", "repeaters")).toEqual([]);
+    expect(buildTrend([s], "large-edge", "repeaters")).toEqual([]);
   });
 
   it("returns empty array when hold not present in sessions", () => {
     const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10") });
-    // Session has "jug" and "large-edge" but not "sloper"
+    // Session has "large-edge" and "large-edge" but not "sloper"
     expect(buildTrend([s], "sloper", "repeaters")).toEqual([]);
   });
 
   it("returns single point for a single matching session", () => {
     const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10") });
-    const result = buildTrend([s], "jug", "repeaters");
+    const result = buildTrend([s], "large-edge", "repeaters");
     expect(result).toHaveLength(1);
-    expect(result[0].weight).toBe(0);
+    expect(result[0].weight).toBe(15);
     expect(result[0].bailed).toBe(false);
-    expect(result[0].isPR).toBe(true); // only point is PR by definition
+    expect(result[0].isPR).toBe(false); // first time on a hold is a baseline, not a PR
   });
 
   it("returns points ordered oldest→newest", () => {
@@ -69,14 +70,14 @@ describe("buildTrend", () => {
       makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05") }),
     ]; // newest-first (as getSessions returns)
 
-    const result = buildTrend(sessions, "jug", "repeaters");
+    const result = buildTrend(sessions, "large-edge", "repeaters");
     expect(result[0].date.getTime()).toBeLessThan(result[1].date.getTime());
     expect(result[1].date.getTime()).toBeLessThan(result[2].date.getTime());
   });
 
   it("marks bailed sessions correctly", () => {
     const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10"), bailed: true });
-    const result = buildTrend([s], "jug", "repeaters");
+    const result = buildTrend([s], "large-edge", "repeaters");
     expect(result[0].bailed).toBe(true);
   });
 
@@ -84,18 +85,18 @@ describe("buildTrend", () => {
     const sessions = [
       makeSession({
         id: "3", workoutType: "repeaters", startedAt: ts("2024-01-15"),
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 5, reps: 7, completed: true }, set2: null }],
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: 5, reps: 7, completed: true }, set2: null }],
       }),
       makeSession({
         id: "2", workoutType: "repeaters", startedAt: ts("2024-01-10"),
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
       }),
       makeSession({
         id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05"),
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 3, reps: 7, completed: true }, set2: null }],
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: 3, reps: 7, completed: true }, set2: null }],
       }),
     ];
-    const result = buildTrend(sessions, "jug", "repeaters");
+    const result = buildTrend(sessions, "large-edge", "repeaters");
     // Oldest→newest: 5kg, 10kg, 3kg ... wait, let me reorder:
     // sessions is newest-first: id=3 (Jan15, 5kg), id=2 (Jan10, 10kg), id=1 (Jan5, 3kg)
     // After slice(0,20).reverse(): Jan5(3kg), Jan10(10kg), Jan15(5kg)
@@ -111,65 +112,114 @@ describe("buildTrend", () => {
     const at = (id: string, date: string, weight: number) =>
       makeSession({
         id, workoutType: "repeaters", startedAt: ts(date),
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight, reps: 7, completed: true }, set2: null }],
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight, reps: 7, completed: true }, set2: null }],
       });
     // newest-first: Jan20(10), Jan15(10), Jan10(10), Jan5(5)
     const result = buildTrend(
       [at("4", "2024-01-20", 10), at("3", "2024-01-15", 10), at("2", "2024-01-10", 10), at("1", "2024-01-05", 5)],
-      "jug",
+      "large-edge",
       "repeaters"
     );
     expect(result.map((p) => p.isPR)).toEqual([false, true, false, false]);
   });
 
-  it("skips a set-failed session when picking the first PR at that weight", () => {
+  it("ignores a failed set when working out the PR", () => {
     const result = buildTrend(
       [
         makeSession({
           id: "2", workoutType: "repeaters", startedAt: ts("2024-01-10"),
-          holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: { weight: 10, reps: 6, completed: true } }],
+          holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: 8, reps: 7, completed: true }, set2: null }],
         }),
         makeSession({
           id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05"),
-          holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: { weight: 10, reps: 6, completed: false } }],
+          holds: [{
+            holdId: "large-edge", holdName: "Large Edge",
+            set1: { weight: 5, reps: 7, completed: true },
+            set2: { weight: 10, reps: 6, completed: false },
+          }],
         }),
       ],
-      "jug",
+      "large-edge",
       "repeaters"
     );
-    // Jan5 hit 10 first but failed set2 → PR lands on Jan10
+    // Jan5: best completed weight is 5 (the failed 10 does not count) -> baseline.
+    expect(result[0].setFailed).toBe(true);
+    expect(result[0].weight).toBe(10);
     expect(result[0].isPR).toBe(false);
+    // Jan10: 8 beats 5 -> PR, even though it is below the failed 10.
     expect(result[1].isPR).toBe(true);
   });
 
-  it("does not mark a set2-failed session as PR even if its weight is highest", () => {
+  it("never flags warm-up holds as PRs", () => {
+    const at = (id: string, date: string, weight: number) =>
+      makeSession({
+        id, workoutType: "repeaters", startedAt: ts(date),
+        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight, reps: 7, completed: true }, set2: null }],
+      });
+    const result = buildTrend([at("2", "2024-01-10", 10), at("1", "2024-01-05", 5)], "jug", "repeaters");
+    expect(result.map((p) => p.isPR)).toEqual([false, false]);
+  });
+
+  it("sorts by startedAt itself, whatever order sessions arrive in", () => {
+    const at = (id: string, date: string, weight: number) =>
+      makeSession({
+        id, workoutType: "repeaters", startedAt: ts(date),
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight, reps: 7, completed: true }, set2: null }],
+      });
+    const oldestFirst = [at("1", "2024-01-05", 5), at("2", "2024-01-10", 10), at("3", "2024-01-15", 7)];
+    const shuffled = [oldestFirst[1], oldestFirst[2], oldestFirst[0]];
+    for (const input of [oldestFirst, shuffled]) {
+      const result = buildTrend(input, "large-edge", "repeaters");
+      expect(result.map((p) => p.sessionId)).toEqual(["1", "2", "3"]);
+      expect(result.map((p) => p.isPR)).toEqual([false, true, false]);
+    }
+  });
+
+  it("keeps the 20 newest even when sessions are oldest-first", () => {
+    const sessions = Array.from({ length: 25 }, (_, i) =>
+      makeSession({
+        id: String(i), workoutType: "repeaters", startedAt: ts("2024-01-01") + i * 86400000,
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: i, reps: 7, completed: true }, set2: null }],
+      })
+    );
+    const result = buildTrend(sessions, "large-edge", "repeaters");
+    expect(result[0].weight).toBe(5);
+    expect(result[19].weight).toBe(24);
+  });
+
+  it("agrees with sessionPRs on which holds set a PR", () => {
+    const w = (id: string, date: string, weights: Record<string, [number, boolean]>) =>
+      makeSession({
+        id, workoutType: "repeaters", startedAt: ts(date),
+        holds: Object.entries(weights).map(([holdId, [weight, completed]]) => ({
+          holdId, holdName: holdId, set1: { weight, reps: 7, completed }, set2: null,
+        })),
+      });
     const sessions = [
-      makeSession({
-        id: "2", workoutType: "repeaters", startedAt: ts("2024-01-10"),
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 0, reps: 7, completed: true }, set2: { weight: 0, reps: 6, completed: true } }],
-      }),
-      makeSession({
-        id: "1", workoutType: "repeaters", startedAt: ts("2024-01-05"),
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 5, reps: 7, completed: true }, set2: { weight: 5, reps: 6, completed: false } }],
-      }),
+      w("5", "2024-02-01", { "large-edge": [20, true], "small-edge": [10, true], jug: [30, true] }),
+      w("4", "2024-01-25", { "large-edge": [20, true], "small-edge": [5, false] }),
+      w("3", "2024-01-20", { "large-edge": [15, true], "small-edge": [10, true] }),
+      w("2", "2024-01-10", { "large-edge": [15, true], "small-edge": [5, true] }),
+      w("1", "2024-01-05", { "large-edge": [10, true], "small-edge": [5, true], jug: [10, true] }),
     ];
-    // newest-first
-    const result = buildTrend(sessions, "jug", "repeaters");
-    // Jan5 (weight=5, setFailed) then Jan10 (weight=0, success)
-    expect(result[0].setFailed).toBe(true);
-    expect(result[0].isPR).toBe(false); // set2 failed — not a PR
-    expect(result[1].setFailed).toBe(false);
-    expect(result[1].isPR).toBe(true); // highest fully-completed weight
+    const prs = sessionPRs(sessions);
+    for (const holdId of ["large-edge", "small-edge", "jug"]) {
+      for (const p of buildTrend(sessions, holdId, "repeaters")) {
+        expect(p.isPR, `${holdId} @ session ${p.sessionId}`).toBe(prs.get(p.sessionId)?.includes(holdId) ?? false);
+      }
+    }
+    // Sanity: the data does contain PRs
+    expect(prs.size).toBeGreaterThan(0);
   });
 
   it("sets setFailed=false when set2 is null (single-set hold)", () => {
     const s = makeSession({
       id: "1", workoutType: "repeaters", startedAt: ts("2024-01-10"),
-      holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
+      holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: 10, reps: 7, completed: true }, set2: null }],
     });
-    const result = buildTrend([s], "jug", "repeaters");
+    const result = buildTrend([s], "large-edge", "repeaters");
     expect(result[0].setFailed).toBe(false);
-    expect(result[0].isPR).toBe(true);
+    expect(result[0].isPR).toBe(false);
   });
 
   it("marks setFailed when set3 fails (max-hang)", () => {
@@ -177,14 +227,14 @@ describe("buildTrend", () => {
       makeSession({
         id: "1", workoutType: "max-hang", startedAt: ts("2024-01-05"),
         holds: [{
-          holdId: "jug", holdName: "Jug",
+          holdId: "large-edge", holdName: "Large Edge",
           set1: { weight: 10, reps: 1, completed: true },
           set2: { weight: 10, reps: 1, completed: true },
           set3: { weight: 10, reps: 1, completed: false },
         }],
       }),
     ];
-    const result = buildTrend(sessions, "jug", "max-hang");
+    const result = buildTrend(sessions, "large-edge", "max-hang");
     expect(result).toHaveLength(1);
     expect(result[0].setFailed).toBe(true);
     expect(result[0].isPR).toBe(false);
@@ -195,16 +245,16 @@ describe("buildTrend", () => {
       makeSession({
         id: "1", workoutType: "max-hang", startedAt: ts("2024-01-05"),
         holds: [{
-          holdId: "jug", holdName: "Jug",
+          holdId: "large-edge", holdName: "Large Edge",
           set1: { weight: 5, reps: 1, completed: true },
           set2: { weight: 10, reps: 1, completed: true },
           set3: { weight: 15, reps: 1, completed: true },
         }],
       }),
     ];
-    const result = buildTrend(sessions, "jug", "max-hang");
+    const result = buildTrend(sessions, "large-edge", "max-hang");
     expect(result[0].weight).toBe(15);
-    expect(result[0].isPR).toBe(true);
+    expect(result[0].isPR).toBe(false);
   });
 
   it("limits to 20 most recent sessions", () => {
@@ -213,11 +263,11 @@ describe("buildTrend", () => {
         id: String(i),
         workoutType: "repeaters",
         startedAt: ts("2024-01-01") + i * 86400000,
-        holds: [{ holdId: "jug", holdName: "Jug", set1: { weight: i, reps: 7, completed: true }, set2: null }],
+        holds: [{ holdId: "large-edge", holdName: "Large Edge", set1: { weight: i, reps: 7, completed: true }, set2: null }],
       })
     ).reverse(); // newest-first
 
-    const result = buildTrend(sessions, "jug", "repeaters");
+    const result = buildTrend(sessions, "large-edge", "repeaters");
     expect(result).toHaveLength(20);
     // Should be the 20 most recent (i=5..24), ordered oldest→newest
     expect(result[0].weight).toBe(5);

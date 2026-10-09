@@ -1,4 +1,6 @@
 import type { SessionRecord } from "./history";
+import { sessionPRs } from "./personalRecords";
+import { sessionKind } from "./sessionKind";
 import { addDays, startOfWeek, toLocalDateString } from "./dates";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -39,49 +41,32 @@ export type CalendarDay = {
  * Returns up to 20 trend points (oldest→newest) for a given hold in a given
  * workout type.  Only sessions that contain the hold and match the workout type
  * are included.  Sessions whose bailed flag is set are still included so the
- * user can see where they fell short; isPR marks the first session to reach the
- * highest weight — hitting that same weight again later is not a new PR.
+ * user can see where they fell short.
  *
- * sessions is newest-first (as returned by getSessions()).
+ * isPR follows personalRecords' rules (completed weights only, warm-ups
+ * excluded, first time on a hold is a baseline). sessions may be in any order.
  */
 export function buildTrend(
   sessions: SessionRecord[],
   holdId: string,
   workoutType: "repeaters" | "max-hang"
 ): TrendPoint[] {
+  // Newest first regardless of how the caller ordered them.
   const filtered = sessions
     .filter((s) => s.workoutType === workoutType || (workoutType === "repeaters" && s.workoutType === "beginner"))
-    .filter((s) => s.holds.some((h) => h.holdId === holdId && h.set1.completed));
+    .filter((s) => s.holds.some((h) => h.holdId === holdId && h.set1.completed))
+    .sort((a, b) => b.startedAt - a.startedAt);
 
   // Take newest 20, then reverse to oldest→newest
   const sliced = filtered.slice(0, 20).reverse();
 
   if (sliced.length === 0) return [];
 
-  // Find max weight to mark PR — only count sessions where all sets completed
-  let maxWeight = -Infinity;
-  // Index (in sliced, oldest→newest) of the first session to reach maxWeight —
-  // repeating a PR weight later isn't a new PR, so only that one gets the badge.
-  let prIndex = -1;
-  for (let i = 0; i < sliced.length; i++) {
-    const hr = sliced[i].holds.find((h) => h.holdId === holdId);
-    if (hr
-      && (hr.set2 === null || hr.set2 === undefined || hr.set2.completed)
-      && (hr.set3 === null || hr.set3 === undefined || hr.set3.completed)
-    ) {
-      const w = Math.max(
-        hr.set1.weight,
-        hr.set2?.weight ?? -Infinity,
-        hr.set3?.weight ?? -Infinity,
-      );
-      if (w > maxWeight) {
-        maxWeight = w;
-        prIndex = i;
-      }
-    }
-  }
+  // PR flags come from personalRecords, computed over the full history, so the
+  // chart and History always agree.
+  const prs = sessionPRs(sessions);
 
-  return sliced.map((s, i) => {
+  return sliced.map((s) => {
     const hr = s.holds.find((h) => h.holdId === holdId)!;
     const weight = Math.max(
       hr.set1.weight,
@@ -95,7 +80,7 @@ export function buildTrend(
       weight,
       date: new Date(s.startedAt),
       bailed: s.bailed,
-      isPR: i === prIndex,
+      isPR: prs.get(s.id)?.includes(holdId) ?? false,
       setFailed,
       isBeginner: s.workoutType === "beginner",
       sessionId: s.id,
@@ -110,9 +95,8 @@ export function buildTrend(
  * most gym workouts read as "gym"; cardio and stretching get their own bucket.
  */
 function sessionCategory(s: SessionRecord): WorkoutBucket {
-  if (s.gymData?.type === "cardio") return "cardio";
-  if (s.gymData?.type === "stretching") return "stretching";
-  return "gym";
+  const kind = sessionKind(s);
+  return kind === "cardio" || kind === "stretching" ? kind : "gym";
 }
 
 /**

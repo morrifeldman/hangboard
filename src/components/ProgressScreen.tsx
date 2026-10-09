@@ -30,7 +30,8 @@ import type { Granularity } from "../lib/gradeTrends";
 import { HOLDS, warmupVolume } from "../data/holds";
 import { HOLDS_B, isWarmupHoldId } from "../data/workout-b";
 import { formatWeight, shortLocation } from "../lib/format";
-import { buildLiftTrend, formatLiftsSummary, formatScheme, withCurrentLiftNames } from "../lib/lifts";
+import { sessionLabel, gymSummaryParts, summaryText } from "../lib/sessionSummary";
+import { buildLiftTrend, formatScheme, withCurrentLiftNames } from "../lib/lifts";
 import {
   getSchedule,
   normalizeDayTypes,
@@ -766,7 +767,7 @@ export function ProgressScreen({
                     className="text-sm font-semibold text-gray-300 hover:text-white transition-colors text-left"
                     onClick={() => onEditSession(session)}
                   >
-                    {sessionTypeLabel(session.workoutType)}
+                    {sessionLabel(session)}
                   </button>
                   <div className="flex items-center gap-2">
                     {session.bailed && (
@@ -829,7 +830,7 @@ export function ProgressScreen({
                 )}
 
                 {session.gymData && (
-                  <p className="text-sm text-gray-400 mt-1">{gymDataSummary(session.gymData)}</p>
+                  <p className="text-sm text-gray-400 mt-1">{summaryText(gymSummaryParts(session.gymData))}</p>
                 )}
 
                 {session.notes && (
@@ -919,69 +920,6 @@ function RangeSlider({ max, start, end, startLabel, endLabel, onChange }: RangeS
   );
 }
 
-
-function sessionTypeLabel(type: SessionRecord["workoutType"]): string {
-  if (type === "repeaters") return "Repeaters";
-  if (type === "max-hang") return "Max Hang";
-  if (type === "beginner") return "Beginner";
-  if (type === "arc") return "ARC";
-  if (type === "cir") return "CIR";
-  if (type === "pe-route") return "PE Route";
-  if (type === "lbc") return "LBC";
-  if (type === "wbl") return "WBL";
-  if (type === "performance") return "Performance";
-  if (type === "hard-bouldering") return "Hard Bouldering";
-  if (type === "limit-bouldering") return "Limit Bouldering";
-  if (type === "injury") return "Injury";
-  if (type === "stretching") return "Stretching";
-  if (type === "lifts") return "Lifts";
-  return type;
-}
-
-function gymDataSummary(data: NonNullable<SessionRecord["gymData"]>): string {
-  if (data.type === "arc") {
-    const parts = [`${data.climbMin} min`];
-    if (data.routes) parts.push(`${data.routes} routes`);
-    if (data.maxGrade) parts.push(`max ${data.maxGrade}`);
-    return parts.join(" · ");
-  }
-  if (data.type === "cir") {
-    return `${data.repeats} repeats · ${data.avgRestSec}s rest avg`;
-  }
-  if (data.type === "pe-route") {
-    return `${data.reps} reps · ${data.climbSec}s on · ${data.dutyCycle} duty`;
-  }
-  if (data.type === "lbc") {
-    return `${data.sets} sets · ${data.climbSec}s on · ${data.dutyCycle} duty`;
-  }
-  if (data.type === "wbl") {
-    return `top ${data.topV} · ${data.durationMin} min`;
-  }
-  if (data.type === "hard-bouldering" || data.type === "limit-bouldering") {
-    return `${data.level} · ${data.durationMin} min`;
-  }
-  if (data.type === "performance") {
-    const parts = [`${data.grade} · ${data.tries} tries`];
-    if (data.success === "Yes") parts.push("sent");
-    return parts.join(" · ");
-  }
-  if (data.type === "injury") {
-    const parts: string[] = [];
-    if (data.bodyPart) parts.push(data.bodyPart);
-    if (data.severity) parts.push(data.severity);
-    return parts.length > 0 ? parts.join(" · ") : "Logged";
-  }
-  if (data.type === "stretching") {
-    const parts: string[] = [];
-    if (data.reps && data.holdSec) parts.push(`${data.reps} × ${data.holdSec}s`);
-    else if (data.reps) parts.push(`${data.reps} reps`);
-    else if (data.holdSec) parts.push(`${data.holdSec}s hold`);
-    if (data.stretches && data.stretches.length > 0) parts.push(data.stretches.join(", "));
-    return parts.length > 0 ? parts.join(" · ") : "Logged";
-  }
-  if (data.type === "lifts") return formatLiftsSummary(data.lifts);
-  return "";
-}
 
 function SectionHeading({ children }: { children: ReactNode }) {
   return <h2 className="text-sm font-semibold text-gray-300">{children}</h2>;
