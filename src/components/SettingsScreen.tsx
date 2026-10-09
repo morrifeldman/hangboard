@@ -269,7 +269,7 @@ export function SettingsScreen({ onBack }: Props) {
             <button
               onClick={handleBackup}
               disabled={restoring}
-              className="w-full py-3 rounded-lg bg-accent-600 active:bg-accent-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
+              className="w-full py-3 rounded-lg bg-accent-500 active:bg-accent-400 disabled:bg-gray-700 disabled:text-gray-500 text-gray-900 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300"
               data-testid="settings-backup"
             >
               Download backup
@@ -361,7 +361,7 @@ export function SettingsScreen({ onBack }: Props) {
             <button
               onClick={handleMpRefresh}
               disabled={mpBusy || !mpUrl.trim()}
-              className="w-full py-3 rounded-lg bg-accent-600 active:bg-accent-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-lg bg-accent-500 active:bg-accent-400 disabled:bg-gray-700 disabled:text-gray-500 text-gray-900 font-semibold text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 flex items-center justify-center gap-2"
               data-testid="settings-mp-refresh"
             >
               {mpBusy && (
@@ -426,7 +426,7 @@ export function SettingsScreen({ onBack }: Props) {
               checked={notifPrefs.enabled}
               onChange={handleToggleNotif}
               disabled={notifPermission === "unsupported"}
-              className="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-gray-600 transition-colors checked:bg-accent-600 disabled:cursor-default disabled:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5 disabled:before:bg-gray-500 motion-reduce:before:transition-none"
+              className="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-gray-600 transition-colors checked:bg-accent-500 disabled:cursor-default disabled:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 before:absolute before:left-0.5 before:top-0.5 before:h-5 before:w-5 before:rounded-full before:bg-white before:transition-transform before:content-[''] checked:before:translate-x-5 disabled:before:bg-gray-500 motion-reduce:before:transition-none"
               data-testid="settings-notif-toggle"
             />
           </label>

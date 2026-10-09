@@ -188,7 +188,7 @@ export function WorkoutScreen() {
             )}
             <button
               onClick={() => finishWorkout({ bailed: false, notes: sessionNotes })}
-              className="w-full min-h-[52px] rounded-xl font-semibold bg-accent-600 active:bg-accent-500 text-white text-lg"
+              className="w-full min-h-[52px] rounded-xl font-semibold bg-accent-500 active:bg-accent-400 text-gray-900 text-lg"
             >
               Save
             </button>

@@ -41,7 +41,7 @@ export function PyramidVisualization({
         <p className="text-gray-400 mb-5">Log a route to lay the first stone.</p>
         <button
           onClick={onAddClimbClick}
-          className="bg-accent-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-accent-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+          className="bg-accent-500 text-gray-900 font-semibold px-5 py-2.5 rounded-lg active:bg-accent-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
           Add your first climb
         </button>

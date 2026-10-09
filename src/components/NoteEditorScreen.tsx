@@ -5,6 +5,7 @@ import { LeaveGuardSheet } from "./LeaveGuardSheet";
 import { ScreenHeader } from "./ScreenHeader";
 import { EditorFooter } from "./EditorFooter";
 import { useEditor } from "../hooks/useEditor";
+import { Pill, PillRow } from "./ui";
 import { todayDateString } from "../lib/dates";
 
 type Props = {
@@ -105,23 +106,13 @@ export function NoteEditorScreen({ onBack, onDone, initialRecord }: Props) {
             </datalist>
           </div>
           {categoryOptions.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pl-[5.75rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <PillRow className="pl-[5.75rem]">
               {categoryOptions.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  aria-pressed={category === c}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                    category === c
-                      ? "bg-accent-500 text-gray-900 border-transparent"
-                      : "bg-gray-800 text-gray-400 border-gray-700"
-                  }`}
-                >
+                <Pill key={c} size="sm" selected={category === c} onClick={() => setCategory(c)}>
                   {c}
-                </button>
+                </Pill>
               ))}
-            </div>
+            </PillRow>
           )}
         </div>
 

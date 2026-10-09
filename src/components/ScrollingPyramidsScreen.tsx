@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Repeat, Trophy } from "lucide-react";
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Trophy, Hash } from "lucide-react";
+import { IconToggle, Pill, PillRow } from "./ui";
 import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
@@ -75,49 +76,34 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
         </button>
         <h1 className="text-white text-xl font-bold">Over time</h1>
         <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => setShowSendsOnly((v) => !v)}
-            className={`flex items-center px-2.5 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-              showSendsOnly
-                ? "bg-accent-600 text-white"
-                : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
-            }`}
+          <IconToggle
+            on={showSendsOnly}
+            onToggle={() => setShowSendsOnly((v) => !v)}
+            label="Toggle sends only"
             title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
-            aria-pressed={showSendsOnly}
-            aria-label="Toggle sends only"
           >
             <Trophy size={16} />
-          </button>
-          <button
-            onClick={() => setShowCounts((v) => !v)}
-            className={`flex items-center px-2.5 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-              showCounts
-                ? "bg-accent-600 text-white"
-                : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
-            }`}
+          </IconToggle>
+          <IconToggle
+            on={showCounts}
+            onToggle={() => setShowCounts((v) => !v)}
+            label="Toggle counts"
             title="Toggle per-grade counts and cumulative bars"
-            aria-pressed={showCounts}
-            aria-label="Toggle counts"
           >
             <BarChart2 size={16} />
-          </button>
-          <button
-            onClick={() => setShowSessionCounts((v) => !v)}
-            className={`flex items-center px-2.5 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-              showSessionCounts
-                ? "bg-accent-600 text-white"
-                : "bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white"
-            }`}
+          </IconToggle>
+          <IconToggle
+            on={showSessionCounts}
+            onToggle={() => setShowSessionCounts((v) => !v)}
+            label="Toggle session vs climb counts"
             title={
               showSessionCounts
-                ? "Tile numbers show sessions — tap to show climb counts"
-                : "Tile numbers show climbs — tap to show session counts"
+                ? "Tile numbers show sessions — tap to count climbs"
+                : "Tile numbers show climbs — tap to count sessions"
             }
-            aria-pressed={showSessionCounts}
-            aria-label="Toggle session vs climb counts"
           >
-            {showSessionCounts ? <CalendarDays size={16} /> : <Repeat size={16} />}
-          </button>
+            {showSessionCounts ? <CalendarDays size={16} /> : <Hash size={16} />}
+          </IconToggle>
           <button
             onClick={() => setNewestFirst((v) => !v)}
             className="flex items-center px-2.5 py-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
@@ -129,22 +115,13 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
         </div>
       </header>
 
-      <div className="px-4 py-3 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <PillRow className="px-4 py-3">
         {KINDS.map((k) => (
-          <button
-            key={k.key}
-            onClick={() => setKind(k.key)}
-            aria-pressed={kind === k.key}
-            className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-              kind === k.key
-                ? "bg-accent-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:text-gray-200"
-            }`}
-          >
+          <Pill key={k.key} selected={kind === k.key} onClick={() => setKind(k.key)}>
             {k.label}
-          </button>
+          </Pill>
         ))}
-      </div>
+      </PillRow>
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">

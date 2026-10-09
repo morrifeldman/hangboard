@@ -38,6 +38,7 @@ import {
   SCHEDULE_TYPE_META,
 } from "../lib/schedules";
 import { toLocalDateString } from "../lib/dates";
+import { Pill, PillRow, Segmented } from "./ui";
 import type { ScheduleDayType } from "../lib/schedules";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -511,22 +512,13 @@ export function ProgressScreen({
                 onChange={handleWorkoutType}
               />
 
-              <div className="flex gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <PillRow className="-mx-4 px-4">
                 {holds.map((hold, i) => (
-                  <button
-                    key={hold.id}
-                    onClick={() => setHoldIndex(i)}
-                    aria-pressed={holdIndex === i}
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                      holdIndex === i
-                        ? "bg-accent-600 text-white"
-                        : "bg-gray-700/70 text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
+                  <Pill key={hold.id} size="sm" selected={holdIndex === i} onClick={() => setHoldIndex(i)}>
                     {hold.name}
-                  </button>
+                  </Pill>
                 ))}
-              </div>
+              </PillRow>
 
               {chartPoints.length < 2 ? (
                 <div className="h-[160px] flex items-center justify-center">
@@ -923,36 +915,6 @@ function RangeSlider({ max, start, end, startLabel, endLabel, onChange }: RangeS
 
 function SectionHeading({ children }: { children: ReactNode }) {
   return <h2 className="text-sm font-semibold text-gray-300">{children}</h2>;
-}
-
-function Segmented<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div role="group" aria-label={label} className="flex rounded-lg bg-gray-900/70 p-0.5">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          aria-pressed={value === o.value}
-          className={`flex-1 min-h-[38px] rounded-md text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-            value === o.value ? "bg-accent-600 text-white" : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {

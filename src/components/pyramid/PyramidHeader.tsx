@@ -1,4 +1,5 @@
 import { RefreshCw, BarChart2, Trophy, CalendarDays, Hash } from "lucide-react";
+import { IconToggle } from "../ui";
 import { BackChevronIcon } from "../icons";
 
 type Props = {
@@ -28,49 +29,34 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
               group) so "options that hold a state" read distinctly from the
               solid action buttons. Each segment lights up in accent when on. */}
           <div className="flex items-center gap-0.5 rounded-xl bg-gray-900 p-0.5 ring-1 ring-inset ring-white/5">
-            <button
-              onClick={onToggleSendsOnly}
-              className={`px-2.5 py-2 rounded-lg flex items-center text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                showSendsOnly
-                  ? "bg-accent-600 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-              }`}
+            <IconToggle
+              on={showSendsOnly}
+              onToggle={onToggleSendsOnly}
+              label="Toggle sends only"
               title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
-              aria-pressed={showSendsOnly}
-              aria-label="Toggle sends only"
             >
               <Trophy size={16} />
-            </button>
-            <button
-              onClick={onToggleCounts}
-              className={`px-2.5 py-2 rounded-lg flex items-center text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                showCounts
-                  ? "bg-accent-600 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-              }`}
+            </IconToggle>
+            <IconToggle
+              on={showCounts}
+              onToggle={onToggleCounts}
+              label="Toggle counts"
               title="Toggle per-grade counts and cumulative bars"
-              aria-pressed={showCounts}
-              aria-label="Toggle counts"
             >
               <BarChart2 size={16} />
-            </button>
-            <button
-              onClick={onToggleSessionCounts}
-              className={`px-2.5 py-2 rounded-lg flex items-center text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                showSessionCounts
-                  ? "bg-accent-600 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-              }`}
+            </IconToggle>
+            <IconToggle
+              on={showSessionCounts}
+              onToggle={onToggleSessionCounts}
+              label="Toggle session vs climb counts"
               title={
                 showSessionCounts
                   ? "Tile numbers show sessions — tap to count climbs"
                   : "Tile numbers show climbs — tap to count sessions"
               }
-              aria-pressed={showSessionCounts}
-              aria-label="Toggle session vs climb counts"
             >
               {showSessionCounts ? <CalendarDays size={16} /> : <Hash size={16} />}
-            </button>
+            </IconToggle>
           </div>
 
           {/* Divider separates stateful toggles from imperative actions. */}
