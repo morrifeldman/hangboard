@@ -77,7 +77,8 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
         </div>
 
         {/* Scrollable timeline */}
-        <div ref={scrollRef} className="overflow-x-auto ml-16">
+        {/* Padding keeps PR glows at the first and last columns from being clipped. */}
+        <div ref={scrollRef} className="overflow-x-auto ml-16 px-3">
           <div className="flex space-x-2" style={{ minWidth: `${sortedDates.length * 60}px` }}>
             {sortedDates.map((date) => (
               <div key={date} className="flex-shrink-0 w-14">
