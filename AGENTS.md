@@ -94,6 +94,9 @@ is the shell.
 - `src/lib/haptics.ts` — `navigator.vibrate` is optional-chained → no-op on desktop.
 - `src/lib/dates.ts` — local-calendar helpers (`toLocalDateString`, `parseDateKey`, `startOfWeek`, `formatDateKey`, …). Day keys are local `YYYY-MM-DD`: never derive them with `toISOString()` (UTC), and never parse them with `new Date("YYYY-MM-DD")` (UTC midnight → previous day west of UTC). DOM-free, so the SW uses it too.
 
+### Large screens
+`GymLogScreen` composes `src/components/gymlog/*` (type picker, fields, campus, freeform forms; pure helpers in `src/lib/gymForm.ts`). `SettingsScreen` composes `src/components/settings/*`. Put new sections in those folders rather than growing the screen file.
+
 ### Shared UI and hooks
 - `src/components/ui.tsx` — `Pill`, `PillRow` (hidden scrollbar), `Segmented`, `IconToggle`. Use these instead of hand-rolled selected states.
 - `ScreenHeader`, `EditorFooter` and `src/hooks/useEditor.ts` (`useEditor`, `useConfirmTap`) — every editor's header, save/delete footer, leave guard, double-submit guard and error display. A failed write keeps the screen open with an error.
@@ -122,7 +125,7 @@ Max-hang hold IDs are separately prefixed (`b-chisel`, `b-hc`, `b-open`, etc.) a
 ### Progress screen
 - `src/lib/progressData.ts` — `buildTrend`, `buildCalendar`, `calendarMonthLabels`, `computeStats` (pure).
 - `src/lib/gradeTrends.ts` — `buildGradeTrend(climbs, "months"|"seasons"|"years")` for outdoor-sport route grade trend chart. Filters to `setting === "outdoor" && type === "sport"`, excludes attempts, returns SPORT_GRADES indices per style per bucket with empty buckets filled with nulls.
-- `src/components/ProgressScreen.tsx` — sections: Overview calendar, Weight Trends (A/B + hold picker), Route Grades · Outdoor Sport (granularity + dual-handle range slider, 3 lines: onsight/flash/redpoint). Outer container is `h-dvh overflow-hidden` with an inner `overflow-y-auto` div — Playwright `fullPage: true` won't capture it; scroll the inner div manually.
+- `src/components/ProgressScreen.tsx` (orchestrator) + `src/components/progress/*` — sections: Overview calendar, Weight Trends (A/B + hold picker), Route Grades · Outdoor Sport (granularity + dual-handle range slider, 3 lines: onsight/flash/redpoint). Outer container is `h-dvh overflow-hidden` with an inner `overflow-y-auto` div — Playwright `fullPage: true` won't capture it; scroll the inner div manually.
 
 ## Test Mode and `?test` Query Param
 
