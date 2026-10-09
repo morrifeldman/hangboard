@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useLoad } from "../hooks/useLoad";
+import { useMemo, useState } from "react";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Trophy, Hash } from "lucide-react";
 import { IconToggle, Pill, PillRow } from "./ui";
 import { getClimbs } from "../lib/climbs";
@@ -24,8 +25,7 @@ const KINDS: { key: WindowKind; label: string }[] = [
 ];
 
 export function ScrollingPyramidsScreen({ onBack }: Props) {
-  const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: climbs, loading } = useLoad(getClimbs, [] as ClimbRecord[]);
   const view: ViewKey = "outdoor-sport";
   const [kind, setKind] = useState<WindowKind>("seasons");
   const [newestFirst, setNewestFirst] = useState(true);
@@ -34,12 +34,6 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
 
-  useEffect(() => {
-    getClimbs().then((c) => {
-      setClimbs(c);
-      setLoading(false);
-    });
-  }, []);
 
   // viewClimbs is always the per-window dedup pool so attempt records can
   // sum into the eventual send's climb count (matches main pyramid order:

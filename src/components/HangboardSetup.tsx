@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useLoad } from "../hooks/useLoad";
+import { useState, useMemo } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import type { WorkoutId } from "../store/useWorkoutStore";
 import { isWarmup } from "../data/holds";
@@ -86,11 +87,7 @@ export function HangboardSetup() {
 
   const [editing, setEditing] = useState<EditKey>(null);
   const [warmupOpen, setWarmupOpen] = useState(false);
-  const [sessions, setSessions] = useState<SessionRecord[]>([]);
-
-  useEffect(() => {
-    getSessions().then(setSessions).catch(() => {});
-  }, []);
+  const { data: sessions } = useLoad(getSessions, [] as SessionRecord[]);
 
   const holds = currentHolds();
   const warmupHolds = holds.filter(isWarmup);

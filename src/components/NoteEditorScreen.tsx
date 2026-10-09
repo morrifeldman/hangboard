@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useLoad } from "../hooks/useLoad";
+import { useMemo, useState } from "react";
 import { saveNote, deleteNote, getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
@@ -15,6 +16,12 @@ type Props = {
   initialRecord?: NoteRecord;
 };
 
+/** Every category the user has used on a note. */
+async function loadCategories(): Promise<string[]> {
+  const notes = await getNotes();
+  return [...new Set(notes.map((n) => n.category).filter((c): c is string => !!c))];
+}
+
 // Starter categories suggested as pills before any have been used. Free text,
 // so users can still type their own — these just seed the common ones.
 const SUGGESTED_CATEGORIES = ["Health", "Recovery", "Training", "Goals", "Resources"];
@@ -25,14 +32,7 @@ export function NoteEditorScreen({ onBack, onDone, initialRecord }: Props) {
   const [dateValue, setDateValue] = useState(() => initialRecord?.date ?? todayDateString());
   const [category, setCategory] = useState(() => initialRecord?.category ?? "Health");
   const [text, setText] = useState(() => initialRecord?.text ?? "");
-  const [existingCategories, setExistingCategories] = useState<string[]>([]);
-
-  useEffect(() => {
-    getNotes().then((notes) => {
-      const cats = [...new Set(notes.map((n) => n.category).filter((c): c is string => !!c))];
-      setExistingCategories(cats);
-    }).catch(console.error);
-  }, []);
+  const { data: existingCategories } = useLoad(loadCategories, [] as string[]);
 
   const trimmedText = text.trim();
   const trimmedCategory = category.trim();

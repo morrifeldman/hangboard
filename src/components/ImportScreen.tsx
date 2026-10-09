@@ -1,3 +1,4 @@
+import { useLoad } from "../hooks/useLoad";
 import { useEffect, useMemo, useState } from "react";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
@@ -108,10 +109,7 @@ export function ImportScreen({ onBack, onDone, initialRecord }: Props) {
       else next.add(holdId);
       return next;
     });
-  const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
-  useEffect(() => {
-    getSessions().then(setAllSessions).catch(console.error);
-  }, []);
+  const { data: allSessions } = useLoad(getSessions, [] as SessionRecord[]);
   // Compared against sessions before this one's date, so moving the date re-judges its PRs.
   const priorBests = useMemo(
     () => bestsBefore(allSessions, new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime(), initialRecord?.id),

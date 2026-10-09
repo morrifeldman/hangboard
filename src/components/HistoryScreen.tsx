@@ -1,10 +1,8 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useHistoryData } from "../hooks/useLoad";
+import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { getSessions } from "../lib/history";
 import type { SessionRecord, GymData } from "../lib/history";
-import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
-import { getNotes } from "../lib/notes";
 import type { NoteRecord } from "../lib/notes";
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import { sessionNextSummary } from "../lib/weightCues";
@@ -387,7 +385,7 @@ export function HistoryScreen({
   onEditNote,
   onShowSettings,
 }: Props) {
-  const [storedSessions, setSessions] = useState<SessionRecord[]>([]);
+  const { data: { sessions: storedSessions, climbs, notes }, loading } = useHistoryData();
   const liftLibrary = useWorkoutStore((s) => s.lifts);
   // Resolved once here so the rows, the search and the filters all agree on a lift's name.
   const sessions = useMemo(
@@ -395,9 +393,6 @@ export function HistoryScreen({
     [storedSessions, liftLibrary],
   );
   const prsBySession = useMemo(() => sessionPRs(sessions), [sessions]);
-  const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
-  const [notes, setNotes] = useState<NoteRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const { filter, query } = view;
@@ -430,13 +425,6 @@ export function HistoryScreen({
     }
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
   }, [notes]);
-
-  useEffect(() => {
-    Promise.all([getSessions(), getClimbs(), getNotes()])
-      .then(([s, c, n]) => { setSessions(s); setClimbs(c); setNotes(n); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
 
   const timeline = useMemo((): TimelineItem[] => {
     // Group climbs by date string
