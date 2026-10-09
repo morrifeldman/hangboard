@@ -3,6 +3,7 @@ import {
   parsePitches,
   convertStyle,
   isIndoor,
+  parseMountainProjectCSV,
   importMountainProjectCSV,
   hasMountainProjectHeaders,
 } from "../mountainProjectImport";
@@ -137,5 +138,45 @@ describe("hasMountainProjectHeaders", () => {
   it("rejects a CSV missing the columns the importer reads", () => {
     expect(hasMountainProjectHeaders("Date,Location,Notes\n2024-01-01,Somewhere,\n")).toBe(false);
     expect(hasMountainProjectHeaders("Date,Route,Location\n")).toBe(false);
+  });
+});
+
+describe("CSV parsing edge cases", () => {
+  const H = "Date,Route,Rating,Notes,Pitches,Location,Route Type,Lead Style";
+
+  it("handles quoted newlines, escaped quotes and commas in Notes", () => {
+    const csv = `${H}\n2024-03-15,Power,5.12a,"line1\nsaid ""hi"", ok",1,Crag,Sport,Redpoint\n2024-03-16,Next,5.10a,,1,Crag,Sport,Onsight\n`;
+    const out = parseMountainProjectCSV(csv);
+    expect(out).toHaveLength(2);
+    expect(out[0].notes).toBe('line1\nsaid "hi", ok');
+    expect(out[1].route).toBe("Next");
+  });
+
+  it("handles CRLF, BOM and trailing newline", () => {
+    const csv = `\uFEFF${H}\r\n2024-03-15,Power,5.12a,n,1,Crag,Sport,Redpoint\r\n`;
+    const out = parseMountainProjectCSV(csv);
+    expect(out).toHaveLength(1);
+    expect(out[0].notes).toBe("n");
+    expect(out[0].style).toBe("redpoint");
+  });
+
+  it("normalizes dates and falls back for junk", () => {
+    const csv = [
+      H,
+      "3/5/2024,A,5.10a,,1,,Sport,",
+      "2024-03-07T10:20:00Z,B,5.10a,,1,,Sport,",
+      "2024-03-08,C,5.10a,,1,,Sport,",
+      "garbage,D,5.10a,,1,,Sport,",
+    ].join("\n");
+    const out = parseMountainProjectCSV(csv);
+    expect(out.map((c) => c.date).slice(0, 3)).toEqual(["2024-03-05", "2024-03-07", "2024-03-08"]);
+    expect(out[3].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(out[3].date).not.toBe("garbage");
+  });
+
+  it("matches gym as a whole word only", () => {
+    expect(isIndoor("Gymnasium Rock")).toBe(false);
+    expect(isIndoor("Brooklyn Boulders gym")).toBe(true);
+    expect(isIndoor("Indoor wall")).toBe(true);
   });
 });

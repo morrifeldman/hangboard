@@ -11,7 +11,7 @@ export function deduplicateForTimeline(climbs: ClimbRecord[]): ClimbRecord[] {
   for (const climb of climbs) {
     const dateKey = climb.date;
     if (!byDate[dateKey]) byDate[dateKey] = {};
-    const climbKey = `${climb.route}-${climb.location}-${climb.grade}`;
+    const climbKey = JSON.stringify([climb.route, climb.location, climb.grade, climb.type, climb.setting]);
 
     const existing = byDate[dateKey][climbKey];
     if (existing) {
@@ -41,7 +41,7 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
   const byRoute: Record<string, PyramidClimb> = {};
 
   for (const climb of climbs) {
-    const routeKey = `${climb.route}-${climb.location}`;
+    const routeKey = JSON.stringify([climb.route, climb.location, climb.type, climb.setting]);
     const existing = byRoute[routeKey];
 
     if (existing) {

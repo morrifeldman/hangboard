@@ -36,4 +36,32 @@ describe("normalizeGrade", () => {
     expect(normalizeGrade("V5")).toBe("V5");
     expect(normalizeGrade("V12")).toBe("V12");
   });
+
+  it.each([
+    ["5.10a", "5.10a"],
+    ["5.12a/b", "5.12b"],
+    ["5.10d/11a", "5.11a"],
+    ["5.10+", "5.10d"],
+    ["5.10-", "5.10a"],
+    ["5.10", "5.10b"],
+    ["5.13", "5.13b"],
+    ["5.9+", "5.9"],
+    ["5.9", "5.9"],
+    ["5.8-", "5.8"],
+    ["5.10a PG13", "5.10a"],
+    ["5.10b R", "5.10b"],
+    ["5.11a X", "5.11a"],
+    ["5.10 b", "5.10b"],
+    ["V3", "V3"],
+    ["V3/4", "V4"],
+    ["V3-4", "V4"],
+    ["V3+", "V3"],
+    ["V-easy", "VB"],
+    ["VB", "VB"],
+    ["V5 PG13", "V5"],
+    ["  junk grade ", "junk grade"],
+    ["WI4", "WI4"],
+  ])("normalizes %s → %s", (input, expected) => {
+    expect(normalizeGrade(input)).toBe(expected);
+  });
 });

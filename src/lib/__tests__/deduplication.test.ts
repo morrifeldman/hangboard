@@ -95,3 +95,22 @@ describe("deduplicateForPyramid", () => {
     expect(result[0].climbs).toBe(1);
   });
 });
+
+describe("dedup keys", () => {
+  it("does not collide on hyphenated route/location splits", () => {
+    const a = makeClimb({ route: "A-B", location: "C" });
+    const b = makeClimb({ route: "A", location: "B-C" });
+    expect(deduplicateForTimeline([a, b])).toHaveLength(2);
+    expect(deduplicateForPyramid([a, b])).toHaveLength(2);
+  });
+
+  it("keeps different type or setting separate", () => {
+    const sport = makeClimb({ type: "sport" });
+    const boulder = makeClimb({ type: "boulder" });
+    const indoor = makeClimb({ setting: "indoor" });
+    expect(deduplicateForTimeline([sport, boulder])).toHaveLength(2);
+    expect(deduplicateForPyramid([sport, boulder])).toHaveLength(2);
+    expect(deduplicateForTimeline([sport, indoor])).toHaveLength(2);
+    expect(deduplicateForPyramid([sport, indoor])).toHaveLength(2);
+  });
+});

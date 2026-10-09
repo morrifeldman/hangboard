@@ -21,32 +21,70 @@ export function convertStyle(leadStyle: string | undefined): ClimbStyle {
   }
 }
 
-/** Detect indoor gym from location string. */
+/** Detect indoor gym from location string (whole words, so "Gymnasium Rock" is not a gym). */
 export function isIndoor(location: string | undefined): boolean {
   if (!location) return false;
-  const keywords = ["gym", "climbing gym", "indoor", "bouldering gym"];
-  const lower = location.toLowerCase();
-  return keywords.some((kw) => lower.includes(kw));
+  return /\b(?:gym|indoor)\b/i.test(location);
 }
 
-/** Parse a CSV row respecting quoted fields. */
-function parseCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let current = "";
+/** Convert YYYY-MM-DD, M/D/YYYY or an ISO datetime to YYYY-MM-DD; null if unrecognised. */
+function parseDate(value: string | undefined): string | null {
+  const v = value?.trim();
+  if (!v) return null;
+  const pad = (n: string) => n.padStart(2, "0");
+  const iso = v.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const us = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (us) return `${us[3]}-${pad(us[1])}-${pad(us[2])}`;
+  return null;
+}
+
+/** RFC-4180 parser over the whole text: quoted fields, "" escapes, embedded commas/newlines, CRLF/LF. */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
   let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
+  const endRow = () => {
+    row.push(field);
+    field = "";
+    // Skip fully blank lines (including the one after a trailing newline).
+    if (row.length > 1 || row[0].trim() !== "") rows.push(row);
+    row = [];
+  };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      endRow();
     } else {
-      current += ch;
+      field += ch;
     }
   }
-  values.push(current.trim());
-  return values;
+  if (field !== "" || row.length > 0) endRow();
+  return rows;
+}
+
+/** Parse the CSV and return trimmed header names plus the data rows. */
+function readTable(csvText: string): { headers: string[]; rows: string[][] } {
+  const [head = [], ...rows] = parseCsv(csvText.replace(/^\uFEFF/, ""));
+  return { headers: head.map((h) => h.trim()), rows };
 }
 
 /**
@@ -58,46 +96,37 @@ function parseCsvLine(line: string): string[] {
  * being parsed as "a CSV with zero climbs in it" and wiping the climb log.
  */
 export function hasMountainProjectHeaders(csvText: string): boolean {
-  const firstLine = csvText.replace(/^\uFEFF/, "").split("\n", 1)[0] ?? "";
-  if (!firstLine.trim()) return false;
-  const headers = firstLine.split(",").map((h) => h.replace(/"/g, "").trim());
+  const { headers } = readTable(csvText);
   return headers.includes("Route") && headers.includes("Rating");
 }
 
 /** Parse Mountain Project CSV text and return ClimbRecords. */
 export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
-  const lines = csvContent.replace(/^\uFEFF/, "").split("\n");
-  const headers = lines[0].split(",").map((h) => h.replace(/"/g, "").trim());
-
+  const { headers, rows } = readTable(csvContent);
   const climbs: ClimbRecord[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-
-    const values = parseCsvLine(line);
+  for (const values of rows) {
     const row: Record<string, string> = {};
     headers.forEach((header, idx) => {
-      row[header] = values[idx] || "";
+      row[header] = (values[idx] ?? "").trim();
     });
 
-    if (row.Route && row.Rating) {
-      const grade = normalizeGrade(row.Rating);
-      if (!grade) continue;
+    if (!row.Route || !row.Rating) continue;
+    const grade = normalizeGrade(row.Rating);
+    if (!grade) continue;
 
-      climbs.push({
-        id: crypto.randomUUID(),
-        route: row.Route,
-        grade,
-        location: row.Location || "",
-        type: row["Route Type"] === "Boulder" ? "boulder" : "sport",
-        setting: isIndoor(row.Location) ? "indoor" : "outdoor",
-        style: convertStyle(row["Lead Style"]),
-        climbs: parsePitches(row.Pitches),
-        date: row.Date || todayDateString(),
-        notes: row.Notes || "",
-      });
-    }
+    climbs.push({
+      id: crypto.randomUUID(),
+      route: row.Route,
+      grade,
+      location: row.Location || "",
+      type: row["Route Type"] === "Boulder" ? "boulder" : "sport",
+      setting: isIndoor(row.Location) ? "indoor" : "outdoor",
+      style: convertStyle(row["Lead Style"]),
+      climbs: parsePitches(row.Pitches),
+      date: parseDate(row.Date) ?? todayDateString(),
+      notes: row.Notes || "",
+    });
   }
 
   return climbs;
