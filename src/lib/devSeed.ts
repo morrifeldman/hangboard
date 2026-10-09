@@ -155,7 +155,7 @@ async function seed(scenario: Scenario = "default"): Promise<number> {
   for (let i = 0; i < seeds.length; i++) {
     await saveClimb({ ...seeds[i], id: `synthetic-${scenario}-${i + 1}` });
   }
-  // eslint-disable-next-line no-console
+   
   console.log(`[devSeed] Seeded ${seeds.length} climbs (scenario: ${scenario})`);
   return seeds.length;
 }
@@ -200,7 +200,7 @@ async function seedSessions(): Promise<number> {
   const tx = db.transaction("sessions", "readwrite");
   for (const s of seeds) await tx.store.put(s);
   await tx.done;
-  // eslint-disable-next-line no-console
+   
   console.log(`[devSeed] Seeded ${seeds.length} sessions (gym / cardio / stretching)`);
   return seeds.length;
 }
@@ -271,7 +271,7 @@ async function seedSyntheticSchedule(weeks = 2): Promise<number> {
     }
   }
   await tx.done;
-  // eslint-disable-next-line no-console
+   
   console.log(`[devSeed] Seeded ${n} schedule entries (${weeks} weeks)`);
   return n;
 }

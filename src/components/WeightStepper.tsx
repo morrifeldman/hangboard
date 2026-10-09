@@ -1,6 +1,4 @@
-import { formatWeight } from "../lib/format";
-
-export const WEIGHT_STEP = 2.5;
+import { formatWeight, stepWeight as step, WEIGHT_STEP } from "../lib/format";
 
 interface WeightStepperProps {
   value: number;
@@ -9,9 +7,6 @@ interface WeightStepperProps {
   struck?: boolean;
   formatValue?: (n: number) => string;
 }
-
-// Rounding keeps repeated 2.5 steps from drifting into values like 12.499999.
-export const step = (value: number, delta: number) => Math.round((value + delta) * 10) / 10;
 
 export function WeightStepper({ value, onChange, label, struck = false, formatValue = formatWeight }: WeightStepperProps) {
   const btnClass =

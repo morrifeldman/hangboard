@@ -1,3 +1,4 @@
+import { WEIGHT_STEP } from "./format";
 import type { SessionRecord } from "./history";
 import type { TrendPoint } from "./progressData";
 
@@ -28,7 +29,7 @@ export type LiftEntry = {
   nextBase: number;
 };
 
-export const LIFT_WEIGHT_STEP = 2.5;
+export const LIFT_WEIGHT_STEP = WEIGHT_STEP;
 
 // ─── Sets ────────────────────────────────────────────────────────────────────
 

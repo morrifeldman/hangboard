@@ -1,5 +1,5 @@
 import { formatWeight } from "../lib/format";
-import { WEIGHT_STEP, step as stepBy } from "./WeightStepper";
+import { WEIGHT_STEP, stepWeight as stepBy } from "../lib/format";
 
 interface WeightCellProps {
   value: number;

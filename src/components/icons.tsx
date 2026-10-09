@@ -43,14 +43,6 @@ export function BackChevronIcon({ size = 22, className }: IconProps) {
   );
 }
 
-export function PyramidIcon({ size = 24, className, "aria-label": label }: IconProps) {
-  return (
-    <Svg size={size} className={className} label={label}>
-      <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
-    </Svg>
-  );
-}
-
 export function BarChartIcon({ size = 24, className, "aria-label": label }: IconProps) {
   return (
     <Svg size={size} className={className} label={label}>

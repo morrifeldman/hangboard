@@ -1,3 +1,4 @@
 #!/bin/sh
-# Reject commits that break the TypeScript build
-npm run build
+# Reject commits that break the build or the lint rules (rules-of-hooks
+# violations crash at runtime, so they are errors, not style).
+npm run build && npm run lint
