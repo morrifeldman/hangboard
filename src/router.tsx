@@ -189,7 +189,7 @@ const workoutRoute = createRoute({
       <GymLogScreen
         mode="tab"
         onBack={() => {}}
-        onSaved={() => {
+        onDone={() => {
           // The new entry lands at the top of History, so don't drop the user
           // back at wherever they last were in the list.
           forgetScrollPosition("history");
@@ -308,7 +308,7 @@ const importRoute = createRoute({
   path: "/import",
   component: function Import() {
     const back = useGoBack("/history");
-    return <ImportScreen onBack={back} onSaved={back} />;
+    return <ImportScreen onBack={back} onDone={back} />;
   },
 });
 
@@ -329,17 +329,17 @@ const editSessionRoute = createRoute({
       return (
         <div className="h-full">
           <GymLogScreen
+            key={record.id}
             mode="edit"
             onBack={back}
-            onSaved={back}
-            onDeleted={back}
+            onDone={back}
             initialRecord={record}
           />
         </div>
       );
     }
     return (
-      <ImportScreen onBack={back} onSaved={back} onDeleted={back} initialRecord={record} />
+      <ImportScreen key={record.id} onBack={back} onDone={back} initialRecord={record} />
     );
   },
 });
@@ -349,7 +349,7 @@ const newNoteRoute = createRoute({
   path: "/notes/new",
   component: function NewNote() {
     const back = useGoBack("/history");
-    return <NoteEditorScreen onBack={back} onSaved={back} />;
+    return <NoteEditorScreen onBack={back} onDone={back} />;
   },
 });
 
@@ -365,12 +365,7 @@ const editNoteRoute = createRoute({
     const record = editNoteRoute.useLoaderData();
     const back = useGoBack("/history");
     return (
-      <NoteEditorScreen
-        onBack={back}
-        onSaved={back}
-        onDeleted={back}
-        initialRecord={record}
-      />
+      <NoteEditorScreen key={record.id} onBack={back} onDone={back} initialRecord={record} />
     );
   },
 });
@@ -386,7 +381,7 @@ const editLiftRoute = createRoute({
   component: function EditLift() {
     const lift = editLiftRoute.useLoaderData();
     const back = useGoBack("/");
-    return <LiftEditorScreen lift={lift} onBack={back} onDone={back} />;
+    return <LiftEditorScreen key={lift.id} lift={lift} onBack={back} onDone={back} />;
   },
 });
 

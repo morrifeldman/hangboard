@@ -6,8 +6,8 @@ import { PyramidVisualization } from "./pyramid/PyramidVisualization";
 import { TimelineVisualization } from "./pyramid/TimelineVisualization";
 import { Legend } from "./pyramid/Legend";
 import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
-import { EditClimbModal } from "./pyramid/modals/EditClimbModal";
-import { AddClimbModal } from "./pyramid/modals/AddClimbModal";
+import { ClimbFormModal } from "./pyramid/modals/ClimbFormModal";
+import type { ClimbDraft } from "./pyramid/modals/ClimbFormModal";
 import { todayDateString } from "../lib/dates";
 import { getClimbs, saveClimb, deleteClimb } from "../lib/climbs";
 import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
@@ -15,11 +15,9 @@ import type { ClimbRecord } from "../lib/climbs";
 import type { ViewKey } from "../constants/climbGrades";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 
-type NewClimbData = Omit<ClimbRecord, "id">;
-
 // A function, not a constant: "today" must be read when the form opens, not
 // when the module first loaded (the PWA can stay open across midnight).
-const initialClimb = (): NewClimbData => ({
+const initialClimb = (): ClimbDraft => ({
   route: "",
   grade: "",
   location: "",
@@ -39,9 +37,8 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 100]);
   const [selectedClimb, setSelectedClimb] = useState<ClimbRecord | null>(null);
-  const [editingClimb, setEditingClimb] = useState<ClimbRecord | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newClimb, setNewClimb] = useState<NewClimbData>(initialClimb);
+  // The climb open in the add/edit form, or null when the form is closed.
+  const [formClimb, setFormClimb] = useState<ClimbDraft | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useScrollRestore<HTMLElement>("pyramid", climbs.length > 0);
   const [showCounts, setShowCounts] = useState(false);
@@ -54,27 +51,15 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
 
   useEffect(() => { reload(); }, [reload]);
 
-  const handleAdd = async () => {
-    if (!newClimb.route || !newClimb.grade) return;
-    const record: ClimbRecord = { ...newClimb, id: crypto.randomUUID() };
-    await saveClimb(record);
-    setNewClimb(initialClimb());
-    setShowAddForm(false);
-    await reload();
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingClimb || !editingClimb.route || !editingClimb.grade) return;
-    await saveClimb(editingClimb);
-    setEditingClimb(null);
+  const handleSave = async (climb: ClimbRecord) => {
+    await saveClimb(climb);
+    setFormClimb(null);
     await reload();
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this climb?")) return;
     await deleteClimb(id);
     setSelectedClimb(null);
-    setEditingClimb(null);
     await reload();
   };
 
@@ -144,7 +129,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
           showSessionCounts={showSessionCounts}
           timeRange={timeRange}
           onClimbClick={setSelectedClimb}
-          onAddClimbClick={() => setShowAddForm(true)}
+          onAddClimbClick={() => setFormClimb(initialClimb())}
         />
 
         <TimelineVisualization
@@ -163,26 +148,20 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         allClimbs={climbs}
         onClose={() => setSelectedClimb(null)}
         onEdit={(c) => {
-          setEditingClimb({ ...c });
+          setFormClimb({ ...c });
           setSelectedClimb(null);
         }}
         onDelete={handleDelete}
       />
 
-      <EditClimbModal
-        climb={editingClimb}
-        onClose={() => setEditingClimb(null)}
-        onSave={handleSaveEdit}
-        setEditingClimb={setEditingClimb}
-      />
-
-      <AddClimbModal
-        isOpen={showAddForm}
-        onClose={() => setShowAddForm(false)}
-        newClimb={newClimb}
-        setNewClimb={setNewClimb}
-        onAddClimb={handleAdd}
-      />
+      {formClimb && (
+        <ClimbFormModal
+          key={formClimb.id ?? "new"}
+          initial={formClimb}
+          onClose={() => setFormClimb(null)}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 }

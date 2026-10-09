@@ -21,7 +21,7 @@ import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
-import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { useEditor } from "../hooks/useEditor";
 
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -60,7 +60,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
         setSessions(sess);
         setClimbs(c);
       })
-      .catch(() => {})
+      .catch(console.error)
       .finally(() => setLoaded(true));
   }, []);
 
@@ -85,13 +85,11 @@ export function ScheduleScreen({ onShowSettings }: Props) {
   ) => {
     await upsertSchedule({ date, dayTypes, note });
     await refreshSchedules();
-    setEditingDate(null);
   };
 
   const handleClear = async (date: string) => {
     await deleteScheduleByDate(date);
     await refreshSchedules();
-    setEditingDate(null);
   };
 
   const editingDay = editingDate
@@ -292,8 +290,9 @@ function EditSheet({
   onCancel,
 }: {
   day: ScheduleDay;
-  onSave: (dayTypes: ScheduleDayType[], note: string) => void;
-  onClear: () => void;
+  onSave: (dayTypes: ScheduleDayType[], note: string) => Promise<void>;
+  onClear: () => Promise<void>;
+  /** Closes the sheet; also called after a successful save or clear. */
   onCancel: () => void;
 }) {
   const dateLabel = day.jsDate.toLocaleDateString(undefined, {
@@ -322,7 +321,13 @@ function EditSheet({
     orderedSelected.some((t, i) => t !== day.dayTypes[i]);
   const dirty = noteChanged || typesChanged;
   // Save, Clear and Cancel just close the sheet, so only leaving the screen is guarded.
-  const leaveGuard = useLeaveGuard(dirty);
+  // A failed write keeps the sheet open with an error instead of closing as if it worked.
+  const editor = useEditor({
+    dirty,
+    onSave: () => onSave(orderedSelected, note),
+    onDelete: onClear,
+    onDone: onCancel,
+  });
 
   const loggedLine = loggedSummary(day);
 
@@ -415,10 +420,13 @@ function EditSheet({
         </div>
 
         <div className="flex flex-col gap-2 pt-1">
+          {editor.error && (
+            <p role="alert" className="text-sm text-red-400 text-center">{editor.error}</p>
+          )}
           <button
-            onClick={() => onSave(orderedSelected, note)}
-            disabled={!dirty}
-            className="w-full py-3 rounded-lg bg-accent-600 active:bg-accent-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold text-sm"
+            onClick={editor.save}
+            disabled={!dirty || editor.busy}
+            className="w-full py-3 rounded-lg bg-accent-500 active:bg-accent-400 disabled:bg-gray-700 disabled:text-gray-500 text-gray-900 font-semibold text-sm"
             data-testid="schedule-save"
           >
             Save
@@ -432,18 +440,20 @@ function EditSheet({
               Cancel
             </button>
             <button
-              onClick={onClear}
-              disabled={day.dayTypes.length === 0 && !day.note}
-              className="flex-1 py-3 rounded-lg bg-gray-700 active:bg-gray-600 disabled:text-gray-500 text-white font-semibold text-sm"
+              onClick={editor.remove?.tap}
+              disabled={(day.dayTypes.length === 0 && !day.note) || editor.busy}
+              className={`flex-1 py-3 rounded-lg disabled:bg-gray-700 disabled:text-gray-500 font-semibold text-sm ${
+                editor.remove?.armed ? "bg-red-600 text-white" : "bg-gray-700 active:bg-gray-600 text-white"
+              }`}
               data-testid="schedule-clear"
             >
-              Clear
+              {editor.remove?.armed ? "Tap to clear" : "Clear"}
             </button>
           </div>
         </div>
       </div>
     </div>
-    <LeaveGuardSheet guard={leaveGuard} lost={`Your changes to ${dateLabel}`} />
+    <LeaveGuardSheet guard={editor.guard} lost={`Your changes to ${dateLabel}`} />
     </>
   );
 }

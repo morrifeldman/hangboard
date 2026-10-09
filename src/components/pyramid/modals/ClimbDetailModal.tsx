@@ -1,5 +1,6 @@
 import { getStyleColor } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
+import { useConfirmTap } from "../../../hooks/useEditor";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
 
@@ -111,16 +112,11 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
           )}
 
           <div className="mt-6 flex justify-between">
-            <button
-              onClick={() => onDelete(climb.id)}
-              className="bg-red-600 text-white font-semibold px-4 py-2.5 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Delete
-            </button>
+            <DeleteClimbButton onDelete={() => onDelete(climb.id)} />
             <div className="flex gap-2">
               <button
                 onClick={() => onEdit(climb)}
-                className="bg-accent-600 text-white font-semibold px-4 py-2.5 rounded-lg hover:bg-accent-700 transition-colors"
+                className="bg-accent-500 text-gray-900 font-semibold px-4 py-2.5 rounded-lg active:bg-accent-400 transition-colors"
               >
                 Edit
               </button>
@@ -135,5 +131,20 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
         </div>
       </div>
     </div>
+  );
+}
+
+/** Two taps, like every other delete in the app (no native confirm dialog). */
+function DeleteClimbButton({ onDelete }: { onDelete: () => void }) {
+  const { armed, tap } = useConfirmTap(onDelete);
+  return (
+    <button
+      onClick={tap}
+      className={`font-semibold px-4 py-2.5 rounded-lg transition-colors ${
+        armed ? "bg-red-600 text-white" : "bg-gray-700 text-red-400"
+      }`}
+    >
+      {armed ? "Tap again" : "Delete"}
+    </button>
   );
 }

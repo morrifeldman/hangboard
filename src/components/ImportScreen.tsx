@@ -1,27 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { HOLDS } from "../data/holds";
 import { HOLDS_B } from "../data/workout-b";
-import { isWarmup, plannedReps, warmupVolume } from "../data/holds";
+import { isWarmup, numSetsOf, plannedReps, repsFor, warmupVolume } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
 import { saveSession, deleteSession, getSessions } from "../lib/history";
 import { bestsBefore, isPR } from "../lib/personalRecords";
 import type { SessionRecord, SessionHoldRecord, SessionSetRecord } from "../lib/history";
 import { formatWeight } from "../lib/format";
 import { holdNextDirection } from "../lib/weightCues";
-import { BackChevronIcon } from "./icons";
 import { WeightStepper } from "./WeightStepper";
 import { WeightCell } from "./WeightCell";
 import { useOpenCell } from "../hooks/useOpenCell";
 import { PRBadge } from "./PRBadge";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
-import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { ScreenHeader } from "./ScreenHeader";
+import { EditorFooter } from "./EditorFooter";
+import { useEditor } from "../hooks/useEditor";
 import { toLocalDateString, toLocalTimeString, todayDateString } from "../lib/dates";
 
 type Props = {
   onBack: () => void;
-  onSaved: () => void;
+  /** After a successful save or delete. */
+  onDone: () => void;
   initialRecord?: SessionRecord;
-  onDeleted?: () => void;
 };
 
 function defaultWeights(holds: readonly HoldDefinition[]): number[] {
@@ -40,7 +41,7 @@ function startingWeights(type: "repeaters" | "max-hang", set2Offset: number): [n
   ];
 }
 
-export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Props) {
+export function ImportScreen({ onBack, onDone, initialRecord }: Props) {
   const editing = initialRecord !== undefined;
   // "beginner" sessions are treated as "repeaters" in the edit UI (same hold structure)
   const initialType: "repeaters" | "max-hang" = initialRecord?.workoutType === "max-hang" ? "max-hang" : "repeaters";
@@ -103,10 +104,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
   const toggleNote = (holdId: string) =>
     setExpandedNoteHolds((prev) => {
       const next = new Set(prev);
-      next.has(holdId) ? next.delete(holdId) : next.add(holdId);
+      if (next.has(holdId)) next.delete(holdId);
+      else next.add(holdId);
       return next;
     });
-  const [saving, setSaving] = useState(false);
   const [allSessions, setAllSessions] = useState<SessionRecord[]>([]);
   useEffect(() => {
     getSessions().then(setAllSessions).catch(console.error);
@@ -116,7 +117,6 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     () => bestsBefore(allSessions, new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime(), initialRecord?.id),
     [allSessions, dateValue, timeValue, initialRecord?.id],
   );
-  const [confirmDelete, setConfirmDelete] = useState(false);
   // Prevent mobile keyboard from opening on mount by blurring any auto-focused input
   useEffect(() => {
     if (document.activeElement instanceof HTMLElement) {
@@ -194,14 +194,12 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
     sessionNotes.trim() !== "" ||
     Object.values(holdNotesState).some((n) => n.trim() !== "") ||
     Object.values(setNotesState).some((n) => [n.set1, n.set2, n.set3].some((x) => x?.trim()));
-  const leaveGuard = useLeaveGuard(
-    editing
-      ? hasChanges
-      : hasNotes ||
-          set2Offset !== DEFAULT_SET2_OFFSET ||
-          JSON.stringify([weights, weights2, weights3]) !==
-            JSON.stringify(startingWeights(workoutType, DEFAULT_SET2_OFFSET)),
-  );
+  const dirty = editing
+    ? hasChanges
+    : hasNotes ||
+      set2Offset !== DEFAULT_SET2_OFFSET ||
+      JSON.stringify([weights, weights2, weights3]) !==
+        JSON.stringify(startingWeights(workoutType, DEFAULT_SET2_OFFSET));
 
   const setAt = (setter: typeof setWeights) => (index: number, value: number) =>
     setter((prev) => {
@@ -215,9 +213,7 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   const buildHoldRecords = (): SessionHoldRecord[] =>
     holds.map((hold, i) => {
-      const numSets = hold.numSets ?? 2;
-      const reps1 = hold.repsPerSet ?? hold.set1Reps;
-      const reps2 = hold.repsPerSet ?? hold.set2Reps;
+      const numSets = numSetsOf(hold);
       const origHold = origHoldMap.get(hold.id);
       const co = completionOverrides[hold.id];
       const set1Completed = co?.set1 ?? (!editing || (origHold?.set1.completed ?? true));
@@ -228,14 +224,14 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       const w3 = hold.isRestOnly || hold.skipProgression ? 0 : (weights3[i] ?? 0);
       const sn = setNotesState[hold.id];
       const set1: SessionSetRecord = {
-        weight: w, reps: reps1, completed: set1Completed,
+        weight: w, reps: repsFor(hold, 1), completed: set1Completed,
         ...(sn?.set1 ? { notes: sn.set1 } : {}),
       };
       const set2: SessionSetRecord | null = numSets >= 2
-        ? { weight: w2, reps: reps2, completed: set2Completed, ...(sn?.set2 ? { notes: sn.set2 } : {}) }
+        ? { weight: w2, reps: repsFor(hold, 2), completed: set2Completed, ...(sn?.set2 ? { notes: sn.set2 } : {}) }
         : null;
       const set3: SessionSetRecord | null | undefined = numSets >= 3
-        ? { weight: w3, reps: reps1, completed: set3Completed, ...(sn?.set3 ? { notes: sn.set3 } : {}) }
+        ? { weight: w3, reps: repsFor(hold, 3), completed: set3Completed, ...(sn?.set3 ? { notes: sn.set3 } : {}) }
         : undefined;
       return {
         holdId: hold.id,
@@ -247,56 +243,48 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
       };
     });
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const newTs = new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
+  // Minted once, so retrying a failed save can't create a second record.
+  const [newId] = useState(() => crypto.randomUUID());
+
+  const editor = useEditor({
+    dirty,
+    onSave: async () => {
+      // Untouched date and time keep the original timestamp (and its seconds).
+      const unchanged =
+        initialRecord &&
+        dateValue === toLocalDateString(initialRecord.startedAt) &&
+        timeValue === toLocalTimeString(initialRecord.startedAt);
+      const startedAt = unchanged
+        ? initialRecord.startedAt
+        : new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
       const holdRecords = buildHoldRecords();
 
-      if (editing && initialRecord) {
+      if (initialRecord) {
         const duration = initialRecord.completedAt - initialRecord.startedAt;
-        const updated: SessionRecord = {
+        await saveSession({
           ...initialRecord,
           workoutType,
-          startedAt: newTs,
-          completedAt: duration > 0 ? newTs + duration : newTs,
+          startedAt,
+          completedAt: duration > 0 ? startedAt + duration : startedAt,
           holds: holdRecords,
           notes: sessionNotes || undefined,
-        };
-        await saveSession(updated);
+        });
       } else {
-        const record: SessionRecord = {
-          id: crypto.randomUUID(),
+        await saveSession({
+          id: newId,
           workoutType,
-          startedAt: newTs,
-          completedAt: newTs,
+          startedAt,
+          completedAt: startedAt,
           bailed: false,
           imported: true,
           holds: holdRecords,
           ...(sessionNotes ? { notes: sessionNotes } : {}),
-        };
-        await saveSession(record);
+        });
       }
-      leaveGuard.allowLeave();
-      onSaved();
-    } catch (err) {
-      console.error(err);
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-      return;
-    }
-    if (initialRecord) {
-      await deleteSession(initialRecord.id).catch(console.error);
-      leaveGuard.allowLeave();
-      onDeleted?.();
-    }
-  };
+    },
+    onDelete: initialRecord ? () => deleteSession(initialRecord.id) : undefined,
+    onDone,
+  });
 
   // Max Hang has a long warm-up, so it folds away to leave the main hangs in view.
   const warmupIdx = holds.flatMap((h, i) => (isWarmup(h) ? [i] : []));
@@ -457,7 +445,6 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
               <label key={label} className="contents">
                 <span className="pt-2 text-xs text-gray-500">{label}</span>
                 <textarea
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus={n === 0}
                   value={value}
                   onChange={(e) => onChange(e.target.value)}
@@ -476,18 +463,10 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
-          aria-label="Back"
-        >
-          <BackChevronIcon />
-        </button>
-        <h1 className="text-white font-bold text-lg">
-          {editing ? (workoutType === "max-hang" ? "Max Hang" : "Repeaters") : "Log past workout"}
-        </h1>
-      </header>
+      <ScreenHeader
+        title={editing ? (workoutType === "max-hang" ? "Max Hang" : "Repeaters") : "Log past workout"}
+        onBack={onBack}
+      />
 
       {/* Top controls — always visible */}
       <div className="px-4 pt-4 flex flex-col gap-4 shrink-0">
@@ -598,37 +577,14 @@ export function ImportScreen({ onBack, onSaved, initialRecord, onDeleted }: Prop
 
       </div>
 
-      {/* Bottom actions — always visible */}
-      <div className="px-4 pb-6 pt-3 flex flex-col gap-3 shrink-0 border-t border-gray-800">
-        <div className="flex gap-3">
-          <button
-            onClick={onBack}
-            className="flex-1 py-3 rounded-lg font-semibold bg-gray-800 active:bg-gray-700 text-gray-300 text-base"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !dateValue || !hasChanges}
-            className="flex-1 py-3 rounded-lg font-semibold bg-accent-600 active:bg-accent-700 text-white text-base disabled:bg-gray-700 disabled:text-gray-500"
-          >
-            {saving ? "Saving…" : editing ? "Save changes" : "Save workout"}
-          </button>
-        </div>
-
-        {editing && (
-          <button
-            onClick={handleDelete}
-            className={`w-full py-2.5 rounded-lg font-semibold text-sm transition-colors ${
-              confirmDelete ? "bg-red-600 text-white" : "text-red-400/80 active:bg-gray-800"
-            }`}
-          >
-            {confirmDelete ? "Tap again to delete" : "Delete workout"}
-          </button>
-        )}
-      </div>
+      <EditorFooter
+        editor={editor}
+        saveLabel={editing ? "Save changes" : "Save workout"}
+        saveDisabled={!dateValue || !hasChanges}
+        deleteLabel="Delete workout"
+      />
       <LeaveGuardSheet
-        guard={leaveGuard}
+        guard={editor.guard}
         lost={editing ? "Your changes to this session" : "The hangboard session you've entered"}
       />
     </div>

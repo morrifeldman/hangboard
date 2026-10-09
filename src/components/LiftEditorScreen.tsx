@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { BackChevronIcon } from "./icons";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
-import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { ScreenHeader } from "./ScreenHeader";
+import { EditorFooter } from "./EditorFooter";
+import { useEditor } from "../hooks/useEditor";
 import { useWorkoutStore } from "../store/useWorkoutStore";
 import { LIFT_WEIGHT_STEP, findLiftByName, generateSets, parseScheme, schemeToFields } from "../lib/lifts";
 import type { LiftDefinition, SchemeFields } from "../lib/lifts";
@@ -28,48 +29,27 @@ export function LiftEditorScreen({ lift, onBack, onDone }: Props) {
 
   const [name, setName] = useState(lift.name);
   const [fields, setFields] = useState<SchemeFields>(() => schemeToFields(lift));
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const scheme = parseScheme(fields);
   const trimmed = name.trim();
   // Logging links a typed name to a library lift, so two lifts can't share one.
   const clash = findLiftByName(library.filter((l) => l.id !== lift.id), trimmed);
   const valid = trimmed !== "" && scheme !== null && !clash;
-  const leaveGuard = useLeaveGuard(
-    name !== lift.name || JSON.stringify(fields) !== JSON.stringify(schemeToFields(lift)),
-  );
+  const dirty = name !== lift.name || JSON.stringify(fields) !== JSON.stringify(schemeToFields(lift));
   const preview = scheme ? generateSets(scheme).map((s) => `${s.reps}@${s.weight}`).join(", ") : "";
 
-  const handleSave = () => {
-    if (!valid || !scheme) return;
-    updateLift(lift.id, { name: trimmed, ...scheme });
-    leaveGuard.allowLeave();
-    onDone();
-  };
-
-  const handleDelete = () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-      return;
-    }
-    deleteLift(lift.id);
-    leaveGuard.allowLeave();
-    onDone();
-  };
+  const editor = useEditor({
+    dirty,
+    onSave: () => {
+      if (valid && scheme) updateLift(lift.id, { name: trimmed, ...scheme });
+    },
+    onDelete: () => deleteLift(lift.id),
+    onDone,
+  });
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
-      <header className="bg-gray-800 px-4 pt-4 pb-3 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
-          aria-label="Back"
-        >
-          <BackChevronIcon />
-        </button>
-        <h1 className="text-white font-bold text-lg">Edit lift</h1>
-      </header>
+      <ScreenHeader title="Edit lift" onBack={onBack} />
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-8 flex flex-col gap-4">
         <input
@@ -101,25 +81,14 @@ export function LiftEditorScreen({ lift, onBack, onDone }: Props) {
         {preview && <p className="text-sm text-gray-400 font-num">{preview}</p>}
       </div>
 
-      <div className="px-4 pb-6 pt-3 flex flex-col gap-3 shrink-0 border-t border-gray-800">
-        <button
-          onClick={handleSave}
-          disabled={!valid}
-          className="w-full h-12 rounded-xl font-semibold bg-accent-500 text-gray-900 text-base transition-colors disabled:bg-gray-700 disabled:text-gray-500"
-        >
-          Save changes
-        </button>
-        <button
-          onClick={handleDelete}
-          className={`w-full h-11 rounded-xl font-semibold text-base transition-colors ${
-            confirmDelete ? "bg-red-600 text-white" : "bg-gray-800 text-red-400"
-          }`}
-        >
-          {confirmDelete ? "Tap again to delete" : "Delete lift"}
-        </button>
-        <p className="text-center text-xs text-gray-500">Deleting keeps the sessions you've logged.</p>
-      </div>
-      <LeaveGuardSheet guard={leaveGuard} lost={`Your changes to ${lift.name}`} />
+      <EditorFooter
+        editor={editor}
+        saveLabel="Save changes"
+        saveDisabled={!valid}
+        deleteLabel="Delete lift"
+        deleteNote="Deleting keeps the sessions you've logged."
+      />
+      <LeaveGuardSheet guard={editor.guard} lost={`Your changes to ${lift.name}`} />
     </div>
   );
 }

@@ -10,7 +10,8 @@ import { Haptics } from "../lib/haptics";
 import { BackChevronIcon, NoteIcon, ClockIcon, DumbbellIcon, GearIcon } from "./icons";
 import { HangboardSetup } from "./HangboardSetup";
 import { LeaveGuardSheet } from "./LeaveGuardSheet";
-import { useLeaveGuard } from "../hooks/useLeaveGuard";
+import { useEditor } from "../hooks/useEditor";
+import { EditorFooter } from "./EditorFooter";
 import { toLocalDateString, toLocalTimeString, todayDateString } from "../lib/dates";
 import { LiftsForm } from "./LiftsForm";
 import { emptyLiftRow, liftRowHasEntries, liftRowToDraft, liftRowsFromEntries } from "../lib/liftRows";
@@ -33,9 +34,9 @@ const STEP_VALUE_CLS =
 
 type Props = {
   onBack: () => void;
-  onSaved: () => void;
+  /** After a successful save or delete. */
+  onDone: () => void;
   initialRecord?: SessionRecord;
-  onDeleted?: () => void;
   /** "tab" = Workout tab (no back button, hangboard pill, gear); "edit" = drill-in editor. */
   mode?: "tab" | "edit";
   onShowSettings?: () => void;
@@ -325,7 +326,7 @@ function CampusRestTimer() {
   );
 }
 
-export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, onShowSettings }: Props) {
+export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettings }: Props) {
   const editing = initialRecord !== undefined;
   const tabMode = (mode ?? (editing ? "edit" : "tab")) === "tab";
   // The Workout tab opens on a gym type (ARC by default); the Hangboard pill switches in.
@@ -355,8 +356,6 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
       : (gymDefaults[initialWorkoutType] ?? {})
   );
   const [sessionNotes, setSessionNotes] = useState(initialRecord?.notes ?? "");
-  const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Workout-type picker: starts open on a new log; collapses to the selected pill once chosen.
   const [pickerOpen, setPickerOpen] = useState(!editing);
@@ -468,12 +467,11 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     liftRows,
   ]);
   const [savedSnapshot] = useState(formSnapshot);
-  const leaveGuard = useLeaveGuard(
+  const dirty =
     !hangboardMode &&
-      (editing
-        ? formSnapshot !== savedSnapshot
-        : currentTypeHasEntries() || sessionNotes.trim() !== ""),
-  );
+    (editing
+      ? formSnapshot !== savedSnapshot
+      : currentTypeHasEntries() || sessionNotes.trim() !== "");
 
   const applyWorkoutType = (t: GymWorkoutType) => {
     setWorkoutType(t);
@@ -639,7 +637,10 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
     setField(key, next.join(","));
   };
 
-  const handleSave = async () => {
+  // Minted once, so retrying a failed save can't create a second record.
+  const [newId] = useState(() => crypto.randomUUID());
+
+  const save = async () => {
     // Lift ids are settled here, but the library itself only changes once the session is stored.
     const committed = isLifts && liftsValid
       ? commitLifts(liftLibrary, liftDrafts as LiftDraft[], () => crypto.randomUUID())
@@ -652,65 +653,56 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
           : isLifts
             ? committed && { type: "lifts", lifts: committed.entries }
             : buildGymData(def, fields);
-    if (!gymData) return;
-    setSaving(true);
-    try {
-      const newTs = new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
-      if (editing && initialRecord) {
-        const duration = initialRecord.completedAt - initialRecord.startedAt;
-        const updated: SessionRecord = {
-          ...initialRecord,
-          workoutType,
-          startedAt: newTs,
-          completedAt: duration > 0 ? newTs + duration : newTs,
-          gymData,
-          notes: sessionNotes || undefined,
-        };
-        await saveSession(updated);
-      } else {
-        const record: SessionRecord = {
-          id: crypto.randomUUID(),
-          workoutType,
-          startedAt: newTs,
-          completedAt: newTs,
-          bailed: false,
-          holds: [],
-          gymData,
-          ...(sessionNotes ? { notes: sessionNotes } : {}),
-        };
-        await saveSession(record);
-        // Only a new session moves the library on. Editing an old one must not
-        // roll a lift's base back to whatever was planned back then.
-        if (committed) {
-          committed.created.forEach(addLift);
-          committed.entries.forEach((e) => setLiftBase(e.liftId, e.nextBase));
-        }
+    if (!gymData) throw new Error("Gym form is incomplete");
+    // Untouched date and time keep the original timestamp (and its seconds).
+    const unchanged =
+      initialRecord &&
+      dateValue === toLocalDateString(initialRecord.startedAt) &&
+      timeValue === toLocalTimeString(initialRecord.startedAt);
+    const startedAt = unchanged
+      ? initialRecord.startedAt
+      : new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
+    if (initialRecord) {
+      const duration = initialRecord.completedAt - initialRecord.startedAt;
+      await saveSession({
+        ...initialRecord,
+        workoutType,
+        startedAt,
+        completedAt: duration > 0 ? startedAt + duration : startedAt,
+        gymData,
+        notes: sessionNotes || undefined,
+      });
+    } else {
+      await saveSession({
+        id: newId,
+        workoutType,
+        startedAt,
+        completedAt: startedAt,
+        bailed: false,
+        holds: [],
+        gymData,
+        ...(sessionNotes ? { notes: sessionNotes } : {}),
+      });
+      // Only a new session moves the library on. Editing an old one must not
+      // roll a lift's base back to whatever was planned back then.
+      if (committed) {
+        committed.created.forEach(addLift);
+        committed.entries.forEach((e) => setLiftBase(e.liftId, e.nextBase));
       }
-      // Freeform shape doesn't fit the flat Record<string,string> defaults store;
-      // "Use last freeform" handles carry-forward instead.
-      if (workoutType !== "freeform" && workoutType !== "campus" && workoutType !== "lifts") {
-        setGymDefaults(workoutType, fields);
-      }
-      leaveGuard.allowLeave();
-      onSaved();
-    } catch (err) {
-      console.error(err);
-      setSaving(false);
+    }
+    // Freeform shape doesn't fit the flat Record<string,string> defaults store;
+    // "Use last freeform" handles carry-forward instead.
+    if (workoutType !== "freeform" && workoutType !== "campus" && workoutType !== "lifts") {
+      setGymDefaults(workoutType, fields);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-      return;
-    }
-    if (initialRecord) {
-      await deleteSession(initialRecord.id).catch(console.error);
-      leaveGuard.allowLeave();
-      onDeleted?.();
-    }
-  };
+  const editor = useEditor({
+    dirty,
+    onSave: save,
+    onDelete: initialRecord ? () => deleteSession(initialRecord.id) : undefined,
+    onDone,
+  });
 
   return (
     <div className="h-full bg-gray-900 flex flex-col">
@@ -1252,32 +1244,17 @@ export function GymLogScreen({ onBack, onSaved, initialRecord, onDeleted, mode, 
         )}
       </div>
 
-      {/* Bottom actions */}
       {!hangboardMode && (
-      <div className="px-4 pb-6 pt-3 flex flex-col gap-3 shrink-0 border-t border-gray-800">
-        <button
-          onClick={handleSave}
-          disabled={saving || !dateValue || !valid}
-          className="w-full h-12 rounded-xl font-semibold bg-accent-500 text-gray-900 text-base transition-colors disabled:bg-gray-700 disabled:text-gray-500"
-        >
-          {saving ? "Saving…" : editing ? "Save changes" : "Save session"}
-        </button>
-
-        {editing && (
-          <button
-            onClick={handleDelete}
-            className={`w-full h-11 rounded-xl font-semibold text-base transition-colors ${
-              confirmDelete ? "bg-red-600 text-white" : "bg-gray-800 text-red-400"
-            }`}
-          >
-            {confirmDelete ? "Tap again to delete" : "Delete session"}
-          </button>
-        )}
-      </div>
+        <EditorFooter
+          editor={editor}
+          saveLabel={editing ? "Save changes" : "Save session"}
+          saveDisabled={!dateValue || !valid}
+          deleteLabel="Delete session"
+        />
       )}
 
       <LeaveGuardSheet
-        guard={leaveGuard}
+        guard={editor.guard}
         lost={
           editing
             ? "Your changes to this session"
