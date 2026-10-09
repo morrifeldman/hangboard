@@ -1,13 +1,7 @@
 import type { ClimbRecord } from "../lib/climbs";
 import { shortLocation } from "../lib/format";
+import { styleBadgeClass } from "../lib/climbUtils";
 import { formatDateKey } from "../lib/dates";
-
-const STYLE_COLORS: Record<string, string> = {
-  onsight: "bg-green-500/20 text-green-400",
-  flash:   "bg-yellow-500/20 text-yellow-400",
-  redpoint:"bg-red-500/20 text-red-400",
-  attempt: "bg-gray-700 text-gray-500",
-};
 
 const STYLE_RANK: Record<string, number> = { onsight: 3, flash: 2, redpoint: 1, attempt: 0 };
 
@@ -78,7 +72,7 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
 
         {/* Overall summary */}
         <div className="px-4 py-3 border-b border-gray-800">
-          <span className={`text-sm font-medium px-2 py-1 rounded ${STYLE_COLORS[summary.style] ?? STYLE_COLORS.attempt}`}>
+          <span className={`text-sm font-medium px-2 py-1 rounded ${styleBadgeClass(summary.style)}`}>
             {summary.label}
           </span>
         </div>
@@ -99,7 +93,7 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
                 <div className="flex items-center gap-2">
                   <span className="text-gray-300 text-sm flex-1">{formatDateKey(c.date, { weekday: true })}</span>
                   <span className="text-gray-300 font-num text-[15px]">{c.grade}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STYLE_COLORS[c.style] ?? STYLE_COLORS.attempt}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styleBadgeClass(c.style)}`}>
                     {styleLabel}
                   </span>
                 </div>

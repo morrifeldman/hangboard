@@ -409,6 +409,31 @@ export const useWorkoutStore = create<WorkoutStore>()(
   )
 );
 
+// Another window of the app saved new settings (weights, lifts, …). Take them,
+// so the two windows don't keep overwriting each other with stale copies. The
+// workout in progress is per-window and left alone.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key !== "hangboard-weights" || !e.newValue) return;
+    try {
+      const { state } = JSON.parse(e.newValue) as { state?: Partial<WorkoutStore> };
+      if (!state) return;
+      const current = useWorkoutStore.getState();
+      const patch: Partial<WorkoutStore> = {};
+      for (const key of ["weights", "weightsB", "gymDefaults", "lifts"] as const) {
+        // Only real changes: setting an equal value would write back to storage
+        // and bounce an event to the other window forever.
+        if (state[key] !== undefined && JSON.stringify(state[key]) !== JSON.stringify(current[key])) {
+          Object.assign(patch, { [key]: state[key] });
+        }
+      }
+      if (Object.keys(patch).length > 0) useWorkoutStore.setState(patch);
+    } catch {
+      // Not ours to parse; ignore.
+    }
+  });
+}
+
 // Expose store on window in dev/test mode for easy state manipulation from console
 if (typeof window !== "undefined" &&
     (import.meta.env.DEV || IS_TEST_MODE)) {

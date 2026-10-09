@@ -1,15 +1,8 @@
-import { getStyleColor } from "../../../lib/climbUtils";
+import { getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
 import { useConfirmTap } from "../../../hooks/useEditor";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
-
-const STYLE_COLORS: Record<string, string> = {
-  onsight: "bg-green-500/20 text-green-400",
-  flash:   "bg-yellow-500/20 text-yellow-400",
-  redpoint:"bg-red-500/20 text-red-400",
-  attempt: "bg-gray-700 text-gray-500",
-};
 
 type Props = {
   climb: ClimbRecord | null;
@@ -101,7 +94,7 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
                       <span className="text-gray-300 text-xs flex-1">
                         {formatDateKey(c.date)}
                       </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${STYLE_COLORS[c.style] ?? STYLE_COLORS.attempt}`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styleBadgeClass(c.style)}`}>
                         {styleLabel}
                       </span>
                     </div>

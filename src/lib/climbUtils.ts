@@ -4,14 +4,29 @@ import { VIEWS } from "../constants/climbGrades";
 import type { ClimbStyle, ViewKey } from "../constants/climbGrades";
 import { dateKeyToTime } from "./dates";
 
+// One colour per send style, used everywhere a climb's style is shown.
+const STYLE_SOLID: Record<ClimbStyle, string> = {
+  onsight: "bg-green-500",
+  flash: "bg-yellow-500",
+  redpoint: "bg-red-500",
+  attempt: "bg-gray-400",
+};
+
+const STYLE_BADGE: Record<ClimbStyle, string> = {
+  onsight: "bg-green-500/20 text-green-400",
+  flash: "bg-yellow-500/20 text-yellow-400",
+  redpoint: "bg-red-500/20 text-red-400",
+  attempt: "bg-gray-700 text-gray-400",
+};
+
+/** Solid fill for a style (pyramid tiles, timeline dots, legend). */
 export function getStyleColor(style: ClimbStyle): string {
-  switch (style) {
-    case "onsight":  return "bg-green-500";
-    case "flash":    return "bg-yellow-500";
-    case "redpoint": return "bg-red-500";
-    case "attempt":  return "bg-gray-400";
-    default:         return "bg-gray-500";
-  }
+  return STYLE_SOLID[style] ?? "bg-gray-500";
+}
+
+/** Tinted text badge for a style (lists and detail sheets). */
+export function styleBadgeClass(style: string): string {
+  return STYLE_BADGE[style as ClimbStyle] ?? STYLE_BADGE.attempt;
 }
 
 /** Row entries may carry an optional `sessions` count when sourced from `deduplicateForPyramid`. */

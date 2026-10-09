@@ -51,6 +51,18 @@ function useGoBack(fallback: string) {
   };
 }
 
+// ─── Search params ───────────────────────────────────────────────────────────
+
+/**
+ * A free-text search param. TanStack JSON-parses values, so a hand-typed
+ * `?q=123` arrives as a number; keep it as the text the user typed.
+ */
+function searchText(v: unknown): string | undefined {
+  if (typeof v === "string") return v === "" ? undefined : v;
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  return undefined;
+}
+
 // ─── Root ────────────────────────────────────────────────────────────────────
 
 function RootLayout() {
@@ -123,7 +135,8 @@ function validateHomeSearch(raw: Record<string, unknown>): HomeSearch {
   if (Number.isInteger(hold) && hold > 0) out.hold = hold;
   const g = GRANULARITIES.find((x) => x === raw.granularity);
   if (g && g !== "seasons") out.granularity = g;
-  if (typeof raw.lift === "string" && raw.lift !== "") out.lift = raw.lift;
+  const lift = searchText(raw.lift);
+  if (lift) out.lift = lift;
   return out;
 }
 
@@ -218,9 +231,12 @@ function validateHistorySearch(raw: Record<string, unknown>): HistorySearch {
   const out: HistorySearch = {};
   const filter = FILTERS.find((f) => f === raw.filter);
   if (filter && filter !== "all") out.filter = filter;
-  if (typeof raw.q === "string" && raw.q !== "") out.q = raw.q;
-  if (typeof raw.tags === "string" && raw.tags !== "") out.tags = raw.tags;
-  if (typeof raw.types === "string" && raw.types !== "") out.types = raw.types;
+  const q = searchText(raw.q);
+  if (q) out.q = q;
+  const tags = searchText(raw.tags);
+  if (tags) out.tags = tags;
+  const types = searchText(raw.types);
+  if (types) out.types = types;
   return out;
 }
 
