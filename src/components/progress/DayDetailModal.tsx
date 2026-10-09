@@ -8,13 +8,7 @@ import { sessionLabel, gymSummaryParts, summaryText } from "../../lib/sessionSum
 import type { SessionRecord } from "../../lib/history";
 import type { ClimbRecord } from "../../lib/climbs";
 import type { NoteRecord } from "../../lib/notes";
-
-function climbStyleBadge(style: ClimbRecord["style"]): string {
-  if (style === "onsight") return "bg-green-500/20 text-green-400";
-  if (style === "flash") return "bg-yellow-500/20 text-yellow-400";
-  if (style === "redpoint") return "bg-red-500/20 text-red-400";
-  return "bg-gray-700 text-gray-400";
-}
+import { styleBadgeClass } from "../../lib/climbUtils";
 
 type Props = {
   /** Local date key (yyyy-mm-dd). */
@@ -91,7 +85,7 @@ export function DayDetailModal({ date, sessions, climbs, notes, onClose, onEditS
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white text-sm font-medium">{climb.route}</span>
                       <span className="text-gray-300 text-[15px] font-num">{climb.grade}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${climbStyleBadge(climb.style)}`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${styleBadgeClass(climb.style)}`}>
                         {climb.style}
                       </span>
                     </div>
