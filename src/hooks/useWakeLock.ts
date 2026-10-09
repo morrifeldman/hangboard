@@ -1,36 +1,40 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
+/** Keep the screen on while `active`. Re-acquired when the page becomes visible again. */
 export function useWakeLock(active: boolean) {
-  const lockRef = useRef<WakeLockSentinel | null>(null);
-
   useEffect(() => {
-    if (!active) {
-      lockRef.current?.release();
-      lockRef.current = null;
-      return;
-    }
+    if (!active) return;
+    let lock: WakeLockSentinel | null = null;
+    let cancelled = false;
 
     const acquire = async () => {
       try {
-        lockRef.current = await navigator.wakeLock.request("screen");
+        const sentinel = await navigator.wakeLock.request("screen");
+        // The effect may have been cleaned up while the request was in flight;
+        // a lock that arrives late must be released, not kept forever.
+        if (cancelled) {
+          sentinel.release().catch(() => {});
+          return;
+        }
+        lock?.release().catch(() => {});
+        lock = sentinel;
       } catch {
         // Wake lock not supported or denied — silently ignore
       }
     };
 
-    acquire();
+    void acquire();
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && active) {
-        acquire();
-      }
+      if (document.visibilityState === "visible") void acquire();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
+      cancelled = true;
       document.removeEventListener("visibilitychange", handleVisibility);
-      lockRef.current?.release();
-      lockRef.current = null;
+      lock?.release().catch(() => {});
+      lock = null;
     };
   }, [active]);
 }

@@ -5,13 +5,13 @@ import {
   remainingWorkoutSecs,
   finishClockTime,
 } from "../workoutTime";
+import { advancePhase, INITIAL_STATE, skipNextHold, skipNextSet } from "../stateMachine";
 import type { SessionState } from "../stateMachine";
 import type { HoldDefinition } from "../../data/holds";
 import { HOLDS } from "../../data/holds";
 import { HOLDS_B } from "../../data/workout-b";
 
-// Globals as imported by workoutTime.ts. In Vitest (node env, no VITE_TEST_MODE),
-// these resolve to the production values from src/data/workout.ts.
+// Default phase lengths from src/data/workout.ts.
 const PREP = 10;
 const HANG = 7;
 const REST = 3;
@@ -37,13 +37,13 @@ describe("totalWorkoutSecs", () => {
     // Per hold = 257 + 247 = 504. Workout A has 8 holds → 504 * 8 = 4032.
     // The last set of the last hold drops its trailing break (180): 4032 - 180.
     // The jug's two breaks are each 60s shorter.
-    expect(totalWorkoutSecs(HOLDS, S1, S2)).toBe(504 * 8 - BREAK - 2 * (BREAK - JUG_BREAK));
+    expect(totalWorkoutSecs(HOLDS)).toBe(504 * 8 - BREAK - 2 * (BREAK - JUG_BREAK));
   });
 
   it("handles isRestOnly holds (prep + break only per set)", () => {
     const h = hold({ isRestOnly: true, numSets: 2, breakSecs: 60 });
     // 2 × (PREP + 60) = 2 × 70 = 140
-    expect(totalWorkoutSecs([h], S1, S2)).toBe(140);
+    expect(totalWorkoutSecs([h])).toBe(140);
   });
 
   it("handles prepBetweenReps (extra prep after each rest)", () => {
@@ -54,7 +54,7 @@ describe("totalWorkoutSecs", () => {
     });
     // 10 + 10 + (30 + 10 + 10) + (30 + 10 + 10) = 120
     // (last set of the only hold → trailing break of 30 is dropped)
-    expect(totalWorkoutSecs([h], S1, S2)).toBe(120);
+    expect(totalWorkoutSecs([h])).toBe(120);
   });
 
   it("respects per-hold timer overrides", () => {
@@ -64,7 +64,7 @@ describe("totalWorkoutSecs", () => {
     });
     // 1 set, 1 rep: prep + hang = 5 + 12 = 17
     // (last set of the only hold → trailing break of 100 is dropped)
-    expect(totalWorkoutSecs([h], S1, S2)).toBe(17);
+    expect(totalWorkoutSecs([h])).toBe(17);
   });
 
   it("matches a hand-rolled Workout B total", () => {
@@ -92,7 +92,7 @@ describe("totalWorkoutSecs", () => {
         manual += setSecs;
       }
     }
-    expect(totalWorkoutSecs(HOLDS_B, S1, S2)).toBe(manual);
+    expect(totalWorkoutSecs(HOLDS_B)).toBe(manual);
   });
 });
 
@@ -123,34 +123,34 @@ describe("currentPhaseFullSecs", () => {
 
 describe("remainingWorkoutSecs", () => {
   it("equals the total when called at workout start with full prep remaining", () => {
-    const total = totalWorkoutSecs(HOLDS, S1, S2);
+    const total = totalWorkoutSecs(HOLDS);
     const start: SessionState = { phase: "prep", holdIndex: 0, setNumber: 1, repIndex: 0 };
-    expect(remainingWorkoutSecs(start, HOLDS, S1, S2, PREP)).toBe(total);
+    expect(remainingWorkoutSecs(start, HOLDS, PREP)).toBe(total);
   });
 
   it("returns 0 at done", () => {
     const s: SessionState = { phase: "done", holdIndex: 7, setNumber: 2, repIndex: 5 };
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 0)).toBe(0);
+    expect(remainingWorkoutSecs(s, HOLDS, 0)).toBe(0);
   });
 
   it("returns 0 at idle", () => {
     const s: SessionState = { phase: "idle", holdIndex: 0, setNumber: 1, repIndex: 0 };
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 0)).toBe(0);
+    expect(remainingWorkoutSecs(s, HOLDS, 0)).toBe(0);
   });
 
   it("on the last hang of the last rep of the last set of the last hold, equals just the hang remaining (no trailing break)", () => {
     // Workout A, hold 7 (med-pinch), set 2, rep 5 (last of 6), phase hanging.
     const s: SessionState = { phase: "hanging", holdIndex: 7, setNumber: 2, repIndex: 5 };
     // The final break is gone — once this hang ends the workout is done.
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, HANG)).toBe(HANG);
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 0)).toBe(0);
+    expect(remainingWorkoutSecs(s, HOLDS, HANG)).toBe(HANG);
+    expect(remainingWorkoutSecs(s, HOLDS, 0)).toBe(0);
   });
 
   it("drops by exactly one set's worth between consecutive holds (start of next hold)", () => {
     const h0Start: SessionState = { phase: "prep", holdIndex: 1, setNumber: 1, repIndex: 0 };
     const h1Start: SessionState = { phase: "prep", holdIndex: 2, setNumber: 1, repIndex: 0 };
-    const rem0 = remainingWorkoutSecs(h0Start, HOLDS, S1, S2, PREP);
-    const rem1 = remainingWorkoutSecs(h1Start, HOLDS, S1, S2, PREP);
+    const rem0 = remainingWorkoutSecs(h0Start, HOLDS, PREP);
+    const rem1 = remainingWorkoutSecs(h1Start, HOLDS, PREP);
     // Each hold contributes 504s (set1 257 + set2 247), per HOLDS workout A.
     expect(rem0 - rem1).toBe(504);
   });
@@ -164,7 +164,7 @@ describe("remainingWorkoutSecs", () => {
     //   = 3*REST + 3*HANG + JUG_BREAK = 9 + 21 + 120 = 150
     // Plus jug set 2 (247 - 60 = 187) plus 7 more holds (7 * 504 = 3528)
     // Plus currentPhaseRemaining = 5. Minus the dropped final break of the last hold (180).
-    expect(remainingWorkoutSecs(s, HOLDS, S1, S2, 5)).toBe(5 + 150 + 187 + 7 * 504 - BREAK);
+    expect(remainingWorkoutSecs(s, HOLDS, 5)).toBe(5 + 150 + 187 + 7 * 504 - BREAK);
   });
 });
 
@@ -186,5 +186,40 @@ describe("finishClockTime", () => {
 
   it("treats negative remaining as zero", () => {
     expect(finishClockTime(at(8, 0), -60)).toBe("8:00 AM");
+  });
+});
+
+// Walk the real state machine phase by phase and check the time estimate
+// against it. Ties stateMachine and workoutTime together: if one learns a new
+// phase rule and the other doesn't, this fails.
+describe("remainingWorkoutSecs agrees with the state machine", () => {
+  function walk(holds: readonly HoldDefinition[], start: SessionState) {
+    let s = start;
+    let elapsed = 0;
+    const checks: { s: SessionState; elapsed: number }[] = [];
+    for (let guard = 0; guard < 10_000 && s.phase !== "done"; guard++) {
+      checks.push({ s, elapsed });
+      elapsed += currentPhaseFullSecs(s, holds);
+      s = advancePhase(s, holds);
+    }
+    return { checks, total: elapsed };
+  }
+
+  for (const [name, holds] of [["A", HOLDS], ["B", HOLDS_B]] as const) {
+    it(`workout ${name}: every phase's estimate equals the time actually left`, () => {
+      const { checks, total } = walk(holds, INITIAL_STATE);
+      expect(total).toBe(totalWorkoutSecs(holds));
+      for (const { s, elapsed } of checks) {
+        expect(remainingWorkoutSecs(s, holds, currentPhaseFullSecs(s, holds))).toBe(total - elapsed);
+      }
+    });
+  }
+
+  it("skipped sets are left out of the estimate", () => {
+    const inBreak: SessionState = { phase: "break", holdIndex: 1, setNumber: 1, repIndex: 0 };
+    const skipped = skipNextHold(skipNextSet(inBreak, HOLDS), HOLDS);
+    const { total } = walk(HOLDS, skipped);
+    expect(remainingWorkoutSecs(skipped, HOLDS, BREAK)).toBe(total);
+    expect(total).toBeLessThan(remainingWorkoutSecs(inBreak, HOLDS, BREAK));
   });
 });

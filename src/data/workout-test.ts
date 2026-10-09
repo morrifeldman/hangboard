@@ -9,7 +9,9 @@ export const HOLDS_TEST: HoldDefinition[] = HOLDS.slice(0, 3).map((h) => ({
   id: `test-${h.id}`,
   prepSecs: 3,
   hangSecs: 2,
-  restSecs: 1,
+  // Same as the hang on purpose: equal back-to-back phases once froze the
+  // timer, and the E2E suite runs this workout.
+  restSecs: 2,
   breakSecs: 5,
   repsPerSet: 2,
 }));

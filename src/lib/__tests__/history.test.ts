@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildSessionRecord } from '../history';
+import { setKey } from '../stateMachine';
 import type { HoldDefinition } from '../../data/holds';
 
 // Minimal hold factory
@@ -24,6 +25,9 @@ function weights(holdId: string, setNum: number): number {
   return setNum === 1 ? h.defaultSet1Weight : h.defaultSet2Weight;
 }
 
+// Every set of HOLDS finished.
+const ALL = HOLDS.flatMap((_, i) => [setKey(i, 1), setKey(i, 2)]);
+
 const BASE = {
   workoutType: 'repeaters' as const,
   startedAt: 1000,
@@ -34,7 +38,7 @@ const BASE = {
 
 describe('buildSessionRecord', () => {
   it('marks all sets completed on a full completion', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 2, setNumber: 2 });
+    const rec = buildSessionRecord({ ...BASE, bailed: false, completedSets: ALL });
     expect(rec.bailed).toBe(false);
     for (const h of rec.holds) {
       expect(h.set1.completed).toBe(true);
@@ -43,14 +47,14 @@ describe('buildSessionRecord', () => {
   });
 
   it('captures correct weights from effectiveWeight', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 2, setNumber: 2 });
+    const rec = buildSessionRecord({ ...BASE, bailed: false, completedSets: ALL });
     expect(rec.holds[1].set1.weight).toBe(5);
     expect(rec.holds[1].set2!.weight).toBe(10);
     expect(rec.holds[2].set1.weight).toBe(-10);
   });
 
   it('omits next target when nextWeight is not provided', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 2, setNumber: 2 });
+    const rec = buildSessionRecord({ ...BASE, bailed: false, completedSets: ALL });
     expect(rec.holds[1].next).toBeUndefined();
   });
 
@@ -58,8 +62,7 @@ describe('buildSessionRecord', () => {
     const rec = buildSessionRecord({
       ...BASE,
       bailed: false,
-      holdIndex: 2,
-      setNumber: 2,
+      completedSets: ALL,
       // Next session is +5 on every set, while effectiveWeight (done) stays at base.
       nextWeight: (id, setNum) => weights(id, setNum) + 5,
     });
@@ -71,40 +74,46 @@ describe('buildSessionRecord', () => {
   });
 
   it('captures reps from hold definition', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 0, setNumber: 1 });
+    const rec = buildSessionRecord({ ...BASE, bailed: false, completedSets: ALL });
     expect(rec.holds[0].set1.reps).toBe(7);
     expect(rec.holds[0].set2!.reps).toBe(6);
   });
 
-  it('holds before bail index are both completed', () => {
-    // Bailed at hold 2, set 1
-    const rec = buildSessionRecord({ ...BASE, bailed: true, holdIndex: 2, setNumber: 1 });
+  it('marks only the sets the state machine recorded as completed', () => {
+    // Ended early during the break after hold 1, set 1.
+    const rec = buildSessionRecord({
+      ...BASE,
+      bailed: true,
+      completedSets: [setKey(0, 1), setKey(0, 2), setKey(1, 1)],
+    });
     expect(rec.holds[0].set1.completed).toBe(true);
     expect(rec.holds[0].set2?.completed).toBe(true);
+    // The set just finished counts, even though the break hadn't moved setNumber on.
     expect(rec.holds[1].set1.completed).toBe(true);
-    expect(rec.holds[1].set2?.completed).toBe(true);
-  });
-
-  it('bail during set 1 of current hold: set1 incomplete', () => {
-    // setNumber=1 means we never got to set 2
-    const rec = buildSessionRecord({ ...BASE, bailed: true, holdIndex: 1, setNumber: 1 });
-    expect(rec.holds[1].set1.completed).toBe(false);
-    expect(rec.holds[1].set2?.completed).toBe(false);
-  });
-
-  it('bail during set 2 of current hold: set1 complete, set2 incomplete', () => {
-    // setNumber=2 means set 1 is done, mid-set-2
-    const rec = buildSessionRecord({ ...BASE, bailed: true, holdIndex: 1, setNumber: 2 });
-    expect(rec.holds[1].set1.completed).toBe(true);
-    expect(rec.holds[1].set2?.completed).toBe(false);
-  });
-
-  it('holds after bail index are both incomplete', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: true, holdIndex: 0, setNumber: 1 });
-    expect(rec.holds[1].set1.completed).toBe(false);
     expect(rec.holds[1].set2?.completed).toBe(false);
     expect(rec.holds[2].set1.completed).toBe(false);
-    expect(rec.holds[2].set2?.completed).toBe(false);
+  });
+
+  it('a finished workout with skipped sets does not mark them completed', () => {
+    const rec = buildSessionRecord({
+      ...BASE,
+      bailed: false,
+      completedSets: ALL.filter((k) => k !== setKey(1, 2)),
+    });
+    expect(rec.bailed).toBe(false);
+    expect(rec.holds[1].set1.completed).toBe(true);
+    expect(rec.holds[1].set2?.completed).toBe(false);
+  });
+
+  it('a set marked failed is not completed', () => {
+    const rec = buildSessionRecord({
+      ...BASE,
+      bailed: false,
+      completedSets: ALL,
+      failedSets: { edge: { set2: true } },
+    });
+    expect(rec.holds[1].set1.completed).toBe(true);
+    expect(rec.holds[1].set2?.completed).toBe(false);
   });
 
   it('hold with numSets=1 has null set2', () => {
@@ -114,8 +123,7 @@ describe('buildSessionRecord', () => {
     const rec = buildSessionRecord({
       ...BASE,
       bailed: false,
-      holdIndex: 0,
-      setNumber: 1,
+      completedSets: [setKey(0, 1)],
       holds: singleSetHolds,
       effectiveWeight: () => 0,
     });
@@ -123,7 +131,7 @@ describe('buildSessionRecord', () => {
   });
 
   it('sets correct metadata fields', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: true, holdIndex: 0, setNumber: 1 });
+    const rec = buildSessionRecord({ ...BASE, bailed: true, completedSets: [] });
     expect(rec.workoutType).toBe('repeaters');
     expect(rec.startedAt).toBe(1000);
     expect(rec.completedAt).toBe(2000);
@@ -134,7 +142,7 @@ describe('buildSessionRecord', () => {
 
   it('uses repsPerSet override when defined', () => {
     const h = [hold({ id: 'test', name: 'T', repsPerSet: 5 })];
-    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 0, setNumber: 1, holds: h, effectiveWeight: () => 0 });
+    const rec = buildSessionRecord({ ...BASE, bailed: false, completedSets: ALL, holds: h, effectiveWeight: () => 0 });
     expect(rec.holds[0].set1.reps).toBe(5);
     expect(rec.holds[0].set2!.reps).toBe(5);
   });
@@ -143,8 +151,7 @@ describe('buildSessionRecord', () => {
     const rec = buildSessionRecord({
       ...BASE,
       bailed: false,
-      holdIndex: 2,
-      setNumber: 2,
+      completedSets: ALL,
       holdNotes: { edge: 'felt easy' },
     });
     expect(rec.holds.find((h) => h.holdId === 'edge')?.notes).toBe('felt easy');
@@ -153,7 +160,7 @@ describe('buildSessionRecord', () => {
   });
 
   it('leaves all hold notes undefined when holdNotes not provided', () => {
-    const rec = buildSessionRecord({ ...BASE, bailed: false, holdIndex: 2, setNumber: 2 });
+    const rec = buildSessionRecord({ ...BASE, bailed: false, completedSets: ALL });
     for (const h of rec.holds) {
       expect(h.notes).toBeUndefined();
     }

@@ -39,11 +39,17 @@ export function warmupVolume(repsPerSet: readonly number[]): string {
   return repsPerSet.join(" + ");
 }
 
+export function numSetsOf(hold: HoldDefinition): number {
+  return hold.numSets ?? 2;
+}
+
+/** Reps in set `setNum` (1-based). The one place this rule lives. */
+export function repsFor(hold: HoldDefinition, setNum: number): number {
+  return hold.repsPerSet ?? (setNum === 1 ? hold.set1Reps : hold.set2Reps);
+}
+
 export function plannedReps(hold: HoldDefinition): number[] {
-  const numSets = hold.numSets ?? 2;
-  return Array.from({ length: numSets }, (_, s) =>
-    hold.repsPerSet ?? (s === 0 ? hold.set1Reps : hold.set2Reps),
-  );
+  return Array.from({ length: numSetsOf(hold) }, (_, s) => repsFor(hold, s + 1));
 }
 
 export const HOLDS: HoldDefinition[] = [

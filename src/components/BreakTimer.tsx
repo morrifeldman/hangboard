@@ -1,24 +1,16 @@
 import { HoldName } from "./HoldName";
 import { useState } from "react";
-import { useWorkoutStore } from "../store/useWorkoutStore";
-import { BREAK_SECS } from "../data/workout";
-import { useTimer } from "../hooks/useTimer";
+import { setKeyFor, useWorkoutStore } from "../store/useWorkoutStore";
+import { usePhaseRemaining } from "../hooks/usePhaseClock";
+import { upcomingSet } from "../lib/stateMachine";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { isWarmup } from "../data/holds";
 import { WarmupBadge } from "./WarmupBadge";
 
-type Props = {
-  setNoteValue: string;
-  onSetNoteChange: (v: string) => void;
-  holdNoteValue: string;
-  onHoldNoteChange: (v: string) => void;
-  isFailed: boolean;
-  onToggleFailed: () => void;
-};
-
-export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHoldNoteChange, isFailed, onToggleFailed }: Props) {
+export function BreakTimer() {
   const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
+  const skipped = useWorkoutStore((s) => s.skipped);
   const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const skipNextSet = useWorkoutStore((s) => s.skipNextSet);
   const skipNextHold = useWorkoutStore((s) => s.skipNextHold);
@@ -33,33 +25,39 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
   const weights = useWorkoutStore((s) => s.weights);
   const weightsB = useWorkoutStore((s) => s.weightsB);
   const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
+  const breakDuration = useWorkoutStore((s) => s.phaseDuration);
+  const setNotes = useWorkoutStore((s) => s.setNotes);
+  const holdNotes = useWorkoutStore((s) => s.holdNotes);
+  const failedSets = useWorkoutStore((s) => s.failedSets);
+  const setSetNote = useWorkoutStore((s) => s.setSetNote);
+  const setHoldNote = useWorkoutStore((s) => s.setHoldNote);
+  const toggleFailed = useWorkoutStore((s) => s.toggleFailed);
+  const remaining = usePhaseRemaining();
 
   const [notesExpanded, setNotesExpanded] = useState(false);
 
   const holds = currentHolds();
   const hold = holds[holdIndex];
-  const nextHold = holds[holdIndex + 1];
-  const numSets = hold.numSets ?? 2;
-  // Between sets of the same hold (not the last set yet)
-  const betweenSets = setNumber < numSets;
-  // After the last set — between this hold and the next
+  // What this break leads into, after any sets the user skipped.
+  const upcoming = upcomingSet({ phase: "break", holdIndex, setNumber, repIndex: 0, skipped }, holds);
+  // Between sets of the same hold
+  const betweenSets = upcoming?.holdIndex === holdIndex;
+  // After this hold's last set — between this hold and the next
   const betweenHolds = !betweenSets;
-  // No timer needed after the very last hold
-  const isLastHold = betweenHolds && !nextHold;
-  const breakDuration = isLastHold ? 0 : (hold.breakSecs ?? BREAK_SECS);
+  const nextHold = betweenHolds && upcoming ? holds[upcoming.holdIndex] : undefined;
+  const nextSetNumber = upcoming?.setNumber ?? setNumber + 1;
 
-  const { remaining } = useTimer({
-    duration: breakDuration,
-    running: !paused && !isLastHold,
-    onExpire: advancePhase,
-  });
+  const setKey = setKeyFor(setNumber);
+  const setNoteValue = setNotes[hold.id]?.[setKey] ?? "";
+  const holdNoteValue = holdNotes[hold.id] ?? "";
+  const isFailed = failedSets[hold.id]?.[setKey] ?? false;
 
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
   const stored = storedMap[hold.id] ?? { set1: hold.defaultSet1Weight, set2: hold.defaultSet2Weight };
 
   const lastSuffix = betweenSets ? `Set ${setNumber}` : undefined;
   const upNextName = betweenSets ? hold.name : (nextHold?.name ?? null);
-  const upNextSuffix = betweenSets ? `Set ${setNumber + 1}` : undefined;
+  const upNextSuffix = betweenSets ? `Set ${nextSetNumber}` : undefined;
 
   // "vs last time" cue for the upcoming hold — compares the weight you're about
   // to lift this session to the same set in the most recent session. Moved here
@@ -115,8 +113,8 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         )}
       </div>
 
-      {/* Compact bar timer — hidden on last hold */}
-      {!isLastHold && (
+      {/* Compact bar timer */}
+      {(
         <div
           className={`flex flex-col items-center gap-1 w-full ${paused ? "" : "cursor-pointer"}`}
           onClick={paused ? resumeWorkout : pauseWorkout}
@@ -149,12 +147,12 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
       {/* Next set weight adjuster — between sets of the same hold */}
       {betweenSets && !hold.skipProgression && (
         <div className="w-full bg-gray-800 rounded-2xl p-3 space-y-2">
-          <p className="text-gray-400 text-sm text-center">Set {setNumber + 1}</p>
+          <p className="text-gray-400 text-sm text-center">Set {nextSetNumber}</p>
           <WeightAdjuster
-            value={effectiveWeight(hold.id, setNumber + 1)}
+            value={effectiveWeight(hold.id, nextSetNumber)}
             onDelta={(delta) => {
-              adjustNextWeight(hold.id, setNumber + 1, delta);
-              setSessionOverride(hold.id, setNumber + 1, delta);
+              adjustNextWeight(hold.id, nextSetNumber, delta);
+              setSessionOverride(hold.id, nextSetNumber, delta);
             }}
           />
         </div>
@@ -186,7 +184,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
 
       {!hold.isRestOnly && (
         <button
-          onClick={onToggleFailed}
+          onClick={() => toggleFailed(hold.id, setNumber)}
           aria-pressed={isFailed}
           className={`w-full min-h-[40px] rounded-lg text-sm font-semibold transition-colors ${
             isFailed
@@ -203,7 +201,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
         <>
           <textarea
             value={setNoteValue}
-            onChange={(e) => onSetNoteChange(e.target.value)}
+            onChange={(e) => setSetNote(hold.id, setNumber, e.target.value)}
             placeholder={`Set ${setNumber} note… (optional)`}
             rows={1}
             className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm
@@ -213,7 +211,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
           {betweenHolds && (
             <textarea
               value={holdNoteValue}
-              onChange={(e) => onHoldNoteChange(e.target.value)}
+              onChange={(e) => setHoldNote(hold.id, e.target.value)}
               placeholder={`Notes on ${hold.name} (optional)`}
               rows={1}
               className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm
@@ -245,7 +243,7 @@ export function BreakTimer({ setNoteValue, onSetNoteChange, holdNoteValue, onHol
             className="min-h-[44px] flex-1 rounded-xl bg-white/10 active:bg-white/20 text-gray-200 font-semibold text-base"
             data-testid="skip-next-set-btn"
           >
-            Skip set {setNumber + 1}
+            Skip set {nextSetNumber}
           </button>
         )}
         {betweenHolds && nextHold && !hold.isRestOnly && (

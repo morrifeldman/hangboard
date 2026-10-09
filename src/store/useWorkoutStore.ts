@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { HOLDS, HOLDS_B, HOLDS_TEST, SET1_REPS, SET2_REPS } from "../data/workout";
+import { HOLDS, HOLDS_B, HOLDS_TEST } from "../data/workout";
 import type { HoldDefinition } from "../data/workout";
 import * as SM from "../lib/stateMachine";
-import { totalWorkoutSecs } from "../lib/workoutTime";
+import type { SessionState } from "../lib/stateMachine";
+import { currentPhaseFullSecs, totalWorkoutSecs } from "../lib/workoutTime";
+import { addSession, buildSessionRecord } from "../lib/history";
 import { overrideKeyFor, plannedWeight, sessionSetWeight } from "../lib/setWeights";
 import type { SetOverrides } from "../lib/setWeights";
 import type { LiftDefinition } from "../lib/lifts";
@@ -20,6 +22,17 @@ type Overrides = Record<string, SetOverrides>;
 /** Per-hold weights from a prior session, used for the "vs last time" cue. */
 export type SessionWeightLookup = Record<string, { set1: number; set2: number; set3?: number }>;
 
+export type SetKey = "set1" | "set2" | "set3";
+export type SetNotes = Record<string, Partial<Record<SetKey, string>>>;
+export type FailedSets = Record<string, Partial<Record<SetKey, boolean>>>;
+
+export function setKeyFor(setNumber: number): SetKey {
+  return setNumber <= 1 ? "set1" : setNumber === 2 ? "set2" : "set3";
+}
+
+/** A workout left this long (app closed mid-session) is not offered back on reopen. */
+const STALE_SESSION_MS = 12 * 60 * 60 * 1000;
+
 interface WorkoutStore {
   // Persisted
   weights: StoredWeights;
@@ -28,11 +41,14 @@ interface WorkoutStore {
   gymDefaults: Record<string, Record<string, string>>;
   lifts: LiftDefinition[];
 
-  // Session (not persisted)
-  phase: WorkoutPhase;
+  // Session in progress. Persisted (outside test mode) so a reload or a killed
+  // PWA comes back paused where it left off instead of losing the workout.
+  phase: SM.WorkoutPhase;
   holdIndex: number;
   setNumber: number;
   repIndex: number;
+  skipped: readonly string[];
+  completed: readonly string[];
   overrides: Overrides;
   // Snapshot of the active weights map taken at startWorkout. The live session reads from this
   // so that adjusting *next* session's weights (which mutate `weights`/`weightsB`) can never
@@ -40,9 +56,21 @@ interface WorkoutStore {
   sessionWeights: StoredWeights;
   // Per-hold weights from the most recent prior session — drives the in-session "vs last time" cue.
   lastSessionWeights: SessionWeightLookup;
-  paused: boolean;
   startedAt: number | null;
   totalScheduledSecs: number;
+  holdNotes: Record<string, string>;
+  setNotes: SetNotes;
+  failedSets: FailedSets;
+
+  // The phase clock — the one source of time for the ring, the header and expiry.
+  // Running: `phaseEndsAt` is the wall-clock end. Paused: `pausedRemaining` holds
+  // the seconds left and `phaseEndsAt` is null. `phaseSeq` bumps on every
+  // transition so a stale expiry can never advance a phase it didn't time.
+  paused: boolean;
+  phaseSeq: number;
+  phaseDuration: number;
+  phaseEndsAt: number | null;
+  pausedRemaining: number | null;
 
   // Selectors
   currentHolds: () => readonly HoldDefinition[];
@@ -56,12 +84,18 @@ interface WorkoutStore {
   setSelectedWorkout: (id: WorkoutId) => void;
   startWorkout: (lastSessionWeights?: SessionWeightLookup) => void;
   advancePhase: () => void;
+  /** Called by the clock when a phase runs out; ignored unless `seq` is still current. */
+  expirePhase: (seq: number) => void;
   skipSet: () => void;
   skipNextSet: () => void;
   skipNextHold: () => void;
-  bailWorkout: () => void;
+  /** Save the workout (as finished, or ended early) and leave it. */
+  finishWorkout: (opts: { bailed: boolean; notes?: string }) => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
+  setHoldNote: (holdId: string, note: string) => void;
+  setSetNote: (holdId: string, setNumber: number, note: string) => void;
+  toggleFailed: (holdId: string, setNumber: number) => void;
   setSessionOverride: (holdId: string, setNum: number, delta: number) => void;
   adjustNextWeight: (holdId: string, setNum: number, delta: number) => void;
   resetWeights: () => void;
@@ -90,6 +124,42 @@ function holdsFor(id: WorkoutId): readonly HoldDefinition[] {
   return HOLDS;
 }
 
+const IDLE_SESSION = {
+  phase: "idle" as SM.WorkoutPhase,
+  holdIndex: 0,
+  setNumber: 1,
+  repIndex: 0,
+  skipped: [] as readonly string[],
+  completed: [] as readonly string[],
+  overrides: {} as Overrides,
+  sessionWeights: {} as StoredWeights,
+  lastSessionWeights: {} as SessionWeightLookup,
+  startedAt: null as number | null,
+  totalScheduledSecs: 0,
+  holdNotes: {} as Record<string, string>,
+  setNotes: {} as SetNotes,
+  failedSets: {} as FailedSets,
+  paused: false,
+  phaseDuration: 0,
+  phaseEndsAt: null as number | null,
+  pausedRemaining: null as number | null,
+};
+
+const SESSION_KEYS = Object.keys(IDLE_SESSION) as (keyof typeof IDLE_SESSION)[];
+
+/** The clock fields for entering a phase, running from now. */
+function clockFor(state: SessionState, holds: readonly HoldDefinition[], seq: number) {
+  const duration = currentPhaseFullSecs(state, holds);
+  const timed = state.phase !== "idle" && state.phase !== "done" && duration > 0;
+  return {
+    paused: false,
+    phaseSeq: seq + 1,
+    phaseDuration: duration,
+    phaseEndsAt: timed ? Date.now() + duration * 1000 : null,
+    pausedRemaining: null,
+  };
+}
+
 export const useWorkoutStore = create<WorkoutStore>()(
   persist(
     (set, get) => ({
@@ -99,16 +169,8 @@ export const useWorkoutStore = create<WorkoutStore>()(
       gymDefaults: {},
       lifts: [],
 
-      phase: "idle",
-      holdIndex: 0,
-      setNumber: 1,
-      repIndex: 0,
-      overrides: {},
-      sessionWeights: {},
-      lastSessionWeights: {},
-      paused: false,
-      startedAt: null,
-      totalScheduledSecs: 0,
+      ...IDLE_SESSION,
+      phaseSeq: 0,
 
       currentHolds: () => holdsFor(get().selectedWorkout),
 
@@ -140,50 +202,106 @@ export const useWorkoutStore = create<WorkoutStore>()(
         const wid = get().selectedWorkout;
         const holds = holdsFor(wid);
         const activeMap = wid === "max-hang" ? get().weightsB : get().weights;
+        const first: SessionState = { ...SM.INITIAL_STATE };
         set({
-          phase: "prep",
-          holdIndex: 0,
-          setNumber: 1,
-          repIndex: 0,
-          overrides: {},
+          ...IDLE_SESSION,
+          ...first,
           // Freeze the weights for the duration of this workout.
           sessionWeights: { ...activeMap },
           lastSessionWeights: lastSessionWeights ?? {},
           startedAt: Date.now(),
-          totalScheduledSecs: totalWorkoutSecs(holds, SET1_REPS, SET2_REPS),
+          totalScheduledSecs: totalWorkoutSecs(holds),
+          ...clockFor(first, holds, get().phaseSeq),
         });
       },
 
       advancePhase: () => {
         const holds = holdsFor(get().selectedWorkout);
-        set((s) => ({ ...SM.advancePhase(s, holds, SET1_REPS, SET2_REPS), paused: false }));
+        const next = SM.advancePhase(get(), holds);
+        if (next.phase === "idle") {
+          set({ ...IDLE_SESSION, phaseSeq: get().phaseSeq + 1 });
+          return;
+        }
+        set({ ...next, ...clockFor(next, holds, get().phaseSeq) });
+      },
+
+      expirePhase: (seq) => {
+        const s = get();
+        if (s.phaseSeq !== seq || s.paused || s.phaseEndsAt === null) return;
+        s.advancePhase();
       },
 
       skipSet: () => {
         const holds = holdsFor(get().selectedWorkout);
-        set((s) => ({ ...SM.skipSet(s, holds), paused: false }));
+        const next = SM.skipSet(get(), holds);
+        set({ ...next, ...clockFor(next, holds, get().phaseSeq) });
       },
 
+      // Skipping ahead from a break keeps the break's clock running: the rest
+      // already taken still counts.
       skipNextSet: () => {
         const holds = holdsFor(get().selectedWorkout);
-        set((s) => ({ ...SM.skipNextSet(s, holds), paused: false }));
+        const next = SM.skipNextSet(get(), holds);
+        set(next.phase === get().phase ? { skipped: next.skipped } : { ...next, ...clockFor(next, holds, get().phaseSeq) });
       },
 
       skipNextHold: () => {
         const holds = holdsFor(get().selectedWorkout);
-        set((s) => ({ ...SM.skipNextHold(s, holds), paused: false }));
+        const next = SM.skipNextHold(get(), holds);
+        set(next.phase === get().phase ? { skipped: next.skipped } : { ...next, ...clockFor(next, holds, get().phaseSeq) });
       },
 
-      bailWorkout: () => {
-        set({ phase: "idle", paused: false });
+      finishWorkout: ({ bailed, notes }) => {
+        const s = get();
+        if (s.selectedWorkout !== "test" && s.startedAt !== null) {
+          const record = buildSessionRecord({
+            workoutType: s.selectedWorkout,
+            startedAt: s.startedAt,
+            completedAt: Date.now(),
+            bailed,
+            completedSets: s.completed,
+            holds: holdsFor(s.selectedWorkout),
+            effectiveWeight: s.effectiveWeight,
+            nextWeight: s.nextSessionWeight,
+            notes: notes || undefined,
+            holdNotes: s.holdNotes,
+            setNotes: s.setNotes,
+            failedSets: s.failedSets,
+          });
+          addSession(record).catch(console.error);
+        }
+        set({ ...IDLE_SESSION, phaseSeq: s.phaseSeq + 1 });
       },
 
       pauseWorkout: () => {
-        set({ paused: true });
+        const { phaseEndsAt, paused } = get();
+        if (paused || phaseEndsAt === null) return;
+        set({
+          paused: true,
+          phaseEndsAt: null,
+          pausedRemaining: Math.max(0, (phaseEndsAt - Date.now()) / 1000),
+        });
       },
 
       resumeWorkout: () => {
-        set({ paused: false });
+        const { pausedRemaining, paused } = get();
+        if (!paused || pausedRemaining === null) return;
+        set({ paused: false, phaseEndsAt: Date.now() + pausedRemaining * 1000, pausedRemaining: null });
+      },
+
+      setHoldNote: (holdId, note) => {
+        set({ holdNotes: { ...get().holdNotes, [holdId]: note } });
+      },
+
+      setSetNote: (holdId, setNumber, note) => {
+        const notes = get().setNotes;
+        set({ setNotes: { ...notes, [holdId]: { ...notes[holdId], [setKeyFor(setNumber)]: note } } });
+      },
+
+      toggleFailed: (holdId, setNumber) => {
+        const failed = get().failedSets;
+        const key = setKeyFor(setNumber);
+        set({ failedSets: { ...failed, [holdId]: { ...failed[holdId], [key]: !failed[holdId]?.[key] } } });
       },
 
       setSessionOverride: (holdId, setNum, delta) => {
@@ -252,13 +370,41 @@ export const useWorkoutStore = create<WorkoutStore>()(
     }),
     {
       name: "hangboard-weights",
-      partialize: (s) => ({
+      version: 1,
+      // v0 had no session fields; everything else is unchanged, so the
+      // default shallow merge with fresh defaults is the whole migration.
+      migrate: (persisted) => persisted as Partial<WorkoutStore>,
+      partialize: (s): Partial<WorkoutStore> => ({
         weights: s.weights,
         weightsB: s.weightsB,
         selectedWorkout: s.selectedWorkout === "test" ? "repeaters" : s.selectedWorkout,
         gymDefaults: s.gymDefaults,
         lifts: s.lifts,
+        // The workout in progress. Test-mode workouts are never kept.
+        ...(s.phase !== "idle" && s.selectedWorkout !== "test"
+          ? Object.fromEntries(SESSION_KEYS.map((k) => [k, s[k]]))
+          : {}),
       }),
+      // A restored workout comes back paused, with the time it had left when the
+      // app went away (or none, for a stale one).
+      merge: (persisted, current) => {
+        const p = { ...(persisted as Partial<WorkoutStore>) };
+        const active = p.phase !== undefined && p.phase !== "idle";
+        if (!active || p.startedAt == null || Date.now() - p.startedAt > STALE_SESSION_MS) {
+          for (const k of SESSION_KEYS) delete p[k];
+          return { ...current, ...p };
+        }
+        const left =
+          p.pausedRemaining ??
+          (p.phaseEndsAt != null ? Math.max(0, (p.phaseEndsAt - Date.now()) / 1000) : null);
+        return {
+          ...current,
+          ...p,
+          paused: left !== null,
+          phaseEndsAt: null,
+          pausedRemaining: left,
+        };
+      },
     }
   )
 );

@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { useWorkoutStore } from "../store/useWorkoutStore";
+import { setKeyFor, useWorkoutStore } from "../store/useWorkoutStore";
 import { PrepTimer } from "./PrepTimer";
 import { HangTimer } from "./HangTimer";
 import { BreakTimer } from "./BreakTimer";
-import { addSession, buildSessionRecord } from "../lib/history";
 import { WeightAdjuster } from "./WeightAdjuster";
-import { currentPhaseFullSecs, remainingWorkoutSecs, finishClockTime } from "../lib/workoutTime";
-import { SET1_REPS, SET2_REPS } from "../data/workout";
-import { isWarmup } from "../data/holds";
+import { remainingWorkoutSecs, finishClockTime } from "../lib/workoutTime";
+import { upcomingSet } from "../lib/stateMachine";
+import { isWarmup, numSetsOf } from "../data/holds";
+import { usePhaseClock, useWorkoutDriver } from "../hooks/usePhaseClock";
 
 function fmtTime(s: number): string {
   const t = Math.max(0, Math.round(s));
@@ -24,28 +24,34 @@ export function WorkoutScreen() {
   const holdIndex = useWorkoutStore((s) => s.holdIndex);
   const setNumber = useWorkoutStore((s) => s.setNumber);
   const repIndex = useWorkoutStore((s) => s.repIndex);
-  const advancePhase = useWorkoutStore((s) => s.advancePhase);
-  const bailWorkout = useWorkoutStore((s) => s.bailWorkout);
+  const skipped = useWorkoutStore((s) => s.skipped);
+  const finishWorkout = useWorkoutStore((s) => s.finishWorkout);
   const paused = useWorkoutStore((s) => s.paused);
   const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
   const currentHolds = useWorkoutStore((s) => s.currentHolds);
-  const startedAt = useWorkoutStore((s) => s.startedAt);
-  const selectedWorkout = useWorkoutStore((s) => s.selectedWorkout);
-  const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
   const nextSessionWeight = useWorkoutStore((s) => s.nextSessionWeight);
   const adjustNextWeight = useWorkoutStore((s) => s.adjustNextWeight);
   // Subscribed so the done-screen adjuster re-renders when a tap changes the persisted target.
   useWorkoutStore((s) => s.weights);
   useWorkoutStore((s) => s.weightsB);
   const totalScheduledSecs = useWorkoutStore((s) => s.totalScheduledSecs);
+  const setNotes = useWorkoutStore((s) => s.setNotes);
+  const holdNotes = useWorkoutStore((s) => s.holdNotes);
+  const failedSets = useWorkoutStore((s) => s.failedSets);
+  const setSetNote = useWorkoutStore((s) => s.setSetNote);
+  const setHoldNote = useWorkoutStore((s) => s.setHoldNote);
+  const toggleFailed = useWorkoutStore((s) => s.toggleFailed);
+
+  useWorkoutDriver();
+  const { remaining: phaseRemaining, now } = usePhaseClock(1000);
 
   const [confirming, setConfirming] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
-  const [holdNotes, setHoldNotes] = useState<Record<string, string>>({});
-  const [setNotesLive, setSetNotesLive] = useState<Record<string, { set1?: string; set2?: string; set3?: string }>>({});
-  const [failedSets, setFailedSets] = useState<Record<string, { set1?: boolean; set2?: boolean; set3?: boolean }>>({});
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+  }, []);
 
   const [sessionNotes, setSessionNotes] = useState("");
   const [lastHoldNotesOpen, setLastHoldNotesOpen] = useState(false);
@@ -66,111 +72,24 @@ export function WorkoutScreen() {
     }
   };
 
-  const saveSession = (bailed: boolean, notes: string) => {
-    if (selectedWorkout === "test" || startedAt === null) return;
-    const holds = currentHolds();
-    const record = buildSessionRecord({
-      workoutType: selectedWorkout,
-      startedAt,
-      completedAt: Date.now(),
-      bailed,
-      holdIndex,
-      setNumber,
-      holds,
-      effectiveWeight: (holdId, setNum) => effectiveWeight(holdId, setNum),
-      nextWeight: (holdId, setNum) => nextSessionWeight(holdId, setNum),
-      notes: notes || undefined,
-      holdNotes,
-      setNotes: setNotesLive,
-      failedSets,
-    });
-    addSession(record).catch(console.error);
-  };
-
   const handleEndClick = () => {
     if (confirming) {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       setConfirming(false);
-      saveSession(true, "");
-      bailWorkout();
+      finishWorkout({ bailed: true });
     } else {
       setConfirming(true);
       confirmTimerRef.current = setTimeout(() => setConfirming(false), 3000);
     }
   };
 
-  // Done screen: reset notes state
-  useEffect(() => {
-    if (phase !== "done") return;
-    setSessionNotes("");
-    setLastHoldNotesOpen(false);
-    setWorkoutNotesOpen(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
   const holds = currentHolds();
   const currentHoldDef = holds[holdIndex];
-  const numSets = currentHoldDef?.numSets ?? 2;
+  const numSets = currentHoldDef ? numSetsOf(currentHoldDef) : 2;
 
-  // Track elapsed in the current phase so we can derive "remaining" / "done" / "total" for the header.
-  // Refs reset whenever the SessionState advances; pause time is accumulated separately so the
-  // numbers freeze on pause and resume cleanly.
-  const phaseStartedAtRef = useRef(Date.now());
-  const phasePausedAccumRef = useRef(0);
-  const pauseStartedAtRef = useRef<number | null>(paused ? Date.now() : null);
-  const lastSessionStateRef = useRef({ phase, holdIndex, setNumber, repIndex });
-  const [, forceTick] = useState(0);
-
-  // Reset phase tracking SYNCHRONOUSLY when state advances. Doing this in useEffect would leave
-  // one rendered frame where the new phase is paired with the old phaseStartedAt — making
-  // remaining look momentarily smaller and elapsed appear to tick backwards on the next frame.
-  const prev = lastSessionStateRef.current;
-  if (
-    prev.phase !== phase ||
-    prev.holdIndex !== holdIndex ||
-    prev.setNumber !== setNumber ||
-    prev.repIndex !== repIndex
-  ) {
-    lastSessionStateRef.current = { phase, holdIndex, setNumber, repIndex };
-    phaseStartedAtRef.current = Date.now();
-    phasePausedAccumRef.current = 0;
-    pauseStartedAtRef.current = paused ? Date.now() : null;
-  }
-
-  useEffect(() => {
-    if (paused) {
-      pauseStartedAtRef.current = Date.now();
-    } else if (pauseStartedAtRef.current !== null) {
-      phasePausedAccumRef.current += (Date.now() - pauseStartedAtRef.current) / 1000;
-      pauseStartedAtRef.current = null;
-    }
-  }, [paused]);
-
-  useEffect(() => {
-    if (phase === "idle" || phase === "done") return;
-    const id = setInterval(() => forceTick((x) => x + 1), 1000);
-    return () => clearInterval(id);
-  }, [phase]);
-
-  const sessionState = { phase, holdIndex, setNumber, repIndex };
-  const phaseFull = currentPhaseFullSecs(sessionState, holds);
-  const pausedNow =
-    paused && pauseStartedAtRef.current !== null
-      ? (Date.now() - pauseStartedAtRef.current) / 1000
-      : 0;
-  const phaseElapsed =
-    (Date.now() - phaseStartedAtRef.current) / 1000 -
-    phasePausedAccumRef.current -
-    pausedNow;
-  const phaseRemaining = Math.max(0, phaseFull - phaseElapsed);
-  const remainingSecs = remainingWorkoutSecs(
-    sessionState,
-    holds,
-    SET1_REPS,
-    SET2_REPS,
-    phaseRemaining,
-  );
-    const finishAt = finishClockTime(Date.now(), remainingSecs);
+  const sessionState = { phase, holdIndex, setNumber, repIndex, skipped };
+  const remainingSecs = remainingWorkoutSecs(sessionState, holds, phaseRemaining);
+  const finishAt = finishClockTime(now, remainingSecs);
 
   const renderPanel = () => {
     switch (phase) {
@@ -179,33 +98,8 @@ export function WorkoutScreen() {
       case "hanging":
       case "resting":
         return <HangTimer />;
-      case "break": {
-        const hid = currentHoldDef?.id ?? "";
-        const setKey = `set${setNumber}` as "set1" | "set2" | "set3";
-        return (
-          <BreakTimer
-            key={`break-${holdIndex}-${setNumber}`}
-            setNoteValue={setNotesLive[hid]?.[setKey] ?? ""}
-            onSetNoteChange={(v) =>
-              setSetNotesLive((prev) => ({
-                ...prev,
-                [hid]: { ...prev[hid], [setKey]: v },
-              }))
-            }
-            holdNoteValue={holdNotes[hid] ?? ""}
-            onHoldNoteChange={(v) =>
-              setHoldNotes((prev) => ({ ...prev, [hid]: v }))
-            }
-            isFailed={failedSets[hid]?.[setKey] ?? false}
-            onToggleFailed={() =>
-              setFailedSets((prev) => ({
-                ...prev,
-                [hid]: { ...prev[hid], [setKey]: !(prev[hid]?.[setKey]) },
-              }))
-            }
-          />
-        );
-      }
+      case "break":
+        return <BreakTimer key={`break-${holdIndex}-${setNumber}`} />;
       case "done":
         return (
           <div className="flex flex-col items-center gap-6 px-6 w-full max-w-sm">
@@ -231,20 +125,15 @@ export function WorkoutScreen() {
             )}
             {currentHoldDef && !currentHoldDef.isRestOnly && (() => {
               const hid = currentHoldDef.id;
-              const setKey = `set${setNumber}` as "set1" | "set2" | "set3";
+              const setKey = setKeyFor(setNumber);
               const isFailed = failedSets[hid]?.[setKey] ?? false;
-              const setNoteVal = setNotesLive[hid]?.[setKey] ?? "";
+              const setNoteVal = setNotes[hid]?.[setKey] ?? "";
               const holdNoteVal = holdNotes[hid] ?? "";
               const hasLastHoldNotes = setNoteVal !== "" || holdNoteVal !== "";
               return (
                 <>
                   <button
-                    onClick={() =>
-                      setFailedSets((prev) => ({
-                        ...prev,
-                        [hid]: { ...prev[hid], [setKey]: !(prev[hid]?.[setKey]) },
-                      }))
-                    }
+                    onClick={() => toggleFailed(hid, setNumber)}
                     className={`w-full py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                       isFailed
                         ? "bg-red-900/50 text-red-400 border border-red-700/50"
@@ -257,21 +146,14 @@ export function WorkoutScreen() {
                     <>
                       <textarea
                         value={setNoteVal}
-                        onChange={(e) =>
-                          setSetNotesLive((prev) => ({
-                            ...prev,
-                            [hid]: { ...prev[hid], [setKey]: e.target.value },
-                          }))
-                        }
+                        onChange={(e) => setSetNote(hid, setNumber, e.target.value)}
                         placeholder={`Set ${setNumber} note… (optional)`}
                         rows={1}
                         className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
                       />
                       <textarea
                         value={holdNoteVal}
-                        onChange={(e) =>
-                          setHoldNotes((prev) => ({ ...prev, [hid]: e.target.value }))
-                        }
+                        onChange={(e) => setHoldNote(hid, e.target.value)}
                         placeholder={`Notes on ${currentHoldDef.name} (optional)`}
                         rows={1}
                         className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm placeholder-gray-600 resize-none border border-gray-700 focus:outline-none focus:border-gray-500"
@@ -305,10 +187,7 @@ export function WorkoutScreen() {
               </button>
             )}
             <button
-              onClick={() => {
-                saveSession(false, sessionNotes);
-                advancePhase();
-              }}
+              onClick={() => finishWorkout({ bailed: false, notes: sessionNotes })}
               className="w-full min-h-[52px] rounded-xl font-semibold bg-accent-600 active:bg-accent-500 text-white text-lg"
             >
               Save
@@ -334,20 +213,18 @@ export function WorkoutScreen() {
   // A hold segment is "done" when past it, or when it's the current hold in its final break
   const isHoldDone = (i: number) => {
     if (i < holdIndex) return true;
-    if (i === holdIndex && phase === "break") {
-      const h = holds[i];
-      return setNumber >= (h?.numSets ?? 2);
-    }
+    if (i === holdIndex && phase === "break") return upcoming?.holdIndex !== i;
     return false;
   };
 
-  const nextHoldDef = holds[holdIndex + 1];
+  const upcoming = upcomingSet(sessionState, holds);
+  const nextHoldDef = upcoming && upcoming.holdIndex !== holdIndex ? holds[upcoming.holdIndex] : undefined;
   // The break that hands over to the main hangs already belongs to them, so the tint lifts there.
   const inWarmup =
     !!currentHoldDef &&
     isWarmup(currentHoldDef) &&
     phase !== "done" &&
-    !(phase === "break" && setNumber >= numSets && nextHoldDef && !isWarmup(nextHoldDef));
+    !(phase === "break" && nextHoldDef && !isWarmup(nextHoldDef));
   const tone = "transition-colors duration-700 motion-reduce:transition-none";
   const hudBtn =
     "h-11 flex items-center rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400";
@@ -390,7 +267,9 @@ export function WorkoutScreen() {
                 {paused ? "Resume" : "Pause"}
               </button>
             )}
-            {/* Red from the start, so the one way out of a running workout is never mistaken for Pause. */}
+            {/* Red from the start, so the one way out of a running workout is never mistaken for Pause.
+                Hidden once done: Save is the way out there, and End would discard it as bailed. */}
+            {phase !== "done" && (
             <button
               onClick={handleEndClick}
               className={`${hudBtn} min-w-[88px] justify-center px-4 ${
@@ -402,6 +281,7 @@ export function WorkoutScreen() {
             >
               {confirming ? "Confirm?" : "End"}
             </button>
+            )}
           </div>
         </div>
         <div className="flex gap-1">

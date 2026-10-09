@@ -1,4 +1,6 @@
 import type { HoldDefinition } from "../data/holds";
+import { repsFor } from "../data/holds";
+import { INITIAL_STATE, upcomingSet } from "./stateMachine";
 import type { SessionState, WorkoutPhase } from "./stateMachine";
 import { PREP_SECS, HANG_SECS, REST_SECS, BREAK_SECS } from "../data/workout";
 
@@ -7,26 +9,20 @@ function hangFor(h: HoldDefinition)  { return h.hangSecs  ?? HANG_SECS; }
 function restFor(h: HoldDefinition)  { return h.restSecs  ?? REST_SECS; }
 function breakFor(h: HoldDefinition) { return h.breakSecs ?? BREAK_SECS; }
 
-function repsFor(h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number): number {
-  return h.repsPerSet ?? (setNum === 1 ? set1Reps : set2Reps);
-}
-
 type PhaseStep = { phase: WorkoutPhase; repIndex: number; secs: number };
 
-// `omitTrailingBreak` drops the break that normally follows a set. Used for the
-// last set of the last hold, which the state machine sends straight to `done`
-// (rest-only holds keep their break — there the break IS the work).
-function setPhaseSequence(
-  h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number,
-  omitTrailingBreak = false,
-): PhaseStep[] {
+// The phases of one set, in the order the state machine walks them. `isFinalSet`
+// drops the break that normally follows: the state machine sends the last set
+// left straight to `done` (rest-only holds keep their break — there the break
+// IS the work).
+function setPhaseSequence(h: HoldDefinition, setNum: number, isFinalSet: boolean): PhaseStep[] {
   const out: PhaseStep[] = [];
   out.push({ phase: "prep", repIndex: 0, secs: prepFor(h) });
   if (h.isRestOnly) {
     out.push({ phase: "break", repIndex: 0, secs: breakFor(h) });
     return out;
   }
-  const reps = repsFor(h, setNum, set1Reps, set2Reps);
+  const reps = repsFor(h, setNum);
   for (let r = 0; r < reps; r++) {
     out.push({ phase: "hanging", repIndex: r, secs: hangFor(h) });
     if (r < reps - 1) {
@@ -34,35 +30,15 @@ function setPhaseSequence(
       if (h.prepBetweenReps) out.push({ phase: "prep", repIndex: r + 1, secs: prepFor(h) });
     }
   }
-  if (!omitTrailingBreak) out.push({ phase: "break", repIndex: Math.max(0, reps - 1), secs: breakFor(h) });
+  if (!isFinalSet) out.push({ phase: "break", repIndex: Math.max(0, reps - 1), secs: breakFor(h) });
   return out;
 }
 
-function setDurationSecs(
-  h: HoldDefinition, setNum: number, set1Reps: number, set2Reps: number,
-  omitTrailingBreak = false,
-): number {
-  return setPhaseSequence(h, setNum, set1Reps, set2Reps, omitTrailingBreak).reduce((acc, s) => acc + s.secs, 0);
+function sumSecs(steps: PhaseStep[]): number {
+  return steps.reduce((acc, s) => acc + s.secs, 0);
 }
 
-export function totalWorkoutSecs(
-  holds: readonly HoldDefinition[],
-  set1Reps: number,
-  set2Reps: number,
-): number {
-  let total = 0;
-  for (let i = 0; i < holds.length; i++) {
-    const h = holds[i];
-    const numSets = h.numSets ?? 2;
-    const isLastHold = i === holds.length - 1;
-    for (let s = 1; s <= numSets; s++) {
-      const omitBreak = isLastHold && s === numSets;
-      total += setDurationSecs(h, s, set1Reps, set2Reps, omitBreak);
-    }
-  }
-  return total;
-}
-
+/** Full length of the current phase, in seconds (0 for idle/done). */
 export function currentPhaseFullSecs(state: SessionState, holds: readonly HoldDefinition[]): number {
   const h = holds[state.holdIndex];
   if (!h) return 0;
@@ -85,52 +61,39 @@ function findPhaseIndex(seq: PhaseStep[], phase: WorkoutPhase, repIndex: number)
   return fallback;
 }
 
-function remainingInCurrentSet(
-  state: SessionState, h: HoldDefinition, set1Reps: number, set2Reps: number,
-  omitTrailingBreak: boolean,
-): number {
-  const seq = setPhaseSequence(h, state.setNumber, set1Reps, set2Reps, omitTrailingBreak);
-  const idx = findPhaseIndex(seq, state.phase, state.repIndex);
-  if (idx < 0) return 0;
-  let rem = 0;
-  for (let i = idx + 1; i < seq.length; i++) rem += seq[i].secs;
-  return rem;
-}
-
+/**
+ * Seconds left in the workout: what's left of the current phase, the rest of
+ * the current set, then every set still to come (skipped sets excluded).
+ */
 export function remainingWorkoutSecs(
   state: SessionState,
   holds: readonly HoldDefinition[],
-  set1Reps: number,
-  set2Reps: number,
   currentPhaseRemaining: number,
 ): number {
   if (state.phase === "idle" || state.phase === "done") return 0;
-  let rem = Math.max(0, currentPhaseRemaining);
-
   const h = holds[state.holdIndex];
-  if (!h) return rem;
+  if (!h) return Math.max(0, currentPhaseRemaining);
 
-  const numSets = h.numSets ?? 2;
-  const isLastHold = state.holdIndex === holds.length - 1;
+  let rem = Math.max(0, currentPhaseRemaining);
+  let next = upcomingSet(state, holds);
+  const seq = setPhaseSequence(h, state.setNumber, next === null);
+  const idx = findPhaseIndex(seq, state.phase, state.repIndex);
+  if (idx >= 0) rem += sumSecs(seq.slice(idx + 1));
 
-  rem += remainingInCurrentSet(
-    state, h, set1Reps, set2Reps,
-    isLastHold && state.setNumber === numSets,
-  );
-
-  for (let s = state.setNumber + 1; s <= numSets; s++) {
-    rem += setDurationSecs(h, s, set1Reps, set2Reps, isLastHold && s === numSets);
-  }
-
-  for (let i = state.holdIndex + 1; i < holds.length; i++) {
-    const hh = holds[i];
-    const ns = hh.numSets ?? 2;
-    const isLastH = i === holds.length - 1;
-    for (let s = 1; s <= ns; s++) {
-      rem += setDurationSecs(hh, s, set1Reps, set2Reps, isLastH && s === ns);
-    }
+  let cursor: SessionState = state;
+  while (next) {
+    cursor = { ...cursor, ...next };
+    const after = upcomingSet(cursor, holds);
+    rem += sumSecs(setPhaseSequence(holds[next.holdIndex], next.setNumber, after === null));
+    next = after;
   }
   return rem;
+}
+
+export function totalWorkoutSecs(holds: readonly HoldDefinition[]): number {
+  if (holds.length === 0) return 0;
+  const start = { ...INITIAL_STATE, skipped: [] };
+  return remainingWorkoutSecs(start, holds, currentPhaseFullSecs(start, holds));
 }
 
 // Wall-clock time the workout is due to finish, e.g. "5:42 PM". `nowMs` plus

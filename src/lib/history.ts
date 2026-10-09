@@ -1,5 +1,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 import type { HoldDefinition } from "../data/holds";
+import { numSetsOf, repsFor } from "../data/holds";
+import { setKey } from "./stateMachine";
 import type { LiftEntry } from "./lifts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -190,8 +192,8 @@ type BuildArgs = {
   startedAt: number;
   completedAt: number;
   bailed: boolean;
-  holdIndex: number;
-  setNumber: number;
+  /** `setKey(holdIndex, setNumber)` for every set actually finished (from the state machine). */
+  completedSets: readonly string[];
   holds: readonly HoldDefinition[];
   effectiveWeight: (holdId: string, setNum: number) => number;
   /** Persisted target weight for next session; when provided, captured per hold as `next`. */
@@ -207,8 +209,7 @@ export function buildSessionRecord({
   startedAt,
   completedAt,
   bailed,
-  holdIndex,
-  setNumber,
+  completedSets,
   holds,
   effectiveWeight,
   nextWeight,
@@ -218,40 +219,15 @@ export function buildSessionRecord({
   failedSets,
 }: BuildArgs): SessionRecord {
   const holdRecords: SessionHoldRecord[] = holds.map((hold, i) => {
-    const numSets = hold.numSets ?? 2;
-    const reps1 = hold.repsPerSet ?? hold.set1Reps;
-    const reps2 = hold.repsPerSet ?? hold.set2Reps;
-
-    let set1Completed: boolean;
-    let set2Completed: boolean;
-    let set3Completed: boolean;
-
-    if (!bailed) {
-      set1Completed = true;
-      set2Completed = true;
-      set3Completed = true;
-    } else if (i < holdIndex) {
-      set1Completed = true;
-      set2Completed = true;
-      set3Completed = true;
-    } else if (i === holdIndex) {
-      set1Completed = setNumber >= 2;
-      set2Completed = setNumber >= 3;
-      set3Completed = false;
-    } else {
-      set1Completed = false;
-      set2Completed = false;
-      set3Completed = false;
-    }
-
-    if (failedSets?.[hold.id]?.set1) set1Completed = false;
-    if (failedSets?.[hold.id]?.set2) set2Completed = false;
-    if (failedSets?.[hold.id]?.set3) set3Completed = false;
+    const numSets = numSetsOf(hold);
+    // Skipped and unreached sets were never done; a set marked failed wasn't either.
+    const done = (n: 1 | 2 | 3) =>
+      completedSets.includes(setKey(i, n)) && !failedSets?.[hold.id]?.[`set${n}`];
 
     const set1: SessionSetRecord = {
       weight: effectiveWeight(hold.id, 1),
-      reps: reps1,
-      completed: set1Completed,
+      reps: repsFor(hold, 1),
+      completed: done(1),
       ...(setNotes?.[hold.id]?.set1 ? { notes: setNotes[hold.id].set1 } : {}),
     };
 
@@ -259,8 +235,8 @@ export function buildSessionRecord({
       numSets >= 2
         ? {
             weight: effectiveWeight(hold.id, 2),
-            reps: reps2,
-            completed: set2Completed,
+            reps: repsFor(hold, 2),
+            completed: done(2),
             ...(setNotes?.[hold.id]?.set2 ? { notes: setNotes[hold.id].set2 } : {}),
           }
         : null;
@@ -269,8 +245,8 @@ export function buildSessionRecord({
       numSets >= 3
         ? {
             weight: effectiveWeight(hold.id, 3),
-            reps: reps2,
-            completed: set3Completed,
+            reps: repsFor(hold, 3),
+            completed: done(3),
             ...(setNotes?.[hold.id]?.set3 ? { notes: setNotes[hold.id].set3 } : {}),
           }
         : null;

@@ -5,7 +5,7 @@ import { isWarmup } from "../data/holds";
 import type { HoldDefinition } from "../data/holds";
 import { SectionLabel } from "./WarmupBadge";
 import { formatWeight, formatOffset } from "../lib/format";
-import { HANG_SECS, REST_SECS, BREAK_SECS, SET1_REPS, SET2_REPS } from "../data/workout";
+import { HANG_SECS, REST_SECS, BREAK_SECS } from "../data/workout";
 import { initAudio } from "../lib/audio";
 import { WeightAdjuster } from "./WeightAdjuster";
 import { getSessions } from "../lib/history";
@@ -101,11 +101,11 @@ export function HangboardSetup() {
   // A lone warm-up hold's timing goes on the section line instead of repeating under the hold.
   // Nothing in the warm-up is adjustable, so a long one folds away and leaves room for the main hangs.
   const warmupFolds = warmupHolds.length > 1;
-  const warmupMins = Math.round(totalWorkoutSecs(warmupHolds, SET1_REPS, SET2_REPS) / 60);
-  const totalMins = Math.round(totalWorkoutSecs(holds, SET1_REPS, SET2_REPS) / 60);
+  const warmupMins = Math.round(totalWorkoutSecs(warmupHolds) / 60);
+  const totalMins = Math.round(totalWorkoutSecs(holds) / 60);
   const mainDetail =
     selectedWorkout === "repeaters"
-      ? `${SET1_REPS}/${SET2_REPS} reps · ${fmtSecs(HANG_SECS)} hang · ${fmtSecs(REST_SECS)} rest · ${fmtSecs(BREAK_SECS)} break`
+      ? `${mainHolds[0]?.set1Reps}/${mainHolds[0]?.set2Reps} reps · ${fmtSecs(HANG_SECS)} hang · ${fmtSecs(REST_SECS)} rest · ${fmtSecs(BREAK_SECS)} break`
       : mainInc ? `+${mainInc} lb per set` : undefined;
   const storedMap = selectedWorkout === "max-hang" ? weightsB : weights;
 

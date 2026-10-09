@@ -36,3 +36,4 @@ hangs.json
 *.jpg
 *.png
 screenshots/
+.claude/worktrees/

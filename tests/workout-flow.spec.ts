@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Uses the hidden "Test" workout (/?test): prepSecs=3, hangSecs=2, restSecs=1, breakSecs=5, repsPerSet=2
+// Uses the hidden "Test" workout (/?test): prepSecs=3, hangSecs=2, restSecs=2, breakSecs=5, repsPerSet=2
 
 test.describe("Workout Flow", () => {
   test.beforeEach(async ({ page }) => {

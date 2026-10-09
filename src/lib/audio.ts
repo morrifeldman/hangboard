@@ -1,5 +1,3 @@
-const TEST_MODE = import.meta.env.VITE_TEST_MODE === "true";
-
 let ctx: AudioContext | null = null;
 
 function getContext(): AudioContext {
@@ -9,10 +7,19 @@ function getContext(): AudioContext {
   return ctx;
 }
 
+// Never rejects: a cue that can't play (context blocked, interrupted on iOS)
+// must not surface as an unhandled rejection from a timer callback.
 async function beep(freq: number, durationMs: number): Promise<void> {
-  if (TEST_MODE) return;
+  try {
+    await playTone(freq, durationMs);
+  } catch {
+    // Audio unavailable — the visual timer still runs.
+  }
+}
+
+async function playTone(freq: number, durationMs: number): Promise<void> {
   const context = getContext();
-  if (context.state === "suspended") {
+  if (context.state !== "running") {
     await context.resume();
   }
   const osc = context.createOscillator();
@@ -33,8 +40,8 @@ async function beep(freq: number, durationMs: number): Promise<void> {
 
 // Call once inside a user-gesture handler to unlock the AudioContext on Android
 export function initAudio(): void {
-  if (TEST_MODE) return;
-  getContext();
+  // resume() inside the gesture is what actually unlocks playback on mobile.
+  getContext().resume().catch(() => {});
 }
 
 export const Audio = {

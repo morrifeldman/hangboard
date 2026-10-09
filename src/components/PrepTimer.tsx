@@ -1,10 +1,6 @@
 import { HoldName } from "./HoldName";
-import { useEffect } from "react";
 import { useWorkoutStore } from "../store/useWorkoutStore";
-import { PREP_SECS } from "../data/workout";
-
-import { useTimer } from "../hooks/useTimer";
-import { useAudio } from "../hooks/useAudio";
+import { usePhaseRemaining } from "../hooks/usePhaseClock";
 import { TimerRing } from "./TimerRing";
 import { formatWeight } from "../lib/format";
 import { isWarmup } from "../data/holds";
@@ -12,33 +8,17 @@ import { WarmupBadge } from "./WarmupBadge";
 
 export function PrepTimer() {
   const setNumber = useWorkoutStore((s) => s.setNumber);
-  const advancePhase = useWorkoutStore((s) => s.advancePhase);
   const effectiveWeight = useWorkoutStore((s) => s.effectiveWeight);
   const paused = useWorkoutStore((s) => s.paused);
   const currentHold = useWorkoutStore((s) => s.currentHold);
-
+  const prepDuration = useWorkoutStore((s) => s.phaseDuration);
   const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
+  const remaining = usePhaseRemaining();
 
   const hold = currentHold();
   const warmup = isWarmup(hold);
   const weight = effectiveWeight(hold.id, setNumber);
-  const audio = useAudio();
-  const prepDuration = hold.prepSecs ?? PREP_SECS;
-
-  useEffect(() => { audio.prepStart(); }, []);
-
-
-  const { remaining } = useTimer({
-    duration: prepDuration,
-    running: !paused,
-    onTick: (r) => {
-      if (r <= 3.05 && r > 0.05 && Math.ceil(r) !== Math.ceil(r + 0.1)) {
-        audio.countdownTick();
-      }
-    },
-    onExpire: advancePhase,
-  });
 
   return (
     <div className="flex flex-col items-center gap-3">
