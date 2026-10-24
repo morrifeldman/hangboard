@@ -3,13 +3,13 @@ import { WeightAdjuster } from "./WeightAdjuster";
 import { WeightCell } from "./WeightCell";
 import { useOpenCell } from "../hooks/useOpenCell";
 import { NextArrow } from "./NextArrow";
+import { stepWeight } from "../lib/format";
 import { liftNextDirection } from "../lib/weightCues";
 import {
   LIFT_WEIGHT_STEP,
   findLiftByName,
   formatScheme,
   parseScheme,
-  roundToPlate,
   schemeToFields,
 } from "../lib/lifts";
 import type { LiftDefinition, SchemeFields } from "../lib/lifts";
@@ -111,8 +111,20 @@ export function LiftsForm({ rows, onChange, library, editing }: Props) {
               </button>
             </div>
 
-            {(known || editing) && parsed ? (
-              <p className="px-3.5 pb-2 text-sm text-gray-400 font-num">{formatScheme(parsed)}</p>
+            {(known || editing) && parsed && !row.editingScheme ? (
+              <div className="pl-3.5 pr-1 pb-1 flex items-center gap-2">
+                <p className="flex-1 min-w-0 text-sm text-gray-400 font-num">{formatScheme(parsed)}</p>
+                {/* A past session's scheme is what was planned back then, so only a new one edits the lift. */}
+                {!editing && (
+                  <button
+                    type="button"
+                    onClick={() => update(i, (r) => ({ ...r, editingScheme: true }))}
+                    className="shrink-0 text-xs font-semibold text-accent-400 hover:text-accent-300 px-2 h-8"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="px-2.5 pb-2 grid grid-cols-5 gap-1">
                 <label className="flex flex-col gap-0.5 min-w-0">
@@ -148,6 +160,19 @@ export function LiftsForm({ rows, onChange, library, editing }: Props) {
                     </div>
                   );
                 })}
+                {row.editingScheme && known && (
+                  <div className="col-span-5 flex items-center justify-between gap-2 pt-1">
+                    <span className="text-xs text-gray-500">Saving updates {known.name} for next time</span>
+                    <button
+                      type="button"
+                      onClick={() => update(i, (r) => ({ ...r, editingScheme: false }))}
+                      disabled={!parsed}
+                      className="shrink-0 text-xs font-semibold text-accent-400 hover:text-accent-300 disabled:text-gray-500 px-2 h-8"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -209,7 +234,7 @@ export function LiftsForm({ rows, onChange, library, editing }: Props) {
                   value={row.nextBase}
                   step={LIFT_WEIGHT_STEP}
                   formatValue={(n) => `${n}`}
-                  onDelta={(d) => update(i, (r) => ({ ...r, nextBase: Math.max(0, roundToPlate(r.nextBase + d)) }))}
+                  onDelta={(d) => update(i, (r) => ({ ...r, nextBase: Math.max(0, stepWeight(r.nextBase, d)) }))}
                 />
               </div>
             )}

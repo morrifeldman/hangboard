@@ -103,7 +103,6 @@ interface WorkoutStore {
   addLift: (lift: LiftDefinition) => void;
   updateLift: (id: string, patch: Partial<Omit<LiftDefinition, "id">>) => void;
   deleteLift: (id: string) => void;
-  setLiftBase: (id: string, baseWeight: number) => void;
 }
 
 function defaultWeightsA(): StoredWeights {
@@ -362,10 +361,6 @@ export const useWorkoutStore = create<WorkoutStore>()(
 
       deleteLift: (id) => {
         set({ lifts: get().lifts.filter((l) => l.id !== id) });
-      },
-
-      setLiftBase: (id, baseWeight) => {
-        get().updateLift(id, { baseWeight });
       },
     }),
     {

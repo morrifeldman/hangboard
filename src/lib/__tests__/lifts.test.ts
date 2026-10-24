@@ -25,9 +25,14 @@ describe("generateSets", () => {
     ]);
   });
 
-  it("rounds weights to the nearest 2.5 lb", () => {
+  it("rounds each step to the nearest 2.5 lb but keeps the base as entered", () => {
     const sets = generateSets({ ...straight, baseWeight: 101, weightDiff: 1.3 });
-    expect(sets.map((s) => s.weight)).toEqual([100, 102.5, 102.5]);
+    expect(sets.map((s) => s.weight)).toEqual([101, 103.5, 103.5]);
+  });
+
+  it("steps from a base that isn't a multiple of 2.5", () => {
+    const sets = generateSets({ ...straight, baseWeight: 42, weightDiff: 5 });
+    expect(sets.map((s) => s.weight)).toEqual([42, 47, 52]);
   });
 
   it("never drops reps below 1", () => {

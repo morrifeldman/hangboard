@@ -63,7 +63,7 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
   const setGymDefaults = useWorkoutStore((s) => s.setGymDefaults);
   const liftLibrary = useWorkoutStore((s) => s.lifts);
   const addLift = useWorkoutStore((s) => s.addLift);
-  const setLiftBase = useWorkoutStore((s) => s.setLiftBase);
+  const updateLift = useWorkoutStore((s) => s.updateLift);
 
   const initialWorkoutType: GymWorkoutType = initialRecord?.gymData?.type ?? "arc";
 
@@ -287,7 +287,8 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
       // roll a lift's base back to whatever was planned back then.
       if (committed) {
         committed.created.forEach(addLift);
-        committed.entries.forEach((e) => setLiftBase(e.liftId, e.nextBase));
+        // The session's scheme becomes the lift's, so a change made here sticks.
+        committed.entries.forEach((e) => updateLift(e.liftId, { ...e.scheme, baseWeight: e.nextBase }));
       }
     }
     // Freeform shape doesn't fit the flat Record<string,string> defaults store;

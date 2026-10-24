@@ -12,6 +12,8 @@ export type LiftRow = {
   scheme: SchemeFields;
   sets: LiftSet[];
   nextBase: number;
+  /** A library lift's scheme opened for changing; saving writes it back to the library. */
+  editingScheme?: boolean;
 };
 
 const NEW_SCHEME: SchemeFields = { baseWeight: "", sets: "3", reps: "5", repDiff: "0", weightDiff: "0" };

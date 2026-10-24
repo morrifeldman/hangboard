@@ -1,4 +1,4 @@
-import { WEIGHT_STEP } from "./format";
+import { WEIGHT_STEP, stepWeight } from "./format";
 import type { SessionRecord } from "./history";
 import type { TrendPoint } from "./progressData";
 
@@ -37,9 +37,13 @@ export function roundToPlate(weight: number): number {
   return Math.round(weight / LIFT_WEIGHT_STEP) * LIFT_WEIGHT_STEP;
 }
 
+/**
+ * Set n's weight is the base plus n steps, each step rounded to whole plates.
+ * The base itself isn't rounded: a 42 lb bar stays 42, then 47, 52, …
+ */
 export function generateSets(scheme: LiftScheme): LiftSet[] {
   return Array.from({ length: Math.max(0, Math.floor(scheme.sets)) }, (_, i) => ({
-    weight: Math.max(0, roundToPlate(scheme.baseWeight + i * scheme.weightDiff)),
+    weight: Math.max(0, stepWeight(scheme.baseWeight, roundToPlate(i * scheme.weightDiff))),
     reps: Math.max(1, Math.round(scheme.reps + i * scheme.repDiff)),
     done: false,
   }));
