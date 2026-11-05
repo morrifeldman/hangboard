@@ -94,6 +94,11 @@ export function typeMatches(
     kinds.some((k) => workouts.has(k));
   const anyBoulder = climbs.some((c) => c.type === "boulder");
   const anySport = climbs.some((c) => c.type === "sport");
+  // Unstructured climbing counts by discipline: bouldering → power, rope → endurance.
+  const climbingIn = (...disciplines: string[]) =>
+    sessions.some(
+      (s) => s.gymData?.type === "climbing" && disciplines.includes(s.gymData.discipline),
+    );
 
   switch (type) {
     case "hangboard":
@@ -102,10 +107,11 @@ export function typeMatches(
       // wbl is a warm-up boulder ladder, not a power session — excluded here.
       return (
         has("max-hang", "performance", "hard-bouldering", "limit-bouldering", "campus") ||
-        anyBoulder
+        anyBoulder ||
+        climbingIn("Boulder", "Mixed")
       );
     case "endurance":
-      return has("repeaters", "arc", "cir", "pe-route", "lbc") || anySport;
+      return has("repeaters", "arc", "cir", "pe-route", "lbc") || anySport || climbingIn("Rope", "Mixed");
     case "outdoor":
       return climbs.some((c) => c.setting === "outdoor");
     case "stretching":

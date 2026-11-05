@@ -118,6 +118,20 @@ describe("typeMatches (generous)", () => {
     expect(typeMatches("endurance", [makeSessionOn(day, "max-hang")], [])).toBe(false);
   });
 
+  it("unstructured climbing counts toward power or endurance by discipline", () => {
+    const climbing = (discipline: string): SessionRecord => ({
+      ...makeSessionOn(day, "climbing"),
+      gymData: { type: "climbing", discipline, durationMin: 60 },
+    });
+    expect(typeMatches("power", [climbing("Boulder")], [])).toBe(true);
+    expect(typeMatches("endurance", [climbing("Boulder")], [])).toBe(false);
+    expect(typeMatches("endurance", [climbing("Rope")], [])).toBe(true);
+    expect(typeMatches("power", [climbing("Rope")], [])).toBe(false);
+    expect(typeMatches("power", [climbing("Mixed")], [])).toBe(true);
+    expect(typeMatches("endurance", [climbing("Mixed")], [])).toBe(true);
+    expect(typeMatches("rest", [climbing("Boulder")], [])).toBe(false);
+  });
+
   it("outdoor matches any outdoor climb", () => {
     expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "outdoor" })])).toBe(true);
     expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "indoor" })])).toBe(false);

@@ -9,7 +9,7 @@ import type { LiftEntry } from "./lifts";
 export const GYM_WORKOUT_TYPES = [
   "arc", "cir", "pe-route", "lbc", "wbl",
   "performance", "hard-bouldering", "limit-bouldering", "campus", "injury",
-  "cardio", "stretching", "freeform", "lifts",
+  "cardio", "stretching", "freeform", "lifts", "climbing",
 ] as const;
 
 export type GymWorkoutType = (typeof GYM_WORKOUT_TYPES)[number];
@@ -34,7 +34,8 @@ export type GymData =
   | { type: "cardio";           mode: string; durationMin: number; intensity?: string }
   | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number }
   | { type: "freeform";         title: string; sections: FreeformSection[] }
-  | { type: "lifts";            lifts: LiftEntry[] };
+  | { type: "lifts";            lifts: LiftEntry[] }
+  | { type: "climbing";         discipline: string; durationMin: number; intensity?: string; maxGrade?: string };
 
 export type SessionSetRecord = {
   weight: number;

@@ -134,6 +134,18 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     fieldDefs: [], // custom lift editor, like freeform
   },
   {
+    id: "climbing",
+    label: "Climbing",
+    description: "Unstructured climbing — just climb, no set protocol",
+    category: "other",
+    fieldDefs: [
+      { key: "discipline",  label: "Discipline", type: "select", options: ["Boulder", "Rope", "Mixed"] },
+      { key: "durationMin", label: "Duration",   type: "number", unit: "min", step: 5 },
+      { key: "intensity",   label: "Intensity",  type: "select", options: ["Easy", "Moderate", "Hard"], optional: true },
+      { key: "maxGrade",    label: "Max grade",  type: "text", optional: true },
+    ],
+  },
+  {
     id: "cardio",
     label: "Cardio",
     description: "Bike, run, or elliptical — zone 2 / aerobic conditioning",

@@ -25,6 +25,9 @@ describe("sessionSummary", () => {
       .toBe("3 × 30s · Calves");
     expect(text({ type: "cardio", mode: "Bike", durationMin: 45, intensity: "Easy" }))
       .toBe("Bike · 45 min · Easy");
+    expect(text({ type: "climbing", discipline: "Boulder", durationMin: 90, intensity: "Hard", maxGrade: "V5" }))
+      .toBe("Boulder · 90 min · Hard · Max V5");
+    expect(text({ type: "climbing", discipline: "Rope", durationMin: 60 })).toBe("Rope · 60 min");
     expect(text({ type: "campus", sets: [{ rung: "a", name: "b", sequence: "c" }] })).toBe("1 set");
   });
 

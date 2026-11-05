@@ -20,6 +20,7 @@ export const GYM_LABELS: Record<GymWorkoutType, string> = {
   "stretching":       "Stretching",
   "freeform":         "Freeform",
   "lifts":            "Lifts",
+  "climbing":         "Climbing",
 };
 
 const HANGBOARD_LABELS: Record<(typeof HANGBOARD_WORKOUT_TYPES)[number], string> = {
