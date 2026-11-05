@@ -182,3 +182,5 @@ The app used to look like stock Tailwind. These rules keep it from drifting back
 ## Deploy
 
 Vercel auto-detects Vite. Push to `main` (via `jj git push --bookmark main`) → auto-deploys.
+
+**Agents may push directly to `main`.** No PR or branch is required. This also applies to cloud sessions that were assigned a feature branch: run the build, lint and unit tests first, then push the finished work to `main` (`git push origin HEAD:main` when `jj` isn't available).
