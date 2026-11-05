@@ -11,6 +11,8 @@ export type FieldDef = {
   options?: string[];
   /** Stepper increment for `number` fields (default 1). Time/duration fields use 5. */
   step?: number;
+  /** Only show (and save) this field while another field holds one of these values. */
+  showIf?: { key: string; values: string[] };
 };
 
 export type GymCategory = "endurance" | "power" | "other";
@@ -142,7 +144,10 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
       { key: "discipline",  label: "Discipline", type: "select", options: ["Boulder", "Rope", "Mixed"] },
       { key: "durationMin", label: "Duration",   type: "number", unit: "min", step: 5 },
       { key: "intensity",   label: "Intensity",  type: "select", options: ["Easy", "Moderate", "Hard"], optional: true },
-      { key: "maxGrade",    label: "Max grade",  type: "text", optional: true },
+      { key: "maxBoulder",  label: "Max boulder", type: "grade-v",   optional: true,
+        showIf: { key: "discipline", values: ["Boulder", "Mixed"] } },
+      { key: "maxRoute",    label: "Max route",   type: "grade-yds", optional: true,
+        showIf: { key: "discipline", values: ["Rope", "Mixed"] } },
     ],
   },
   {

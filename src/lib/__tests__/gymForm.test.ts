@@ -197,3 +197,26 @@ describe("durations", () => {
     expect(parseDurationInput("a:10")).toBeNull();
   });
 });
+
+describe("climbing grade fields follow the discipline", () => {
+  const def = GYM_WORKOUTS.find((w) => w.id === "climbing")!;
+  const base = { durationMin: "60", maxBoulder: "V5", maxRoute: "5.11a" };
+
+  it("keeps only the boulder grade for Boulder", () => {
+    expect(buildGymData(def, { ...base, discipline: "Boulder" })).toEqual({
+      type: "climbing", discipline: "Boulder", durationMin: 60, maxBoulder: "V5",
+    });
+  });
+
+  it("keeps only the route grade for Rope", () => {
+    expect(buildGymData(def, { ...base, discipline: "Rope" })).toEqual({
+      type: "climbing", discipline: "Rope", durationMin: 60, maxRoute: "5.11a",
+    });
+  });
+
+  it("keeps both for Mixed", () => {
+    expect(buildGymData(def, { ...base, discipline: "Mixed" })).toEqual({
+      type: "climbing", discipline: "Mixed", durationMin: 60, maxBoulder: "V5", maxRoute: "5.11a",
+    });
+  });
+});

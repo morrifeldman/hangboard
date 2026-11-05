@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { GymWorkoutDef } from "../../data/gymWorkouts";
 import { V_GRADES, YDS_GRADES } from "../../lib/gradeUtils";
+import { isFieldVisible } from "../../lib/gymForm";
 import { PILL_ON_CLS, STEP_BTN_CLS, STEP_VALUE_CLS } from "./styles";
 
 type Props = {
@@ -51,7 +52,7 @@ export function FieldsForm({ def, fields, onChange }: Props) {
       {/* shrink-0 above is load-bearing: overflow-hidden zeroes the card's min
           flex size, so without it the card compresses (clipping its last rows)
           instead of the page scrolling */}
-      {def.fieldDefs.map((fd) => {
+      {def.fieldDefs.filter((fd) => isFieldVisible(fd, fields)).map((fd) => {
         const isGrade = fd.type === "grade-v" || fd.type === "grade-yds";
         const grades = fd.type === "grade-v" ? V_GRADES : YDS_GRADES;
         const value = fields[fd.key] ?? "";

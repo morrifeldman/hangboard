@@ -35,7 +35,7 @@ export type GymData =
   | { type: "stretching";       stretches?: string[]; reps?: number; holdSec?: number }
   | { type: "freeform";         title: string; sections: FreeformSection[] }
   | { type: "lifts";            lifts: LiftEntry[] }
-  | { type: "climbing";         discipline: string; durationMin: number; intensity?: string; maxGrade?: string };
+  | { type: "climbing";         discipline: string; durationMin: number; intensity?: string; maxBoulder?: string; maxRoute?: string };
 
 export type SessionSetRecord = {
   weight: number;

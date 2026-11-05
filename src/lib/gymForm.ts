@@ -1,6 +1,6 @@
 import type { SessionRecord, GymData, FreeformSection, CampusSet } from "./history";
 import { CAMPUS_TEMPLATE, CAMPUS_SEQUENCES } from "../data/gymWorkouts";
-import type { GymWorkoutDef } from "../data/gymWorkouts";
+import type { FieldDef, GymWorkoutDef } from "../data/gymWorkouts";
 
 // Pure helpers behind the gym log form. No React, no DOM: unit-tested in
 // __tests__/gymForm.test.ts.
@@ -18,10 +18,16 @@ export function gymDataToFields(gymData: GymData): Record<string, string> {
   return fields;
 }
 
+/** Whether a field applies given the form's current values (see `FieldDef.showIf`). */
+export function isFieldVisible(fd: FieldDef, fields: Record<string, string>): boolean {
+  return !fd.showIf || fd.showIf.values.includes(fields[fd.showIf.key]?.trim() ?? "");
+}
+
 // Build a GymData from a workout def + field string values; returns null if required fields missing
 export function buildGymData(def: GymWorkoutDef, fields: Record<string, string>): GymData | null {
   const values: Record<string, string | number | string[]> = { type: def.id };
   for (const fd of def.fieldDefs) {
+    if (!isFieldVisible(fd, fields)) continue; // hidden fields are never saved
     const raw = fields[fd.key]?.trim() ?? "";
     if (!raw && !fd.optional) return null; // required field missing
     if (!raw) continue; // optional and empty — omit

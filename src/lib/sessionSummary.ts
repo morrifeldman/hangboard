@@ -83,7 +83,8 @@ export function gymSummaryParts(data: GymData): SummaryPart[] {
     case "climbing": {
       const parts: SummaryPart[] = [[t(data.discipline)], [f(data.durationMin), t(" min")]];
       if (data.intensity) parts.push([t(data.intensity)]);
-      if (data.maxGrade) parts.push([t("Max "), f(data.maxGrade)]);
+      const max = [data.maxBoulder, data.maxRoute].filter((g): g is string => !!g);
+      if (max.length) parts.push([t("Max "), f(max.join(" / "))]);
       return parts;
     }
     case "lifts":
