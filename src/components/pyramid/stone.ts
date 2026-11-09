@@ -14,6 +14,7 @@ export const STYLE_LEGEND = [
   { style: "onsight", label: "Onsight", color: getStyleColor("onsight") },
   { style: "flash", label: "Flash", color: getStyleColor("flash") },
   { style: "redpoint", label: "Redpoint", color: getStyleColor("redpoint") },
+  { style: "toprope", label: "Top rope", color: getStyleColor("toprope") },
 ] as const;
 
 // A soft glow in the tile's own colour marks a personal-record send.
@@ -21,6 +22,7 @@ const GLOW_RGB: Record<ClimbStyle, string> = {
   onsight: "34,197,94", // green-500
   flash: "234,179,8", // yellow-500
   redpoint: "239,68,68", // red-500
+  toprope: "168,85,247", // purple-500
   attempt: "156,163,175", // gray-400
 };
 

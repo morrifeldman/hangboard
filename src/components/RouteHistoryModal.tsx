@@ -1,9 +1,9 @@
 import type { ClimbRecord } from "../lib/climbs";
 import { shortLocation } from "../lib/format";
-import { styleBadgeClass } from "../lib/climbUtils";
+import { climbStyleLabel, styleBadgeClass } from "../lib/climbUtils";
 import { formatDateKey } from "../lib/dates";
 
-const STYLE_RANK: Record<string, number> = { onsight: 3, flash: 2, redpoint: 1, attempt: 0 };
+const STYLE_RANK: Record<string, number> = { onsight: 4, flash: 3, redpoint: 2, toprope: 1, attempt: 0 };
 
 function routeSummary(sessions: ClimbRecord[]): { label: string; style: string } {
   const best = sessions.reduce((a, b) =>
@@ -24,6 +24,8 @@ function routeSummary(sessions: ClimbRecord[]): { label: string; style: string }
       : `Redpoint after ${totalAttempts} attempt${totalAttempts !== 1 ? "s" : ""}`;
     return { label, style: "redpoint" };
   }
+
+  if (best.style === "toprope") return { label: "Top rope", style: "toprope" };
 
   const totalAttempts = sessions.reduce((sum, c) => sum + c.climbs, 0);
   const label = `${totalAttempts} attempt${totalAttempts !== 1 ? "s" : ""}, no send`;
@@ -83,11 +85,7 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
             {sessions.length} session{sessions.length !== 1 ? "s" : ""}
           </h3>
           {sessions.map((c) => {
-            const falls = c.style === "redpoint" ? c.climbs - 1 : 0;
-            const styleLabel =
-              c.style === "attempt"   ? (c.climbs > 1 ? `${c.climbs} attempts` : "attempt") :
-              c.style === "redpoint"  ? (falls > 0 ? `${falls} attempt${falls !== 1 ? "s" : ""} · send` : "redpoint") :
-              c.style;
+            const styleLabel = climbStyleLabel(c);
             return (
               <div key={c.id} className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-2">

@@ -9,7 +9,8 @@ export const BOULDER_GRADES = [
   "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V15",
 ] as const;
 
-export type ClimbStyle = "onsight" | "flash" | "redpoint" | "attempt";
+/** `toprope` is a clean ascent that wasn't led: top rope or following. */
+export type ClimbStyle = "onsight" | "flash" | "redpoint" | "toprope" | "attempt";
 export type ClimbType = "sport" | "boulder";
 export type ClimbSetting = "outdoor" | "indoor";
 
@@ -26,5 +27,6 @@ export const STYLE_PRIORITY: Record<ClimbStyle, number> = {
   onsight: 1,
   flash: 2,
   redpoint: 3,
-  attempt: 4,
+  toprope: 4,
+  attempt: 5,
 };

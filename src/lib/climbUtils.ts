@@ -9,6 +9,7 @@ const STYLE_SOLID: Record<ClimbStyle, string> = {
   onsight: "bg-green-500",
   flash: "bg-yellow-500",
   redpoint: "bg-red-500",
+  toprope: "bg-purple-500",
   attempt: "bg-gray-400",
 };
 
@@ -16,6 +17,7 @@ const STYLE_BADGE: Record<ClimbStyle, string> = {
   onsight: "bg-green-500/20 text-green-400",
   flash: "bg-yellow-500/20 text-yellow-400",
   redpoint: "bg-red-500/20 text-red-400",
+  toprope: "bg-purple-500/20 text-purple-300",
   attempt: "bg-gray-700 text-gray-400",
 };
 
@@ -27,6 +29,17 @@ export function getStyleColor(style: ClimbStyle): string {
 /** Tinted text badge for a style (lists and detail sheets). */
 export function styleBadgeClass(style: string): string {
   return STYLE_BADGE[style as ClimbStyle] ?? STYLE_BADGE.attempt;
+}
+
+/** Short per-session label: "onsight", "2 attempts · send", "top rope", … */
+export function climbStyleLabel(c: Pick<ClimbRecord, "style" | "climbs">): string {
+  if (c.style === "attempt") return c.climbs > 1 ? `${c.climbs} attempts` : "attempt";
+  if (c.style === "toprope") return "top rope";
+  if (c.style === "redpoint") {
+    const falls = c.climbs - 1;
+    return falls > 0 ? `${falls} attempt${falls !== 1 ? "s" : ""} · send` : "redpoint";
+  }
+  return c.style;
 }
 
 /** Row entries may carry an optional `sessions` count when sourced from `deduplicateForPyramid`. */

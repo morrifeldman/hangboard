@@ -178,7 +178,8 @@ export function buildGradeTrend(climbs: ClimbRecord[], kind: Granularity): Grade
   for (const c of filtered) {
     if (c.date < minDate) minDate = c.date;
     if (c.date > maxDate) maxDate = c.date;
-    if (c.style === "attempt") continue;
+    // Lead sends only: top rope and attempts don't move these lines.
+    if (c.style === "attempt" || c.style === "toprope") continue;
     const gi = gradeIndex(c.grade);
     if (gi === null) continue;
     const k = bucketKey(c.date, kind);

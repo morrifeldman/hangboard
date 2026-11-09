@@ -1,6 +1,7 @@
 import { useHistoryData } from "../hooks/useLoad";
 import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { climbStyleLabel } from "../lib/climbUtils";
 import type { SessionRecord, GymData } from "../lib/history";
 import type { ClimbRecord } from "../lib/climbs";
 import type { NoteRecord } from "../lib/notes";
@@ -226,6 +227,7 @@ const STYLE_TONES: Record<string, ChipTone> = {
   onsight: "green",
   flash: "blue",
   redpoint: "red",
+  toprope: "purple",
   attempt: "muted",
 };
 
@@ -269,11 +271,7 @@ function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }
       {expanded && (
         <div className="ml-12 mr-3 mb-2 border-l border-gray-700 pl-3 flex flex-col">
           {climbs.map((c) => {
-            const falls = c.style === "redpoint" ? c.climbs - 1 : 0;
-            const styleLabel =
-              c.style === "attempt"   ? (c.climbs > 1 ? `${c.climbs} attempts` : "attempt") :
-              c.style === "redpoint"  ? (falls > 0 ? `${falls} attempt${falls !== 1 ? "s" : ""} · send` : "redpoint") :
-              c.style;
+            const styleLabel = climbStyleLabel(c);
             return (
               <button
                 key={c.id}

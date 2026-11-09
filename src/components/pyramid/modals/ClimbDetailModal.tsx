@@ -1,4 +1,4 @@
-import { getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
+import { climbStyleLabel, getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
 import { useConfirmTap } from "../../../hooks/useEditor";
 import { STONE_EDGE } from "../stone";
@@ -64,6 +64,8 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
                 <p className="text-gray-200">
                   {climb.style === "attempt"
                     ? `${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}`
+                    : climb.style === "toprope"
+                    ? "Top rope"
                     : climb.climbs === 1
                       ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Send"}`
                       : `Sent after ${climb.climbs - 1} attempt${climb.climbs - 1 !== 1 ? "s" : ""}`}
@@ -84,11 +86,7 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
               <p className="text-sm font-medium text-gray-500 mb-2">Sessions ({routeHistory.length})</p>
               <div className="flex flex-col gap-2">
                 {routeHistory.map((c) => {
-                  const falls = c.style === "redpoint" ? c.climbs - 1 : 0;
-                  const styleLabel =
-                    c.style === "attempt"   ? (c.climbs > 1 ? `${c.climbs} attempts` : "attempt") :
-                    c.style === "redpoint"  ? (falls > 0 ? `${falls} attempt${falls !== 1 ? "s" : ""} · send` : "redpoint") :
-                    c.style;
+                  const styleLabel = climbStyleLabel(c);
                   return (
                     <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === climb.id ? "bg-gray-700/60" : ""}`}>
                       <span className="text-gray-300 text-xs flex-1">

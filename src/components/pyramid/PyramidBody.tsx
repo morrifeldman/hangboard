@@ -36,6 +36,7 @@ function defaultTitle(climb: ClimbRecord & { sessions?: number }): string {
   if (climb.style === "redpoint" && climb.climbs > 2) {
     return `${base} after ${climb.climbs - 1} attempts`;
   }
+  if (climb.style === "toprope") return `${climb.route} - top rope${sessionsText}`;
   if (climb.style === "attempt") {
     return `${climb.route} — ${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}${sessionsText}`;
   }

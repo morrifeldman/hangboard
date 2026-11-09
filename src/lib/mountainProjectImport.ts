@@ -10,8 +10,12 @@ export function parsePitches(value: string | undefined): number {
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
-/** Convert Mountain Project lead style to our ClimbStyle. */
-export function convertStyle(leadStyle: string | undefined): ClimbStyle {
+/**
+ * Convert Mountain Project's Style + Lead Style columns to our ClimbStyle.
+ * TR and Follow ticks have no lead style but are still sends, just not led.
+ */
+export function convertStyle(leadStyle: string | undefined, style?: string): ClimbStyle {
+  if (style === "TR" || style === "Follow") return "toprope";
   switch (leadStyle) {
     case "Onsight":  return "onsight";
     case "Flash":    return "flash";
@@ -122,7 +126,7 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
       location: row.Location || "",
       type: row["Route Type"] === "Boulder" ? "boulder" : "sport",
       setting: isIndoor(row.Location) ? "indoor" : "outdoor",
-      style: convertStyle(row["Lead Style"]),
+      style: convertStyle(row["Lead Style"], row.Style),
       climbs: parsePitches(row.Pitches),
       date: parseDate(row.Date) ?? todayDateString(),
       notes: row.Notes || "",

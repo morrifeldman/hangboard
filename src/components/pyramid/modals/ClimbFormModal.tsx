@@ -121,6 +121,7 @@ export function ClimbFormModal({ initial, onClose, onSave }: Props) {
                   <option value="onsight">Onsight</option>
                   <option value="flash">Flash</option>
                   <option value="redpoint">Redpoint</option>
+                  <option value="toprope">Top rope / follow</option>
                   <option value="attempt">Attempt</option>
                 </select>
               </div>

@@ -45,7 +45,7 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
     const existing = byRoute[routeKey];
 
     if (existing) {
-      const isSend = (s: string) => s === "onsight" || s === "flash" || s === "redpoint";
+      const isSend = (s: string) => s !== "attempt";
       const existingIsSend = isSend(existing.style);
       const newIsSend = isSend(climb.style);
 

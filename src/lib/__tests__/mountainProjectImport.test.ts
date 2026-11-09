@@ -34,6 +34,12 @@ describe("convertStyle", () => {
     expect(convertStyle("Redpoint")).toBe("redpoint");
     expect(convertStyle("Fell/Hung")).toBe("attempt");
   });
+  it("maps TR and Follow ticks to toprope, whatever the lead style", () => {
+    expect(convertStyle(undefined, "TR")).toBe("toprope");
+    expect(convertStyle("", "Follow")).toBe("toprope");
+    expect(convertStyle("Fell/Hung", "Lead")).toBe("attempt");
+    expect(convertStyle("Redpoint", "Lead")).toBe("redpoint");
+  });
   it("defaults unknown to attempt", () => {
     expect(convertStyle(undefined)).toBe("attempt");
     expect(convertStyle("")).toBe("attempt");
