@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { climbStyleLabel, getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
 import { useConfirmTap } from "../../../hooks/useEditor";
@@ -158,10 +157,6 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
                     climb={slot.climb}
                     allClimbs={allClimbs}
                     position={canNavigate && slotIndex !== -1 ? { index: slotIndex, count: siblings.length } : null}
-                    hasPrev={slotIndex > 0}
-                    hasNext={slotIndex !== -1 && slotIndex < siblings.length - 1}
-                    onPrev={() => go(-1)}
-                    onNext={() => go(1)}
                     onClose={onClose}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -180,16 +175,12 @@ type CardProps = {
   climb: ClimbRecord;
   allClimbs: ClimbRecord[];
   position: { index: number; count: number } | null;
-  hasPrev: boolean;
-  hasNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
   onClose: () => void;
   onEdit: (c: ClimbRecord) => void;
   onDelete: (id: string) => void;
 };
 
-function ClimbCard({ climb, allClimbs, position, hasPrev, hasNext, onPrev, onNext, onClose, onEdit, onDelete }: CardProps) {
+function ClimbCard({ climb, allClimbs, position, onClose, onEdit, onDelete }: CardProps) {
   const routeHistory = allClimbs
     .filter((c) => c.route === climb.route)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -204,38 +195,19 @@ function ClimbCard({ climb, allClimbs, position, hasPrev, hasNext, onPrev, onNex
             <span className="font-num text-xl text-white">{climb.grade}</span>
             <div className={`w-3 h-3 rounded-[3px] ${getStyleColor(climb.style)}`} style={{ boxShadow: STONE_EDGE }} />
             <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
+            {/* Where this climb sits in its grade row; swipe (or arrow keys) to move. */}
+            {position && (
+              <span className="text-sm text-gray-500">
+                (<span className="font-num">{position.index + 1}</span> of{" "}
+                <span className="font-num">{position.count}</span>)
+              </span>
+            )}
           </div>
         </div>
         <button onClick={onClose} aria-label="Close" className="-mr-2 -mt-1 px-2 text-gray-500 hover:text-white text-2xl">
           &times;
         </button>
       </div>
-
-      {position && (
-        <div className="-mt-1 mb-4 flex items-center justify-between rounded-lg bg-gray-900/40">
-          <button
-            onClick={onPrev}
-            disabled={!hasPrev}
-            aria-label="Previous climb at this grade"
-            className="p-2 text-gray-300 disabled:text-gray-600"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-sm text-gray-400">
-            <span className="font-num text-gray-200">{position.index + 1}</span> of{" "}
-            <span className="font-num text-gray-200">{position.count}</span> at{" "}
-            <span className="font-num text-gray-200">{climb.grade}</span>
-          </span>
-          <button
-            onClick={onNext}
-            disabled={!hasNext}
-            aria-label="Next climb at this grade"
-            className="p-2 text-gray-300 disabled:text-gray-600"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      )}
 
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
