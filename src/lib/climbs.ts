@@ -14,6 +14,8 @@ export type ClimbRecord = {
   climbs: number;
   date: string; // YYYY-MM-DD
   notes: string;
+  /** Mountain Project route page, from the tick export's URL column. */
+  url?: string;
 };
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
@@ -30,4 +32,9 @@ export async function getClimbs(): Promise<ClimbRecord[]> {
 
 export async function replaceAllClimbs(records: ClimbRecord[]): Promise<void> {
   await replaceStores({ climbs: records });
+}
+
+/** The Mountain Project page for a route: the first of its ticks that has one. */
+export function routeUrl(sessions: ClimbRecord[]): string | undefined {
+  return sessions.find((c) => c.url)?.url;
 }

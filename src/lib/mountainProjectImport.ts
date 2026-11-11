@@ -43,6 +43,20 @@ function parseDate(value: string | undefined): string | null {
   return null;
 }
 
+/** Keep only https links to a Mountain Project page; anything else is dropped. */
+export function parseRouteUrl(value: string | undefined): string | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== "https:") return undefined;
+    if (u.hostname !== "mountainproject.com" && !u.hostname.endsWith(".mountainproject.com")) return undefined;
+    return u.href;
+  } catch {
+    return undefined;
+  }
+}
+
 /** RFC-4180 parser over the whole text: quoted fields, "" escapes, embedded commas/newlines, CRLF/LF. */
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -119,6 +133,7 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
     const grade = normalizeGrade(row.Rating);
     if (!grade) continue;
 
+    const url = parseRouteUrl(row.URL);
     climbs.push({
       id: crypto.randomUUID(),
       route: row.Route,
@@ -130,6 +145,7 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
       climbs: parsePitches(row.Pitches),
       date: parseDate(row.Date) ?? todayDateString(),
       notes: row.Notes || "",
+      ...(url ? { url } : {}),
     });
   }
 

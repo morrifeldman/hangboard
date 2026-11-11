@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  parseRouteUrl,
   parsePitches,
   convertStyle,
   isIndoor,
@@ -184,5 +185,25 @@ describe("CSV parsing edge cases", () => {
     expect(isIndoor("Gymnasium Rock")).toBe(false);
     expect(isIndoor("Brooklyn Boulders gym")).toBe(true);
     expect(isIndoor("Indoor wall")).toBe(true);
+  });
+});
+
+describe("route URL", () => {
+  it("keeps the Mountain Project route link from the URL column", () => {
+    const csv =
+      'Date,Route,Rating,Notes,URL,Pitches,Location,Style,Lead Style,Route Type\n' +
+      "2024-03-15,Power Surge,5.12a,,https://www.mountainproject.com/route/105717718/power-surge,1,Somewhere,Lead,Redpoint,Sport\n" +
+      "2024-03-16,No Link,5.10a,,,1,Somewhere,Lead,Onsight,Sport\n";
+    const [a, b] = parseMountainProjectCSV(csv);
+    expect(a.url).toBe("https://www.mountainproject.com/route/105717718/power-surge");
+    expect(b).not.toHaveProperty("url");
+  });
+
+  it("drops links that aren't https Mountain Project pages", () => {
+    expect(parseRouteUrl("javascript:alert(1)")).toBeUndefined();
+    expect(parseRouteUrl("http://www.mountainproject.com/route/1")).toBeUndefined();
+    expect(parseRouteUrl("https://evilmountainproject.com/route/1")).toBeUndefined();
+    expect(parseRouteUrl("not a url")).toBeUndefined();
+    expect(parseRouteUrl("https://mountainproject.com/route/1/x")).toBe("https://mountainproject.com/route/1/x");
   });
 });

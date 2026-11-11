@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { climbStyleLabel, getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
-import type { ClimbRecord } from "../../../lib/climbs";
+import { routeUrl, type ClimbRecord } from "../../../lib/climbs";
+import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
 
@@ -198,6 +199,7 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
   const routeHistory = allClimbs
     .filter((c) => c.route === climb.route)
     .sort((a, b) => b.date.localeCompare(a.date));
+  const url = climb.url ?? routeUrl(routeHistory);
 
   return (
     <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" data-climb-card onClick={onClick}>
@@ -238,6 +240,7 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
           <div>
             <label className="text-sm font-medium text-gray-500">Location</label>
             <p className="text-gray-200">{climb.location || "Not specified"}</p>
+            {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

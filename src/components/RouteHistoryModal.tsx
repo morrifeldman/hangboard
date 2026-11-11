@@ -1,4 +1,5 @@
-import type { ClimbRecord } from "../lib/climbs";
+import { routeUrl, type ClimbRecord } from "../lib/climbs";
+import { MountainProjectLink } from "./MountainProjectLink";
 import { shortLocation } from "../lib/format";
 import { climbStyleLabel, styleBadgeClass } from "../lib/climbUtils";
 import { formatDateKey } from "../lib/dates";
@@ -47,6 +48,7 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
 
   const location = shortLocation(sessions[0].location);
   const summary = routeSummary(sessions);
+  const url = routeUrl(sessions);
 
   return (
     <>
@@ -59,6 +61,7 @@ export function RouteHistoryModal({ routeName, allClimbs, onClose }: Props) {
             {location && (
               <p className="text-gray-500 text-xs mt-0.5">{location}</p>
             )}
+            {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
           <button
             onClick={onClose}
