@@ -13,7 +13,8 @@ type Props = {
   showSessionCounts: boolean;
   timeRange: [number, number];
   onClimbClick: (c: ClimbRecord, row: ClimbRecord[]) => void;
-  onAddClimbClick: () => void;
+  /** The empty state's button: pull ticks from Mountain Project. */
+  onRefreshClick: () => void;
 };
 
 export function PyramidVisualization({
@@ -24,7 +25,7 @@ export function PyramidVisualization({
   showSessionCounts,
   timeRange,
   onClimbClick,
-  onAddClimbClick,
+  onRefreshClick,
 }: Props) {
   const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, timeRange);
   const deduplicatedClimbs = deduplicateForPyramid(viewAndTimeFiltered);
@@ -38,12 +39,14 @@ export function PyramidVisualization({
       <div className="text-center py-12">
         <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
         <h3 className="text-lg font-semibold text-white mb-2">No climbs yet</h3>
-        <p className="text-gray-400 mb-5">Log a route to lay the first stone.</p>
+        <p className="text-gray-400 mb-5">
+          Your Mountain Project ticks show up here. Add your tick-export URL in Settings, then refresh.
+        </p>
         <button
-          onClick={onAddClimbClick}
+          onClick={onRefreshClick}
           className="bg-accent-500 text-gray-900 font-semibold px-5 py-2.5 rounded-lg active:bg-accent-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
         >
-          Add your first climb
+          Refresh from Mountain Project
         </button>
       </div>
     );

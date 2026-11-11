@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { climbStyleLabel, getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
-import { useConfirmTap } from "../../../hooks/useEditor";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
 
@@ -12,8 +11,6 @@ type Props = {
   siblings?: ClimbRecord[];
   onNavigate?: (c: ClimbRecord) => void;
   onClose: () => void;
-  onEdit: (c: ClimbRecord) => void;
-  onDelete: (id: string) => void;
 };
 
 /** Horizontal finger travel (px) that commits a swipe. */
@@ -33,7 +30,7 @@ type Dir = -1 | 1;
  * either side of the open card, a swipe drags them in, and letting go slides
  * the whole strip so the new card arrives as its own card.
  */
-export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, onClose, onEdit, onDelete }: Props) {
+export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, onClose }: Props) {
   const index = climb ? siblings.findIndex((c) => c.id === climb.id) : -1;
   const canNavigate = !!onNavigate && index !== -1 && siblings.length > 1;
   const prev = canNavigate && index > 0 ? siblings[index - 1] : null;
@@ -126,7 +123,13 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
   return (
     // Cards hang from a fixed top edge, so swiping between climbs of different
     // heights changes only where each card ends, not where it starts.
-    <div className="fixed inset-0 bg-black/70 flex items-start justify-center px-4 pt-[12dvh] pb-4 z-50 overflow-hidden">
+    // Tapping the dimmed backdrop (anywhere off the card) closes it.
+    <div
+      className="fixed inset-0 bg-black/70 flex items-start justify-center px-4 pt-[12dvh] pb-4 z-50 overflow-hidden"
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("[data-climb-card]")) onClose();
+      }}
+    >
       <div ref={viewportRef} className="max-w-lg w-full max-h-full flex">
         <div
           className="flex items-start w-full max-h-full"
@@ -160,8 +163,6 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
                     allClimbs={allClimbs}
                     position={canNavigate && slotIndex !== -1 ? { index: slotIndex, count: siblings.length } : null}
                     onClose={onClose}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
                     onEdgeTap={isCurrent && canNavigate ? go : undefined}
                   />
                 )}
@@ -181,11 +182,9 @@ type CardProps = {
   /** Tap on the card's left/right edge, like turning a page in an e-reader. */
   onEdgeTap?: (dir: Dir) => void;
   onClose: () => void;
-  onEdit: (c: ClimbRecord) => void;
-  onDelete: (id: string) => void;
 };
 
-function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose, onEdit, onDelete }: CardProps) {
+function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps) {
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onEdgeTap) return;
     // Buttons keep their own meaning; only taps on plain content turn the page.
@@ -201,127 +200,94 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose, onEdit, onD
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" onClick={onClick}>
-    <div className="p-6">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-white">{climb.route}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="font-num text-xl text-white">{climb.grade}</span>
-            <div className={`w-3 h-3 rounded-[3px] ${getStyleColor(climb.style)}`} style={{ boxShadow: STONE_EDGE }} />
-            <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
-            {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
-            {position && (
-              <span className="text-sm text-gray-500">
-                (<span className="font-num">{position.index + 1}</span> of{" "}
-                <span className="font-num">{position.count}</span>)
-              </span>
-            )}
-          </div>
-        </div>
-        <button onClick={onClose} aria-label="Close" className="-mr-2 -mt-1 px-2 text-gray-500 hover:text-white text-2xl">
-          &times;
-        </button>
-      </div>
-
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-4">
+    <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" data-climb-card onClick={onClick}>
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <label className="text-sm font-medium text-gray-500">Setting</label>
-            <p className="text-gray-200 capitalize">{climb.setting}</p>
+            <h3 className="text-xl font-bold text-white">{climb.route}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="font-num text-xl text-white">{climb.grade}</span>
+              <div className={`w-3 h-3 rounded-[3px] ${getStyleColor(climb.style)}`} style={{ boxShadow: STONE_EDGE }} />
+              <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
+              {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
+              {position && (
+                <span className="text-sm text-gray-500">
+                  (<span className="font-num">{position.index + 1}</span> of{" "}
+                  <span className="font-num">{position.count}</span>)
+                </span>
+              )}
+            </div>
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-500">Type</label>
-            <p className="text-gray-200 capitalize">{climb.type}</p>
-          </div>
+          <button onClick={onClose} aria-label="Close" className="-mr-2 -mt-1 px-2 text-gray-500 hover:text-white text-2xl">
+            &times;
+          </button>
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-gray-500">Location</label>
-          <p className="text-gray-200">{climb.location || "Not specified"}</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Setting</label>
+              <p className="text-gray-200 capitalize">{climb.setting}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Type</label>
+              <p className="text-gray-200 capitalize">{climb.type}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-500">Location</label>
+            <p className="text-gray-200">{climb.location || "Not specified"}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Date</label>
+              <p className="text-gray-200">{formatDateKey(climb.date)}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Climbs</label>
+              <p className="text-gray-200">
+                {climb.style === "attempt"
+                  ? `${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}`
+                  : climb.style === "toprope"
+                  ? "Top rope"
+                  : climb.climbs === 1
+                    ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Send"}`
+                    : `Sent after ${climb.climbs - 1} attempt${climb.climbs - 1 !== 1 ? "s" : ""}`}
+              </p>
+            </div>
+          </div>
+
+          {climb.notes && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Notes</label>
+              <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-500">Date</label>
-            <p className="text-gray-200">{formatDateKey(climb.date)}</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-500">Climbs</label>
-            <p className="text-gray-200">
-              {climb.style === "attempt"
-                ? `${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}`
-                : climb.style === "toprope"
-                ? "Top rope"
-                : climb.climbs === 1
-                  ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Send"}`
-                  : `Sent after ${climb.climbs - 1} attempt${climb.climbs - 1 !== 1 ? "s" : ""}`}
-            </p>
-          </div>
-        </div>
-
-        {climb.notes && (
-          <div>
-            <label className="text-sm font-medium text-gray-500">Notes</label>
-            <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>
+        {routeHistory.length > 1 && (
+          <div className="mt-4 border-t border-gray-700 pt-4">
+            <p className="text-sm font-medium text-gray-500 mb-2">Sessions ({routeHistory.length})</p>
+            <div className="flex flex-col gap-2">
+              {routeHistory.map((c) => {
+                const styleLabel = climbStyleLabel(c);
+                return (
+                  <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === climb.id ? "bg-gray-700/60" : ""}`}>
+                    <span className="text-gray-300 text-xs flex-1">
+                      {formatDateKey(c.date)}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styleBadgeClass(c.style)}`}>
+                      {styleLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
-
-      {routeHistory.length > 1 && (
-        <div className="mt-4 border-t border-gray-700 pt-4">
-          <p className="text-sm font-medium text-gray-500 mb-2">Sessions ({routeHistory.length})</p>
-          <div className="flex flex-col gap-2">
-            {routeHistory.map((c) => {
-              const styleLabel = climbStyleLabel(c);
-              return (
-                <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === climb.id ? "bg-gray-700/60" : ""}`}>
-                  <span className="text-gray-300 text-xs flex-1">
-                    {formatDateKey(c.date)}
-                  </span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styleBadgeClass(c.style)}`}>
-                    {styleLabel}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-6 flex justify-between">
-        <DeleteClimbButton key={climb.id} onDelete={() => onDelete(climb.id)} />
-        <div className="flex gap-2">
-          <button
-            onClick={() => onEdit(climb)}
-            className="bg-accent-500 text-gray-900 font-semibold px-4 py-2.5 rounded-lg active:bg-accent-400 transition-colors"
-          >
-            Edit
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
     </div>
-    </div>
-  );
-}
-
-/** Two taps, like every other delete in the app (no native confirm dialog). */
-function DeleteClimbButton({ onDelete }: { onDelete: () => void }) {
-  const { armed, tap } = useConfirmTap(onDelete);
-  return (
-    <button
-      onClick={tap}
-      className={`font-semibold px-4 py-2.5 rounded-lg transition-colors ${
-        armed ? "bg-red-600 text-white" : "bg-gray-700 text-red-400"
-      }`}
-    >
-      {armed ? "Tap again" : "Delete"}
-    </button>
   );
 }

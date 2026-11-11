@@ -6,28 +6,11 @@ import { PyramidVisualization } from "./pyramid/PyramidVisualization";
 import { TimelineVisualization } from "./pyramid/TimelineVisualization";
 import { Legend } from "./pyramid/Legend";
 import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
-import { ClimbFormModal } from "./pyramid/modals/ClimbFormModal";
-import type { ClimbDraft } from "./pyramid/modals/ClimbFormModal";
-import { todayDateString } from "../lib/dates";
-import { getClimbs, saveClimb, deleteClimb } from "../lib/climbs";
+import { getClimbs } from "../lib/climbs";
 import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
 import type { ClimbRecord } from "../lib/climbs";
 import type { ViewKey } from "../constants/climbGrades";
 import { useScrollRestore } from "../hooks/useScrollRestore";
-
-// A function, not a constant: "today" must be read when the form opens, not
-// when the module first loaded (the PWA can stay open across midnight).
-const initialClimb = (): ClimbDraft => ({
-  route: "",
-  grade: "",
-  location: "",
-  type: "sport",
-  setting: "outdoor",
-  style: "redpoint",
-  climbs: 1,
-  date: todayDateString(),
-  notes: "",
-});
 
 type Props = { onBack: () => void; onShowScrollingPyramids: () => void };
 
@@ -43,8 +26,6 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
     setSelectedRow(row);
     setSelectedClimb(c);
   };
-  // The climb open in the add/edit form, or null when the form is closed.
-  const [formClimb, setFormClimb] = useState<ClimbDraft | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useScrollRestore<HTMLElement>("pyramid", climbs.length > 0);
   const [showCounts, setShowCounts] = useState(false);
@@ -56,18 +37,6 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
-
-  const handleSave = async (climb: ClimbRecord) => {
-    await saveClimb(climb);
-    setFormClimb(null);
-    await reload();
-  };
-
-  const handleDelete = async (id: string) => {
-    await deleteClimb(id);
-    setSelectedClimb(null);
-    await reload();
-  };
 
   const handleRefresh = async () => {
     const mpUrl = getMountainProjectUrl();
@@ -135,7 +104,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
           showSessionCounts={showSessionCounts}
           timeRange={timeRange}
           onClimbClick={openClimb}
-          onAddClimbClick={() => setFormClimb(initialClimb())}
+          onRefreshClick={handleRefresh}
         />
 
         <TimelineVisualization
@@ -149,29 +118,15 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
 
       <Legend showSendsOnly={showSendsOnly} />
 
+      {/* Read-only: climbs come from Mountain Project, and Refresh replaces them
+          all, so any change made here would be lost on the next refresh. */}
       <ClimbDetailModal
         climb={selectedClimb}
         allClimbs={climbs}
         siblings={selectedRow}
         onNavigate={setSelectedClimb}
         onClose={() => setSelectedClimb(null)}
-        onEdit={(c) => {
-          // A pyramid tile merges every session on the route; edit the one
-          // logged session behind it, not the merged summary.
-          setFormClimb({ ...(climbs.find((r) => r.id === c.id) ?? c) });
-          setSelectedClimb(null);
-        }}
-        onDelete={handleDelete}
       />
-
-      {formClimb && (
-        <ClimbFormModal
-          key={formClimb.id ?? "new"}
-          initial={formClimb}
-          onClose={() => setFormClimb(null)}
-          onSave={handleSave}
-        />
-      )}
     </div>
   );
 }
