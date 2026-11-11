@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { climbStyleLabel, getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
 import type { ClimbRecord } from "../../../lib/climbs";
 import { useConfirmTap } from "../../../hooks/useEditor";
@@ -7,13 +9,68 @@ import { formatDateKey } from "../../../lib/dates";
 type Props = {
   climb: ClimbRecord | null;
   allClimbs: ClimbRecord[];
+  /** The climbs to swipe through (the tapped grade row, oldest first). */
+  siblings?: ClimbRecord[];
+  onNavigate?: (c: ClimbRecord) => void;
   onClose: () => void;
   onEdit: (c: ClimbRecord) => void;
   onDelete: (id: string) => void;
 };
 
-export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }: Props) {
+/** Horizontal finger travel (px) that counts as a swipe. */
+const SWIPE_PX = 60;
+
+export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, onClose, onEdit, onDelete }: Props) {
+  const index = climb ? siblings.findIndex((c) => c.id === climb.id) : -1;
+  const canNavigate = !!onNavigate && index !== -1 && siblings.length > 1;
+  const prev = canNavigate && index > 0 ? siblings[index - 1] : null;
+  const next = canNavigate && index < siblings.length - 1 ? siblings[index + 1] : null;
+
+  // Drag offset while a finger is down; null when no horizontal drag is active.
+  const [dragX, setDragX] = useState<number | null>(null);
+  const touch = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null);
+
+  useEffect(() => {
+    if (!climb || !onNavigate) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" && prev) onNavigate(prev);
+      else if (e.key === "ArrowRight" && next) onNavigate(next);
+      else if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [climb, prev, next, onNavigate, onClose]);
+
   if (!climb) return null;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (!canNavigate || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY, horizontal: null };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const start = touch.current;
+    if (!start) return;
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Lock direction after a little travel so vertical scrolling stays possible.
+    if (start.horizontal === null && Math.hypot(dx, dy) > 8) {
+      start.horizontal = Math.abs(dx) > Math.abs(dy);
+    }
+    if (start.horizontal) {
+      // Resist at the ends, where there is nothing to swipe to.
+      const atEnd = (dx > 0 && !prev) || (dx < 0 && !next);
+      setDragX(atEnd ? dx / 4 : dx);
+    }
+  };
+  const onTouchEnd = () => {
+    const dx = dragX ?? 0;
+    touch.current = null;
+    setDragX(null);
+    if (dx <= -SWIPE_PX && next) onNavigate?.(next);
+    else if (dx >= SWIPE_PX && prev) onNavigate?.(prev);
+  };
 
   const routeHistory = allClimbs
     .filter((c) => c.route === climb.route)
@@ -21,7 +78,18 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800 rounded-2xl max-w-lg w-full">
+      <div
+        className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-full overflow-y-auto"
+        style={{
+          touchAction: canNavigate ? "pan-y" : undefined,
+          transform: dragX ? `translateX(${dragX}px)` : undefined,
+          transition: dragX === null ? "transform 150ms ease-out" : undefined,
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -36,6 +104,32 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
               &times;
             </button>
           </div>
+
+          {canNavigate && (
+            <div className="-mt-1 mb-4 flex items-center justify-between rounded-lg bg-gray-900/40">
+              <button
+                onClick={() => prev && onNavigate?.(prev)}
+                disabled={!prev}
+                aria-label="Previous climb at this grade"
+                className="p-2 text-gray-300 disabled:text-gray-600"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-sm text-gray-400">
+                <span className="font-num text-gray-200">{index + 1}</span> of{" "}
+                <span className="font-num text-gray-200">{siblings.length}</span> at{" "}
+                <span className="font-num text-gray-200">{climb.grade}</span>
+              </span>
+              <button
+                onClick={() => next && onNavigate?.(next)}
+                disabled={!next}
+                aria-label="Next climb at this grade"
+                className="p-2 text-gray-300 disabled:text-gray-600"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
 
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
@@ -103,7 +197,7 @@ export function ClimbDetailModal({ climb, allClimbs, onClose, onEdit, onDelete }
           )}
 
           <div className="mt-6 flex justify-between">
-            <DeleteClimbButton onDelete={() => onDelete(climb.id)} />
+            <DeleteClimbButton key={climb.id} onDelete={() => onDelete(climb.id)} />
             <div className="flex gap-2">
               <button
                 onClick={() => onEdit(climb)}

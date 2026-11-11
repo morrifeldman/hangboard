@@ -37,6 +37,12 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 100]);
   const [selectedClimb, setSelectedClimb] = useState<ClimbRecord | null>(null);
+  // The grade row the open climb was tapped in, so the detail can swipe through it.
+  const [selectedRow, setSelectedRow] = useState<ClimbRecord[]>([]);
+  const openClimb = (c: ClimbRecord, row: ClimbRecord[]) => {
+    setSelectedRow(row);
+    setSelectedClimb(c);
+  };
   // The climb open in the add/edit form, or null when the form is closed.
   const [formClimb, setFormClimb] = useState<ClimbDraft | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -128,7 +134,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
           showCounts={showCounts}
           showSessionCounts={showSessionCounts}
           timeRange={timeRange}
-          onClimbClick={setSelectedClimb}
+          onClimbClick={openClimb}
           onAddClimbClick={() => setFormClimb(initialClimb())}
         />
 
@@ -137,7 +143,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
           currentView={currentView}
           showSendsOnly={showSendsOnly}
           timeRange={timeRange}
-          onClimbClick={setSelectedClimb}
+          onClimbClick={openClimb}
         />
       </main>
 
@@ -146,6 +152,8 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
       <ClimbDetailModal
         climb={selectedClimb}
         allClimbs={climbs}
+        siblings={selectedRow}
+        onNavigate={setSelectedClimb}
         onClose={() => setSelectedClimb(null)}
         onEdit={(c) => {
           setFormClimb({ ...c });

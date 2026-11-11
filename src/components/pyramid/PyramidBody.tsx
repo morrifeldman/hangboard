@@ -48,7 +48,8 @@ type Props = {
   showCounts: boolean;
   /** When true, the per-tile number shows session count (distinct entries) instead of climb count. */
   showSessionCounts?: boolean;
-  onClimbClick: (c: ClimbRecord) => void;
+  /** `row` is every climb in the tapped grade row, in display order (oldest first). */
+  onClimbClick: (c: ClimbRecord, row: ClimbRecord[]) => void;
   /** Background utility class for the sticky label gutter; must match parent bg. */
   gutterBgClass?: string;
   /** Override the per-climb tooltip text. */
@@ -194,7 +195,7 @@ export function PyramidBody({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => onClimbClick(climb)}
+                    onClick={() => onClimbClick(climb, r.climbs)}
                     title={getClimbTitle(climb)}
                     className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white font-num text-xs cursor-pointer hover:brightness-110 transition appearance-none p-0 border-0 leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white`}
                     style={{

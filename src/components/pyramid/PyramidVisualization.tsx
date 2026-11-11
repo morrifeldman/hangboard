@@ -12,7 +12,7 @@ type Props = {
   showCounts: boolean;
   showSessionCounts: boolean;
   timeRange: [number, number];
-  onClimbClick: (c: ClimbRecord) => void;
+  onClimbClick: (c: ClimbRecord, row: ClimbRecord[]) => void;
   onAddClimbClick: () => void;
 };
 

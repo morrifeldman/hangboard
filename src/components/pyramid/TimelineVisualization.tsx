@@ -13,7 +13,8 @@ type Props = {
   currentView: ViewKey;
   showSendsOnly: boolean;
   timeRange: [number, number];
-  onClimbClick: (c: ClimbRecord) => void;
+  /** `row` is every climb shown at the tapped climb's grade, oldest first. */
+  onClimbClick: (c: ClimbRecord, row: ClimbRecord[]) => void;
 };
 
 export function TimelineVisualization({ climbs, currentView, showSendsOnly, timeRange, onClimbClick }: Props) {
@@ -111,7 +112,14 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
                           boxShadow: isPR ? prGlow(climb.style) : undefined,
                         }}
                         title={`${climb.route} - ${climb.grade} (${climb.style}${isPR ? ", personal record" : ""})`}
-                        onClick={() => onClimbClick(climb)}
+                        onClick={() =>
+                          onClimbClick(
+                            climb,
+                            filtered
+                              .filter((c) => c.grade === climb.grade)
+                              .sort((a, b) => a.date.localeCompare(b.date)),
+                          )
+                        }
                       >
                         {(() => {
                           const failures = climb.style === "attempt" ? climb.climbs : climb.climbs - 1;
