@@ -86,16 +86,16 @@ export function PyramidPreview({ climbs, onOpen }: Props) {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-700/60 pt-3">
-              <div className="flex gap-3">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-gray-700/60 pt-3">
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5">
                 {STYLE_LEGEND.map((s) => (
-                  <span key={s.style} className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <span key={s.style} className="flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
                     <span className={`h-2.5 w-2.5 rounded-sm ${s.color}`} style={{ boxShadow: STONE_EDGE }} />
                     {s.label}
                   </span>
                 ))}
               </div>
-              <span className="shrink-0 text-sm font-semibold text-accent-400">Open full pyramid</span>
+              <span className="ml-auto shrink-0 whitespace-nowrap text-sm font-semibold text-accent-400">Open full pyramid</span>
             </div>
           </>
         )}
