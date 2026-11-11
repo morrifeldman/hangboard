@@ -156,7 +156,9 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         onNavigate={setSelectedClimb}
         onClose={() => setSelectedClimb(null)}
         onEdit={(c) => {
-          setFormClimb({ ...c });
+          // A pyramid tile merges every session on the route; edit the one
+          // logged session behind it, not the merged summary.
+          setFormClimb({ ...(climbs.find((r) => r.id === c.id) ?? c) });
           setSelectedClimb(null);
         }}
         onDelete={handleDelete}

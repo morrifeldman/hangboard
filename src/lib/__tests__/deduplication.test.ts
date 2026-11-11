@@ -61,7 +61,7 @@ describe("deduplicateForPyramid", () => {
     expect(result).toHaveLength(1);
     expect(result[0].climbs).toBe(3);
     expect(result[0].style).toBe("redpoint");
-    expect(result[0].date).toBe("2024-03-20"); // most recent
+    expect(result[0].date).toBe("2024-03-20"); // the redpoint
     expect(result[0].sessions).toBe(2);
   });
 
@@ -93,6 +93,67 @@ describe("deduplicateForPyramid", () => {
     expect(result[0].sessions).toBe(3);
     // Re-sends don't sum into climbs
     expect(result[0].climbs).toBe(1);
+  });
+});
+
+describe("deduplicateForPyramid send date", () => {
+  it("dates a redpoint after failed attempts by the redpoint", () => {
+    const rp = makeClimb({ date: "2024-04-02", style: "redpoint", climbs: 1 });
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-03-01", style: "attempt", climbs: 3 }),
+      rp,
+      makeClimb({ date: "2024-03-15", style: "attempt", climbs: 2 }),
+    ]);
+    expect(result[0].date).toBe("2024-04-02");
+    expect(result[0].id).toBe(rp.id);
+  });
+
+  it("keeps the first send's date when the route is repeated later", () => {
+    const os = makeClimb({ date: "2023-06-01", style: "onsight" });
+    // Newest first, as getClimbs returns them.
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2025-09-01", style: "redpoint" }),
+      makeClimb({ date: "2024-07-01", style: "flash" }),
+      os,
+    ]);
+    expect(result[0].style).toBe("onsight");
+    expect(result[0].date).toBe("2023-06-01");
+    expect(result[0].id).toBe(os.id);
+  });
+
+  it("dates by the first redpoint among several", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-05-01", style: "redpoint" }),
+      makeClimb({ date: "2024-03-15", style: "redpoint" }),
+      makeClimb({ date: "2024-04-01", style: "redpoint" }),
+    ]);
+    expect(result[0].date).toBe("2024-03-15");
+  });
+
+  it("dates a top-roped route that was later led by the lead", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-01-10", style: "toprope" }),
+      makeClimb({ date: "2024-02-20", style: "redpoint" }),
+    ]);
+    expect(result[0].style).toBe("redpoint");
+    expect(result[0].date).toBe("2024-02-20");
+  });
+
+  it("dates a never-sent route by its first attempt", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-05-01", style: "attempt" }),
+      makeClimb({ date: "2024-03-01", style: "attempt" }),
+    ]);
+    expect(result[0].date).toBe("2024-03-01");
+  });
+
+  it("takes the grade from the most recent session", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-01-01", style: "onsight", grade: "5.11a" }),
+      makeClimb({ date: "2025-01-01", style: "redpoint", grade: "5.11b" }),
+    ]);
+    expect(result[0].date).toBe("2024-01-01");
+    expect(result[0].grade).toBe("5.11b");
   });
 });
 

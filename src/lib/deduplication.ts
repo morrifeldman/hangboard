@@ -36,12 +36,22 @@ export function deduplicateForTimeline(climbs: ClimbRecord[]): ClimbRecord[] {
   return result;
 }
 
-/** Aggressive cross-date deduplication for pyramid view. Merges all entries for the same route. */
+/**
+ * Aggressive cross-date deduplication for pyramid view. Merges all entries for the same route.
+ *
+ * The merged tile is dated by its send: the first session at the route's best
+ * style. Attempts before a redpoint take the redpoint's date, and later repeats
+ * don't move it. A route never sent is dated by its first attempt. The grade
+ * still follows the most recent session, so a regrade applies. `id` is the
+ * dated session's, so the record behind the tile matches the date it shows.
+ */
 export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
   const byRoute: Record<string, PyramidClimb> = {};
+  const sessionsByRoute: Record<string, ClimbRecord[]> = {};
 
   for (const climb of climbs) {
     const routeKey = JSON.stringify([climb.route, climb.location, climb.type, climb.setting]);
+    (sessionsByRoute[routeKey] ??= []).push(climb);
     const existing = byRoute[routeKey];
 
     if (existing) {
@@ -62,14 +72,23 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
       if (STYLE_PRIORITY[climb.style] < STYLE_PRIORITY[existing.style]) {
         existing.style = climb.style;
       }
-      if (climb.date >= existing.date) {
-        existing.date = climb.date;
-        existing.grade = climb.grade;
-        existing.type = climb.type;
-        existing.setting = climb.setting;
-      }
     } else {
       byRoute[routeKey] = { ...climb, sessions: 1 };
+    }
+  }
+
+  for (const [routeKey, merged] of Object.entries(byRoute)) {
+    const sessions = sessionsByRoute[routeKey];
+    let latest = sessions[0];
+    let sent: ClimbRecord | null = null;
+    for (const c of sessions) {
+      if (c.date > latest.date) latest = c;
+      if (c.style === merged.style && (!sent || c.date < sent.date)) sent = c;
+    }
+    merged.grade = latest.grade;
+    if (sent) {
+      merged.date = sent.date;
+      merged.id = sent.id;
     }
   }
 
