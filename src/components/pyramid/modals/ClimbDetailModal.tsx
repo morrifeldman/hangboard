@@ -23,6 +23,8 @@ const FLICK_PX_PER_MS = 0.4;
 /** Space between neighbouring cards in the carousel. */
 const GAP = 16;
 const SLIDE_MS = 220;
+/** Fraction of the card's width, at each side, where a tap turns the page. */
+const EDGE_TAP = 0.25;
 
 type Dir = -1 | 1;
 
@@ -160,6 +162,7 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
                     onClose={onClose}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onEdgeTap={isCurrent && canNavigate ? go : undefined}
                   />
                 )}
               </div>
@@ -175,18 +178,30 @@ type CardProps = {
   climb: ClimbRecord;
   allClimbs: ClimbRecord[];
   position: { index: number; count: number } | null;
+  /** Tap on the card's left/right edge, like turning a page in an e-reader. */
+  onEdgeTap?: (dir: Dir) => void;
   onClose: () => void;
   onEdit: (c: ClimbRecord) => void;
   onDelete: (id: string) => void;
 };
 
-function ClimbCard({ climb, allClimbs, position, onClose, onEdit, onDelete }: CardProps) {
+function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose, onEdit, onDelete }: CardProps) {
+  const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onEdgeTap) return;
+    // Buttons keep their own meaning; only taps on plain content turn the page.
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, select")) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    if (x < EDGE_TAP) onEdgeTap(-1);
+    else if (x > 1 - EDGE_TAP) onEdgeTap(1);
+  };
+
   const routeHistory = allClimbs
     .filter((c) => c.route === climb.route)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain">
+    <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" onClick={onClick}>
     <div className="p-6">
       <div className="flex justify-between items-start mb-4">
         <div>
@@ -195,7 +210,7 @@ function ClimbCard({ climb, allClimbs, position, onClose, onEdit, onDelete }: Ca
             <span className="font-num text-xl text-white">{climb.grade}</span>
             <div className={`w-3 h-3 rounded-[3px] ${getStyleColor(climb.style)}`} style={{ boxShadow: STONE_EDGE }} />
             <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
-            {/* Where this climb sits in its grade row; swipe (or arrow keys) to move. */}
+            {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
             {position && (
               <span className="text-sm text-gray-500">
                 (<span className="font-num">{position.index + 1}</span> of{" "}
