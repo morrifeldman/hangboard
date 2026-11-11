@@ -123,10 +123,12 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 overflow-hidden">
+    // Cards hang from a fixed top edge, so swiping between climbs of different
+    // heights changes only where each card ends, not where it starts.
+    <div className="fixed inset-0 bg-black/70 flex items-start justify-center px-4 pt-[12dvh] pb-4 z-50 overflow-hidden">
       <div ref={viewportRef} className="max-w-lg w-full max-h-full flex">
         <div
-          className="flex items-center w-full max-h-full"
+          className="flex items-start w-full max-h-full"
           style={{
             gap: GAP,
             touchAction: canNavigate ? "pan-y" : undefined,
@@ -146,7 +148,7 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
                 key={slot.key}
                 aria-hidden={!isCurrent}
                 inert={!isCurrent}
-                className="w-full shrink-0 max-h-[calc(100dvh-2rem)] flex"
+                className="w-full shrink-0 max-h-[calc(88dvh-1rem)] flex"
                 // Neighbours are only shown while the strip moves; on a wide
                 // screen they would otherwise sit beside the open card.
                 style={{ visibility: isCurrent || moving ? "visible" : "hidden" }}
