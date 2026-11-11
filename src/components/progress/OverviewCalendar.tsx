@@ -106,7 +106,7 @@ export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
           ))}
         </div>
 
-        <div className="flex gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-700/60 flex-wrap">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-700/60">
           <LegendItem color="bg-teal-600" label="Outdoor" />
           <LegendItem color="bg-amber-500" label="Gym" />
           <LegendItem color="bg-rose-500" label="Cardio" />

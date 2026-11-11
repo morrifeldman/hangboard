@@ -111,7 +111,7 @@ function GradeChart({ trend }: { trend: GradeTrendPoint[] }) {
         </LineChart>
       </ResponsiveContainer>
 
-      <div className="flex gap-4 flex-wrap">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
         <LegendItem color="bg-green-500" label="Onsight" />
         <LegendItem color="bg-yellow-500" label="Flash" />
         <LegendItem color="bg-red-500" label="Redpoint" />
