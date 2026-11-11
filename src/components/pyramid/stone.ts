@@ -14,7 +14,7 @@ export const STYLE_LEGEND = [
   { style: "onsight", label: "Onsight", color: getStyleColor("onsight") },
   { style: "flash", label: "Flash", color: getStyleColor("flash") },
   { style: "redpoint", label: "Redpoint", color: getStyleColor("redpoint") },
-  { style: "toprope", label: "Top rope", color: getStyleColor("toprope") },
+  { style: "toprope", label: "TR", color: getStyleColor("toprope") },
 ] as const;
 
 // A soft glow in the tile's own colour marks a personal-record send.
