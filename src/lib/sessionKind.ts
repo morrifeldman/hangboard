@@ -66,7 +66,7 @@ const WORKOUT_CLASS: Record<WorkoutType, WorkoutClass> = {
   "campus":           { category: "indoor", focus: "power" },
   "limit-bouldering": { category: "indoor", focus: "power" },
   "hard-bouldering":  { category: "indoor", focus: "power" },
-  // Power endurance: linked boulder circuits and route intervals.
+  // Power endurance: linked boulder circuits (four-by-fours) and intervals on a route.
   "lbc":              { category: "indoor", focus: "power-endurance" },
   "pe-route":         { category: "indoor", focus: "power-endurance" },
   // Climbing that isn't one of the above.

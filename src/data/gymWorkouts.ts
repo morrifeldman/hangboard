@@ -48,7 +48,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   {
     id: "pe-route",
     label: "PE Intervals",
-    description: "High intensity power endurance training. Target ~1 letter grade above current onsight grade",
+    description: "High intensity power endurance training on a route. Target ~1 letter grade above current onsight grade",
     fieldDefs: [
       { key: "climbSec",  label: "Climb time",  type: "number", unit: "sec", step: 5 },
       { key: "dutyCycle", label: "Duty cycle",    type: "select", options: ["1:1", "1:1.5", "1:2"] },
@@ -58,7 +58,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   {
     id: "lbc",
     label: "LBC",
-    description: "Linked Boulder Circuit — high intensity power endurance training",
+    description: "Linked Boulder Circuit (four-by-fours) — high intensity power endurance training on boulders",
     fieldDefs: [
       { key: "climbSec",      label: "Climb time",     type: "number", unit: "sec", step: 5 },
       { key: "dutyCycle",     label: "Duty cycle",       type: "select", options: ["1:1", "1:1.5", "1:2"] },
