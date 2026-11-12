@@ -117,7 +117,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     fieldDefs: [
       { key: "grade",   label: "Grade",   type: "grade-yds" },
       { key: "tries",   label: "Tries",   type: "number", optional: true },
-      { key: "success", label: "Success", type: "select", options: ["Yes", "No"] },
+      { key: "success", label: "Success", type: "select", options: ["Yes", "No"], optional: true },
     ],
   },
   {

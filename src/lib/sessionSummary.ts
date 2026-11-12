@@ -51,7 +51,8 @@ export function gymSummaryParts(data: GymData): SummaryPart[] {
     case "performance": {
       const parts: SummaryPart[] = [[f(data.grade)]];
       if (data.tries) parts.push([f(data.tries), t(data.tries === 1 ? " try" : " tries")]);
-      parts.push([t(data.success === "Yes" ? "sent" : "no send")]);
+      if (data.success === "Yes") parts.push([t("sent")]);
+      else if (data.success === "No") parts.push([t("no send")]);
       return parts;
     }
     case "wbl":
