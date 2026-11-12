@@ -201,7 +201,7 @@ export function WorkoutScreen() {
 
   const phaseLabel = () => {
     switch (phase) {
-      case "prep":     return <span className="text-orange-400">Get ready</span>;
+      case "prep":     return <span className="text-orange-400">Prepare</span>;
       case "hanging":  return <span className="text-green-400">Hang <span className="font-normal text-green-400/70">· rep <span className="font-num">{repIndex + 1}</span></span></span>;
       case "resting":  return <span className="text-yellow-400">Rest</span>;
       case "break":    return <span className="text-blue-400">Break</span>;

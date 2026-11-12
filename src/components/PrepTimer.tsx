@@ -27,7 +27,8 @@ export function PrepTimer() {
       <TimerRing
         remaining={remaining}
         duration={prepDuration}
-        label="Get ready"
+        label="Prepare"
+        labelColor="text-orange-400"
         color="stroke-orange-400"
         onClick={paused ? resumeWorkout : pauseWorkout}
         paused={paused}

@@ -2,6 +2,8 @@ interface TimerRingProps {
   remaining: number;
   duration: number;
   label?: string;
+  /** Text colour for the label, which sits large above the ring. */
+  labelColor?: string;
   sublabel?: string;
   color?: string;
   onClick?: () => void;
@@ -15,6 +17,7 @@ export function TimerRing({
   remaining,
   duration,
   label,
+  labelColor = "text-gray-200",
   sublabel,
   color = "stroke-accent-400",
   onClick,
@@ -25,6 +28,11 @@ export function TimerRing({
 
   return (
     <div className="flex flex-col items-center gap-2">
+      {label && (
+        <p className={`text-5xl font-bold leading-none ${labelColor}`} data-testid="timer-label">
+          {label}
+        </p>
+      )}
       <div
         className={`w-64 h-64 relative ${onClick ? "cursor-pointer" : ""}`}
         onClick={onClick}
@@ -70,14 +78,9 @@ export function TimerRing({
               <span className="text-lg font-medium text-gray-300 mt-1">Paused</span>
             </>
           ) : (
-            <>
-              <span className="font-num text-[112px] leading-none text-white">
-                {Math.ceil(remaining)}
-              </span>
-              {label && (
-                <span className="text-lg font-medium text-gray-300 mt-2">{label}</span>
-              )}
-            </>
+            <span className="font-num text-[112px] leading-none text-white">
+              {Math.ceil(remaining)}
+            </span>
           )}
         </div>
       </div>

@@ -26,6 +26,7 @@ export function HangTimer() {
 
   const color = isHanging ? "stroke-green-400" : "stroke-yellow-400";
   const label = isHanging ? "Hang" : "Rest";
+  const labelColor = isHanging ? "text-green-400" : "text-yellow-400";
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -35,6 +36,7 @@ export function HangTimer() {
         remaining={remaining}
         duration={duration}
         label={label}
+        labelColor={labelColor}
         color={color}
         onClick={paused ? resumeWorkout : pauseWorkout}
         paused={paused}
