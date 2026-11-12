@@ -6,6 +6,7 @@ import {
   getSchedules,
   SCHEDULE_TYPE_META,
   SCHEDULE_TYPE_ORDER,
+  isClimbingDayType,
   upsertSchedule,
 } from "../lib/schedules";
 import { addDays, startOfWeek } from "../lib/dates";
@@ -229,15 +230,25 @@ function TypeRow({ statuses }: { statuses: TypeStatus[] }) {
   );
 }
 
+/**
+ * The plan marker's shape says what kind of day it is: a peak for climbing, a
+ * dot for everything else. Colour still says which one.
+ */
+function TypeShape({ type, className = "" }: { type: ScheduleDayType; className?: string }) {
+  const shape = isClimbingDayType(type)
+    ? "[clip-path:polygon(50%_4%,100%_96%,0_96%)]"
+    : "rounded-full scale-[0.8]";
+  return <span className={`block w-full h-full ${SCHEDULE_TYPE_META[type].dot} ${shape} ${className}`} />;
+}
+
 function TypeMarker({ status }: { status: TypeStatus }) {
   const { type, state } = status;
   const meta = SCHEDULE_TYPE_META[type];
-  const color = meta.dot.replace("bg-", "text-");
   if (state === "done") {
     return (
       <svg
         viewBox="0 0 24 24"
-        className={`w-3 h-3 ${color}`}
+        className={`w-3 h-3 ${meta.text}`}
         fill="none"
         stroke="currentColor"
         strokeWidth="4"
@@ -251,19 +262,23 @@ function TypeMarker({ status }: { status: TypeStatus }) {
   }
   if (state === "missed") {
     return (
-      <span className="relative inline-flex w-2 h-2" aria-label={`${meta.label} missed`}>
-        <span className={`absolute inset-0 rounded-full ${meta.dot} opacity-40`} />
-        <span className="absolute left-1/2 top-1/2 w-[3px] h-0.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white/80" />
+      <span className="relative inline-flex w-2.5 h-2.5" aria-label={`${meta.label} missed`}>
+        <TypeShape type={type} className="opacity-40" />
+        <span className="absolute left-1/2 top-[60%] w-[3px] h-0.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white/80" />
       </span>
     );
   }
   return (
-    <span
-      className={`w-2 h-2 rounded-full ${meta.dot}`}
-      aria-label={`${meta.label} planned`}
-    />
+    <span className="inline-flex w-2.5 h-2.5" aria-label={`${meta.label} planned`}>
+      <TypeShape type={type} />
+    </span>
   );
 }
+
+const PICK_GROUPS = [
+  { label: "Climbing", types: SCHEDULE_TYPE_ORDER.filter(isClimbingDayType) },
+  { label: "Not climbing", types: SCHEDULE_TYPE_ORDER.filter((t) => !isClimbingDayType(t)) },
+];
 
 // ─── EditSheet ───────────────────────────────────────────────────────────────
 
@@ -382,24 +397,31 @@ function EditSheet({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          {SCHEDULE_TYPE_ORDER.map((t) => (
-            <button
-              key={t}
-              onClick={() => toggle(t)}
-              data-testid={`schedule-pick-${t}`}
-              aria-pressed={selected.has(t)}
-              className={`flex items-center gap-2 px-3 py-3 rounded-lg font-semibold text-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 ${
-                selected.has(t)
-                  ? "bg-gray-700 text-white ring-2 ring-accent-400"
-                  : "bg-gray-900/60 text-gray-400"
-              }`}
-            >
-              <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${SCHEDULE_TYPE_META[t].dot}`} />
-              {SCHEDULE_TYPE_META[t].label}
-            </button>
-          ))}
-        </div>
+        {PICK_GROUPS.map((group) => (
+          <div key={group.label} className="flex flex-col gap-1.5">
+            <p className="text-gray-300 text-xs font-medium">{group.label}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {group.types.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => toggle(t)}
+                  data-testid={`schedule-pick-${t}`}
+                  aria-pressed={selected.has(t)}
+                  className={`flex items-center gap-2 px-3 py-3 rounded-lg font-semibold text-sm active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300 ${
+                    selected.has(t)
+                      ? "bg-gray-700 text-white ring-2 ring-accent-400"
+                      : "bg-gray-900/60 text-gray-400"
+                  }`}
+                >
+                  <span className="w-3 h-3 shrink-0">
+                    <TypeShape type={t} />
+                  </span>
+                  {SCHEDULE_TYPE_META[t].label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
 
         <div className="flex flex-col gap-1.5">
           <label

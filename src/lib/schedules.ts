@@ -29,17 +29,21 @@ export type ScheduleDayType =
   | "stretching"
   | "rest";
 
-export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: string; dot: string }> = {
-  endurance: { label: "Endurance", bg: "bg-blue-600", dot: "bg-blue-400" },
-  stamina: { label: "Stamina", bg: "bg-cyan-600", dot: "bg-cyan-400" },
-  hangboard: { label: "Strength", bg: "bg-indigo-600", dot: "bg-indigo-400" },
-  power: { label: "Power", bg: "bg-red-600", dot: "bg-red-400" },
-  "power-endurance": { label: "Power endurance", bg: "bg-orange-600", dot: "bg-orange-400" },
-  outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
-  lifting: { label: "Lifting", bg: "bg-sky-600", dot: "bg-sky-400" },
-  cardio: { label: "Cardio", bg: "bg-pink-600", dot: "bg-pink-400" },
-  stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
-  rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
+/** `text` is spelled out (not derived from `dot`) so Tailwind sees the class and keeps it. */
+export const SCHEDULE_TYPE_META: Record<
+  ScheduleDayType,
+  { label: string; bg: string; dot: string; text: string }
+> = {
+  endurance: { label: "Endurance", bg: "bg-blue-600", dot: "bg-blue-400", text: "text-blue-400" },
+  stamina: { label: "Stamina", bg: "bg-cyan-600", dot: "bg-cyan-400", text: "text-cyan-400" },
+  hangboard: { label: "Strength", bg: "bg-indigo-600", dot: "bg-indigo-400", text: "text-indigo-400" },
+  power: { label: "Power", bg: "bg-red-600", dot: "bg-red-400", text: "text-red-400" },
+  "power-endurance": { label: "Power endurance", bg: "bg-orange-600", dot: "bg-orange-400", text: "text-orange-400" },
+  outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400", text: "text-teal-400" },
+  lifting: { label: "Lifting", bg: "bg-sky-600", dot: "bg-sky-400", text: "text-sky-400" },
+  cardio: { label: "Cardio", bg: "bg-pink-600", dot: "bg-pink-400", text: "text-pink-400" },
+  stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400", text: "text-purple-400" },
+  rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400", text: "text-gray-400" },
 };
 
 export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
@@ -63,6 +67,11 @@ const DAY_TYPE_FOCUS: Partial<Record<ScheduleDayType, ClimbingFocus>> = {
   power: "power",
   "power-endurance": "power-endurance",
 };
+
+/** Climbing days: the focus days and outdoor climbing. Everything else is not climbing. */
+export function isClimbingDayType(type: ScheduleDayType): boolean {
+  return type === "outdoor" || DAY_TYPE_FOCUS[type] !== undefined;
+}
 
 export type ScheduleRecord = {
   id: string;
