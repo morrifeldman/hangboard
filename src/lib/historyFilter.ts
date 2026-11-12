@@ -32,7 +32,6 @@ export const GYM_LABELS: Record<GymWorkoutType, string> = {
 const HANGBOARD_LABELS: Record<(typeof HANGBOARD_WORKOUT_TYPES)[number], string> = {
   "repeaters": "Repeaters",
   "max-hang":  "Max Hang",
-  "beginner":  "Beginner",
 };
 
 export function workoutTypeLabel(workoutType: string): string {

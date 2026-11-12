@@ -13,7 +13,6 @@ export type ChartPoint = {
   bailed: boolean;
   isPR: boolean;
   setFailed: boolean;
-  isBeginner: boolean;
   sessionId: string;
 };
 
@@ -26,7 +25,6 @@ export function toChartPoints(trend: TrendPoint[]): ChartPoint[] {
     bailed: p.bailed,
     isPR: p.isPR,
     setFailed: p.setFailed,
-    isBeginner: p.isBeginner,
     sessionId: p.sessionId,
   }));
 }

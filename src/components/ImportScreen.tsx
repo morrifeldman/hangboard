@@ -44,7 +44,6 @@ function startingWeights(type: "repeaters" | "max-hang", set2Offset: number): [n
 
 export function ImportScreen({ onBack, onDone, initialRecord }: Props) {
   const editing = initialRecord !== undefined;
-  // "beginner" sessions are treated as "repeaters" in the edit UI (same hold structure)
   const initialType: "repeaters" | "max-hang" = initialRecord?.workoutType === "max-hang" ? "max-hang" : "repeaters";
 
   const [dateValue, setDateValue] = useState(() =>

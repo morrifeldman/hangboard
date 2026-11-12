@@ -38,7 +38,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   {
     id: "cir",
     label: "CIR",
-    description: "Continuous-Intensity Repetitions",
+    description: "Continuous-Intensity Repetitions — stamina: climbing all day without getting pumped",
     fieldDefs: [
       { key: "repeats",     label: "Repeats",        type: "number" },
       { key: "climbRating", label: "Climb rating",   type: "grade-yds", optional: true },

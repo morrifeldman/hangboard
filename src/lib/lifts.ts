@@ -184,7 +184,6 @@ export function buildLiftTrend(sessions: SessionRecord[], liftId: string): Trend
       date: new Date(s.startedAt),
       bailed: false,
       setFailed: done.length < sets.length,
-      isBeginner: false,
       sessionId: s.id,
     });
     if (points.length === 20) break;

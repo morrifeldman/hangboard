@@ -18,7 +18,6 @@ export type TrendPoint = {
   bailed: boolean;
   isPR: boolean;
   setFailed: boolean; // any non-set1 set existed but was not completed
-  isBeginner: boolean;
   sessionId: string;
 };
 
@@ -50,7 +49,7 @@ export function buildTrend(
 ): TrendPoint[] {
   // Newest first regardless of how the caller ordered them.
   const filtered = sessions
-    .filter((s) => s.workoutType === workoutType || (workoutType === "repeaters" && s.workoutType === "beginner"))
+    .filter((s) => s.workoutType === workoutType)
     .filter((s) => s.holds.some((h) => h.holdId === holdId && h.set1.completed))
     .sort((a, b) => b.startedAt - a.startedAt);
 
@@ -79,7 +78,6 @@ export function buildTrend(
       bailed: s.bailed,
       isPR: prs.get(s.id)?.includes(holdId) ?? false,
       setFailed,
-      isBeginner: s.workoutType === "beginner",
       sessionId: s.id,
     };
   });

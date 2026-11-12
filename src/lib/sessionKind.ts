@@ -25,35 +25,53 @@ export const ACTIVITY_CATEGORIES = [
   { id: "other",      label: "Other",            color: "bg-gray-500" },
 ] as const satisfies readonly { id: ActivityCategory; label: string; color: string }[];
 
-/** What a climbing session trains. Only climbing has a focus. */
-export type ClimbingFocus = "endurance" | "power";
+/**
+ * What a climbing session trains. These are specific training terms (The Rock
+ * Climber's Training Manual; stamina is The Self-Coached Climber's), not loose
+ * descriptions: a session has a focus only when it is that kind of training.
+ * Plenty of climbing has none — a warm-up ladder, a performance day, a logged
+ * route — and nothing outside climbing ever has one. Bench press is lifting,
+ * not climbing strength.
+ */
+export type ClimbingFocus = "endurance" | "stamina" | "strength" | "power" | "power-endurance";
+
+/** Display order: the order a training cycle runs through them. */
+export const CLIMBING_FOCUSES = [
+  { id: "endurance",       label: "Endurance" },
+  { id: "stamina",         label: "Stamina" },
+  { id: "strength",        label: "Strength" },
+  { id: "power",           label: "Power" },
+  { id: "power-endurance", label: "Power endurance" },
+] as const satisfies readonly { id: ClimbingFocus; label: string }[];
 
 type WorkoutType = SessionRecord["workoutType"];
 
 type WorkoutClass = {
   category: ActivityCategory;
-  /** Fixed focus of the type, if it has one. */
+  /** The climbing quality this type trains, if it is that specific. */
   focus?: ClimbingFocus;
   /** A log entry rather than something you did: no calendar colour, no effect on a rest day. */
   logOnly?: true;
 };
 
 const WORKOUT_CLASS: Record<WorkoutType, WorkoutClass> = {
-  // Hangboard: indoor climbing training.
-  "repeaters":        { category: "indoor", focus: "endurance" },
-  "max-hang":         { category: "indoor", focus: "power" },
-  "beginner":         { category: "indoor" },
-  // Climbing gym.
+  // Endurance: aerobic base.
   "arc":              { category: "indoor", focus: "endurance" },
-  "cir":              { category: "indoor", focus: "endurance" },
-  "pe-route":         { category: "indoor", focus: "endurance" },
-  "lbc":              { category: "indoor", focus: "endurance" },
-  "hard-bouldering":  { category: "indoor", focus: "power" },
-  "limit-bouldering": { category: "indoor", focus: "power" },
-  "performance":      { category: "indoor", focus: "power" },
+  // Stamina: climbing all day without getting pumped.
+  "cir":              { category: "indoor", focus: "stamina" },
+  // Strength: the hangboard.
+  "repeaters":        { category: "indoor", focus: "strength" },
+  "max-hang":         { category: "indoor", focus: "strength" },
+  // Power.
   "campus":           { category: "indoor", focus: "power" },
-  // A warm-up ladder, and unstructured climbing whose focus depends on the discipline.
+  "limit-bouldering": { category: "indoor", focus: "power" },
+  "hard-bouldering":  { category: "indoor", focus: "power" },
+  // Power endurance: linked boulder circuits and route intervals.
+  "lbc":              { category: "indoor", focus: "power-endurance" },
+  "pe-route":         { category: "indoor", focus: "power-endurance" },
+  // Climbing that isn't one of the above.
   "wbl":              { category: "indoor" },
+  "performance":      { category: "indoor" },
   "climbing":         { category: "indoor" },
   // Not climbing.
   "lifts":            { category: "lifting" },
@@ -85,36 +103,23 @@ export function isActivitySession(s: Pick<SessionRecord, "workoutType">): boolea
   return !classOf(s.workoutType).logOnly;
 }
 
-/**
- * What a session trained. Unstructured climbing goes by discipline: bouldering
- * is power, rope is endurance, mixed is both. Non-climbing sessions train neither.
- */
-export function sessionFocuses(s: Pick<SessionRecord, "workoutType" | "gymData">): ClimbingFocus[] {
-  if (s.gymData?.type === "climbing") {
-    const d = s.gymData.discipline;
-    if (d === "Boulder") return ["power"];
-    if (d === "Rope") return ["endurance"];
-    if (d === "Mixed") return ["endurance", "power"];
-    return [];
-  }
-  const focus = workoutTypeFocus(s.workoutType);
-  return focus ? [focus] : [];
+/** The climbing quality a session trained, or undefined when it has no specific focus. */
+export function sessionFocus(s: Pick<SessionRecord, "workoutType">): ClimbingFocus | undefined {
+  return workoutTypeFocus(s.workoutType);
 }
 
-/** A logged route is indoor or outdoor climbing, by where it was climbed. */
+/**
+ * A logged route is indoor or outdoor climbing, by where it was climbed. It has
+ * no training focus: going climbing is not a power or endurance workout.
+ */
 export function climbCategory(c: Pick<ClimbRecord, "setting">): "outdoor" | "indoor" {
   return c.setting === "outdoor" ? "outdoor" : "indoor";
-}
-
-/** Boulders train power, routes train endurance — indoors or out. */
-export function climbFocus(c: Pick<ClimbRecord, "type">): ClimbingFocus {
-  return c.type === "boulder" ? "power" : "endurance";
 }
 
 // ─── Hangboard ────────────────────────────────────────────────────────────────
 
 /** The one definition of "this was a hangboard workout" (as opposed to a gym log). */
-export const HANGBOARD_WORKOUT_TYPES = ["repeaters", "max-hang", "beginner"] as const;
+export const HANGBOARD_WORKOUT_TYPES = ["repeaters", "max-hang"] as const;
 
 export type HangboardWorkoutType = (typeof HANGBOARD_WORKOUT_TYPES)[number];
 

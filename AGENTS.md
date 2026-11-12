@@ -113,7 +113,7 @@ is the shell.
 ### Workout types
 - **Repeaters** (`workoutType: "repeaters"`) — Workout A, 2 sets of 7/6 reps, 7s hang / 3s rest.
 - **Max Hang** (`workoutType: "max-hang"`) — Workout B, 3 sets × 1 rep, 10s hang, 5lb progressions.
-- **Beginner** (`workoutType: "beginner"`) — single-set legacy.
+- The retired single-set `"beginner"` type is no longer a type: `normalizeSession` in `history.ts` reads stored `"beginner"` records as `"repeaters"` (like the older `"a"`/`"b"` values). Stored records are untouched.
 - **Test** (`workoutType: "test"`) — short-timers state under `?test`; never saved.
 - **Gym workout types**: `GYM_WORKOUT_TYPES` in `src/lib/history.ts` is the source of truth (`GymWorkoutType` derives from it). `src/lib/sessionSummary.ts` is the one summary text. Defined in `src/data/gymWorkouts.ts` with `fieldDefs` per type. `FieldType` supports `number | text | grade-v | grade-yds | select | multi-select`.
 
@@ -121,11 +121,14 @@ is the shell.
 The one taxonomy. The log picker, History (chips, filter groups, climbing-day rows), the Activity calendar and the Schedule all read it; never classify a workout type anywhere else.
 
 - **Categories** (`ACTIVITY_CATEGORIES`, in display order, with the calendar colour): Outdoor climbing, Indoor climbing, Lifting, Cardio, Stretching, Other.
-- **Climbing and non-climbing never mix.** Power and endurance are climbing focuses (`sessionFocuses`, `climbFocus`); lifting, cardio and stretching have none, so they can never tick a Power or Endurance day.
+- **Climbing focuses** (`CLIMBING_FOCUSES`, `workoutTypeFocus`, `sessionFocus`) are specific training terms, not loose descriptions (The Rock Climber's Training Manual; stamina is from The Self-Coached Climber):
+  - Endurance: ARC. Stamina: CIR. Strength: the hangboard (repeaters, max hang). Power: campus, limit boulder, hard boulder. Power endurance: LBC, PE intervals.
+  - Climbing that fits none has no focus, and that's fine: WBL, Perf, unstructured Climbing, and every logged route (indoor or outdoor). Don't force a focus onto them.
+- **Climbing and non-climbing never mix.** Lifting, cardio and stretching never have a climbing focus. Bench press is lifting, not climbing strength; never label lifting "strength".
 - **Indoor and outdoor are separate.** Indoor = climbing-gym logs, the hangboard and indoor route logs. Outdoor = route logs with `setting: "outdoor"` only (`climbCategory`).
-- Hangboard sessions are indoor climbing; `isHangboardSession` still picks them out where the board itself matters (PRs, the Hangboard day type).
+- Hangboard sessions are indoor climbing; `isHangboardSession` still picks them out where the board itself matters (PRs, weight cues).
 - Freeform is "other". Injury is "other" and `logOnly` (`isActivitySession` is false): no calendar colour, no effect on a rest day.
-- Schedule day types (`src/lib/schedules.ts`) are plans, not categories. `typeMatches` answers each from the taxonomy; outdoor boulders/routes still count toward Power/Endurance on purpose.
+- Schedule day types (`src/lib/schedules.ts`) are one per focus, plus Outdoor, Lifting, Cardio, Stretching and Rest. A focus day is ticked only by a session of exactly that focus. The Strength day's stored id is `"hangboard"` (a storage key — never rename).
 
 ### Hold IDs (storage keys — never rename)
 `jug, large-edge, mr-shallow, small-edge, imr-shallow, wide-pinch, sloper, med-pinch`

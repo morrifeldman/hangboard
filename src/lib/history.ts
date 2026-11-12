@@ -63,7 +63,7 @@ export type SessionHoldRecord = {
 
 export type SessionRecord = {
   id: string;
-  workoutType: "repeaters" | "max-hang" | "beginner" | GymWorkoutType;
+  workoutType: "repeaters" | "max-hang" | GymWorkoutType;
   startedAt: number;
   completedAt: number;
   bailed: boolean;
@@ -81,7 +81,7 @@ const sessions = recordStore<SessionRecord>("sessions");
 export const saveSession = sessions.put;
 export const deleteSession = sessions.remove;
 
-// Migrate legacy workout type values stored before the rename.
+// Map legacy workout type values to current ones on read; stored records are left as they are.
 function normalizeSession(s: SessionRecord): SessionRecord {
   // The stored value predates the rename, so it's wider than the current type.
   const stored = s.workoutType as string;
@@ -90,6 +90,8 @@ function normalizeSession(s: SessionRecord): SessionRecord {
     workoutType:
       stored === "a" ? "repeaters" :
       stored === "b" ? "max-hang" :
+      // The retired single-set beginner workout was repeaters on the same board.
+      stored === "beginner" ? "repeaters" :
       s.workoutType,
   };
 }
@@ -109,7 +111,7 @@ export async function getSession(id: string): Promise<SessionRecord | undefined>
 // ─── Session record builder (pure — unit-testable) ───────────────────────────
 
 type BuildArgs = {
-  workoutType: "repeaters" | "max-hang" | "beginner";
+  workoutType: "repeaters" | "max-hang";
   startedAt: number;
   completedAt: number;
   bailed: boolean;

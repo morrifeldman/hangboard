@@ -36,7 +36,7 @@ export function WeightTrendsSection({ sessions, workout, hold, onViewChange, onO
     const knownIds = new Set<string>(HOLDS.map((h) => h.id));
     const list: { id: string; name: string }[] = HOLDS.filter((h) => !h.skipProgression);
     for (const s of sessions) {
-      if (s.workoutType !== "repeaters" && s.workoutType !== "beginner") continue;
+      if (s.workoutType !== "repeaters") continue;
       for (const h of s.holds) {
         if (!knownIds.has(h.holdId)) {
           list.push({ id: h.holdId, name: h.holdName });

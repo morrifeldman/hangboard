@@ -18,13 +18,15 @@ export type ReminderConfig = { enabled: boolean; time: string };
 
 /** Must match SCHEDULE_TYPE_META labels (enforced by a unit test). */
 export const DAY_TYPE_LABELS: Record<string, string> = {
-  power: "Power",
   endurance: "Endurance",
-  hangboard: "Hangboard",
+  stamina: "Stamina",
+  hangboard: "Strength",
+  power: "Power",
+  "power-endurance": "Power endurance",
   outdoor: "Outdoor",
   lifting: "Lifting",
-  stretching: "Stretching",
   cardio: "Cardio",
+  stretching: "Stretching",
   rest: "Rest",
 };
 

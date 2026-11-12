@@ -92,44 +92,41 @@ describe("normalizeDayTypes", () => {
   });
 });
 
-describe("typeMatches (generous)", () => {
+describe("typeMatches", () => {
   const day = new Date(2026, 4, 19, 9, 0);
+  const FOCUS_DAYS = ["endurance", "stamina", "hangboard", "power", "power-endurance"] as const;
 
-  it("hangboard matches any hangboard session", () => {
-    expect(typeMatches("hangboard", [makeSessionOn(day, "max-hang")], [])).toBe(true);
-    expect(typeMatches("hangboard", [makeSessionOn(day, "arc")], [])).toBe(false);
+  it("a focus day is matched only by sessions of that focus", () => {
+    const cases: [ScheduleDayType, SessionRecord["workoutType"][]][] = [
+      ["endurance", ["arc"]],
+      ["stamina", ["cir"]],
+      ["hangboard", ["repeaters", "max-hang"]], // the Strength day
+      ["power", ["campus", "limit-bouldering", "hard-bouldering"]],
+      ["power-endurance", ["lbc", "pe-route"]],
+    ];
+    for (const [type, matching] of cases) {
+      for (const [, workoutTypes] of cases) {
+        for (const t of workoutTypes) {
+          expect(typeMatches(type, [makeSessionOn(day, t)], [])).toBe(matching.includes(t));
+        }
+      }
+    }
   });
 
-  it("power matches max-hang, bouldering gym types, or a boulder climb", () => {
-    expect(typeMatches("power", [makeSessionOn(day, "max-hang")], [])).toBe(true);
-    expect(typeMatches("power", [makeSessionOn(day, "limit-bouldering")], [])).toBe(true);
-    expect(typeMatches("power", [], [makeClimb("2026-05-19", { type: "boulder" })])).toBe(true);
-    expect(typeMatches("power", [makeSessionOn(day, "arc")], [])).toBe(false);
-    // wbl is a warm-up, not power
-    expect(typeMatches("power", [makeSessionOn(day, "wbl")], [])).toBe(false);
-    // campus board is contact-strength → power
-    expect(typeMatches("power", [makeSessionOn(day, "campus")], [])).toBe(true);
-  });
-
-  it("endurance matches repeaters, arc/cir/pe-route/lbc, or a sport climb", () => {
-    expect(typeMatches("endurance", [makeSessionOn(day, "repeaters")], [])).toBe(true);
-    expect(typeMatches("endurance", [makeSessionOn(day, "arc")], [])).toBe(true);
-    expect(typeMatches("endurance", [], [makeClimb("2026-05-19", { type: "sport" })])).toBe(true);
-    expect(typeMatches("endurance", [makeSessionOn(day, "max-hang")], [])).toBe(false);
-  });
-
-  it("unstructured climbing counts toward power or endurance by discipline", () => {
-    const climbing = (discipline: string): SessionRecord => ({
+  it("climbing without a focus matches no focus day", () => {
+    const climbing: SessionRecord = {
       ...makeSessionOn(day, "climbing"),
-      gymData: { type: "climbing", discipline, durationMin: 60 },
-    });
-    expect(typeMatches("power", [climbing("Boulder")], [])).toBe(true);
-    expect(typeMatches("endurance", [climbing("Boulder")], [])).toBe(false);
-    expect(typeMatches("endurance", [climbing("Rope")], [])).toBe(true);
-    expect(typeMatches("power", [climbing("Rope")], [])).toBe(false);
-    expect(typeMatches("power", [climbing("Mixed")], [])).toBe(true);
-    expect(typeMatches("endurance", [climbing("Mixed")], [])).toBe(true);
-    expect(typeMatches("rest", [climbing("Boulder")], [])).toBe(false);
+      gymData: { type: "climbing", discipline: "Boulder", durationMin: 60 },
+    };
+    const unfocused = [makeSessionOn(day, "wbl"), makeSessionOn(day, "performance"), climbing];
+    const routes = [
+      makeClimb("2026-05-19", { type: "boulder" }),
+      makeClimb("2026-05-19", { type: "sport", setting: "indoor" }, "climb-2"),
+    ];
+    for (const type of FOCUS_DAYS) {
+      expect(typeMatches(type, unfocused, routes)).toBe(false);
+    }
+    expect(typeMatches("rest", [climbing], [])).toBe(false);
   });
 
   it("outdoor matches any outdoor climb", () => {
@@ -137,10 +134,11 @@ describe("typeMatches (generous)", () => {
     expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "indoor" })])).toBe(false);
   });
 
-  it("power and endurance are climbing only: lifting, cardio and stretching never count", () => {
+  it("non-climbing work never matches a focus day", () => {
     for (const t of ["lifts", "cardio", "stretching", "freeform", "injury"] as const) {
-      expect(typeMatches("power", [makeSessionOn(day, t)], [])).toBe(false);
-      expect(typeMatches("endurance", [makeSessionOn(day, t)], [])).toBe(false);
+      for (const type of FOCUS_DAYS) {
+        expect(typeMatches(type, [makeSessionOn(day, t)], [])).toBe(false);
+      }
     }
   });
 
@@ -215,10 +213,10 @@ describe("buildScheduleWeeks", () => {
   });
 
   it("marks done and missed per-type on a multi-type past day", () => {
-    // logged a sport climb → endurance done; power (no boulder/max-hang) → missed
+    // logged an ARC session → endurance done; power (no campus/bouldering) → missed
     const sched = [makeSchedule("2026-05-19", ["power", "endurance"])];
-    const climb = makeClimb("2026-05-19", { type: "sport", setting: "indoor" });
-    const weeks = buildScheduleWeeks(start, 1, sched, [], [climb], today);
+    const arc = makeSessionOn(new Date(2026, 4, 19, 9, 0), "arc");
+    const weeks = buildScheduleWeeks(start, 1, sched, [arc], [], today);
     const day = weeks[0].find((d) => d.date === "2026-05-19")!;
     expect(day.typeStatus).toEqual([
       { type: "power", state: "missed" },

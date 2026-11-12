@@ -1,7 +1,7 @@
 import { GYM_WORKOUTS } from "../../data/gymWorkouts";
 import type { GymWorkoutDef } from "../../data/gymWorkouts";
 import type { GymWorkoutType } from "../../lib/history";
-import { workoutTypeCategory, workoutTypeFocus } from "../../lib/sessionKind";
+import { CLIMBING_FOCUSES, workoutTypeCategory, workoutTypeFocus } from "../../lib/sessionKind";
 import { DumbbellIcon } from "../icons";
 import { PILL_CLS, PILL_ON_CLS, PILL_OFF_CLS } from "./styles";
 
@@ -26,8 +26,8 @@ type PickerSection = { label?: string; rows: PickerRow[] };
 
 /**
  * The picker's layout, derived from the shared taxonomy (sessionKind.ts):
- * indoor climbing by focus, then everything that isn't climbing, each on its
- * own row so the two never read as one group.
+ * indoor climbing by training focus, then everything that isn't climbing, so
+ * the two never read as one group.
  */
 const SECTIONS: PickerSection[] = (() => {
   const indoor = GYM_WORKOUTS.filter((w) => workoutTypeCategory(w.id) === "indoor");
@@ -37,10 +37,13 @@ const SECTIONS: PickerSection[] = (() => {
     {
       label: "Indoor climbing",
       rows: [
-        { label: "Endurance", types: indoor.filter((w) => workoutTypeFocus(w.id) === "endurance") },
-        { label: "Power", types: indoor.filter((w) => workoutTypeFocus(w.id) === "power") },
-        // The hangboard is both (repeaters and max hangs), so it sits with the unfocused types.
-        { label: "General", types: indoor.filter((w) => !workoutTypeFocus(w.id)), hangboard: true },
+        ...CLIMBING_FOCUSES.map((f): PickerRow => ({
+          label: f.label,
+          types: indoor.filter((w) => workoutTypeFocus(w.id) === f.id),
+          // Strength is the hangboard, which runs the guided timer.
+          ...(f.id === "strength" ? { hangboard: true as const } : {}),
+        })),
+        { label: "Other climbing", types: indoor.filter((w) => !workoutTypeFocus(w.id)) },
       ],
     },
     {

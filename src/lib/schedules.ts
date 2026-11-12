@@ -4,46 +4,65 @@ import type { ClimbRecord } from "./climbs";
 import { addDays, toLocalDateString } from "./dates";
 import {
   climbCategory,
-  climbFocus,
   isActivitySession,
-  isHangboardSession,
   sessionCategory,
-  sessionFocuses,
+  sessionFocus,
+  type ClimbingFocus,
 } from "./sessionKind";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/**
+ * What a day can be planned as: one of the climbing focuses, outdoor climbing,
+ * a non-climbing category, or rest. "hangboard" is the Strength day; the id is
+ * a storage key from before strength had its own name, so it stays.
+ */
 export type ScheduleDayType =
-  | "power"
   | "endurance"
+  | "stamina"
   | "hangboard"
+  | "power"
+  | "power-endurance"
   | "outdoor"
   | "lifting"
-  | "stretching"
   | "cardio"
+  | "stretching"
   | "rest";
 
 export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: string; dot: string }> = {
-  power: { label: "Power", bg: "bg-red-600", dot: "bg-red-400" },
   endurance: { label: "Endurance", bg: "bg-blue-600", dot: "bg-blue-400" },
-  hangboard: { label: "Hangboard", bg: "bg-indigo-600", dot: "bg-indigo-400" },
+  stamina: { label: "Stamina", bg: "bg-cyan-600", dot: "bg-cyan-400" },
+  hangboard: { label: "Strength", bg: "bg-indigo-600", dot: "bg-indigo-400" },
+  power: { label: "Power", bg: "bg-red-600", dot: "bg-red-400" },
+  "power-endurance": { label: "Power endurance", bg: "bg-orange-600", dot: "bg-orange-400" },
   outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
   lifting: { label: "Lifting", bg: "bg-sky-600", dot: "bg-sky-400" },
-  stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
   cardio: { label: "Cardio", bg: "bg-pink-600", dot: "bg-pink-400" },
+  stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
   rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
 };
 
 export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
-  "power",
   "endurance",
+  "stamina",
   "hangboard",
+  "power",
+  "power-endurance",
   "outdoor",
   "lifting",
-  "stretching",
   "cardio",
+  "stretching",
   "rest",
 ];
+
+/** The day types that plan a climbing focus, and which one. */
+const DAY_TYPE_FOCUS: Partial<Record<ScheduleDayType, ClimbingFocus>> = {
+  endurance: "endurance",
+  stamina: "stamina",
+  hangboard: "strength",
+  power: "power",
+  "power-endurance": "power-endurance",
+};
 
 export type ScheduleRecord = {
   id: string;
@@ -89,38 +108,30 @@ export type ScheduleDay = {
 // ─── Generous per-type matching ───────────────────────────────────────────────
 
 /**
- * Generously decide whether anything logged on a day could be construed as
- * satisfying a planned type. Every answer comes from the shared taxonomy in
- * sessionKind.ts.
+ * Decide whether what was logged on a day satisfies a planned type. Every
+ * answer comes from the shared taxonomy in sessionKind.ts.
  *
- * Power and endurance are climbing focuses, so only climbing satisfies them
- * (indoors or out); lifting never does. `rest` is "matched" when nothing was
- * logged, or when the only things logged were stretching, cardio or a log entry
- * such as an injury.
+ * A focus day (endurance, stamina, strength, power, power endurance) needs a
+ * session of exactly that focus. Lifting never counts, and neither does climbing
+ * without a focus — a logged route, a warm-up ladder, a performance day.
+ * `rest` is matched when nothing was logged, or when the only things logged
+ * were stretching, cardio or a log entry such as an injury.
  */
 export function typeMatches(
   type: ScheduleDayType,
   sessions: ReadonlyArray<SessionRecord>,
   climbs: ReadonlyArray<ClimbRecord>,
 ): boolean {
-  const inCategory = (category: ReturnType<typeof sessionCategory>) =>
-    sessions.some((s) => isActivitySession(s) && sessionCategory(s) === category);
+  const focus = DAY_TYPE_FOCUS[type];
+  if (focus) return sessions.some((s) => sessionFocus(s) === focus);
 
   switch (type) {
-    case "hangboard":
-      return sessions.some(isHangboardSession);
-    case "power":
-    case "endurance":
-      return (
-        sessions.some((s) => sessionFocuses(s).includes(type)) ||
-        climbs.some((c) => climbFocus(c) === type)
-      );
     case "outdoor":
       return climbs.some((c) => climbCategory(c) === "outdoor");
     case "lifting":
     case "stretching":
     case "cardio":
-      return inCategory(type);
+      return sessions.some((s) => sessionCategory(s) === type);
     case "rest":
       return (
         climbs.length === 0 &&
@@ -129,6 +140,8 @@ export function typeMatches(
           return !isActivitySession(s) || category === "stretching" || category === "cardio";
         })
       );
+    default:
+      return false;
   }
 }
 

@@ -80,7 +80,6 @@ describe("workoutTypeLabel / workoutLabel", () => {
   it("maps hangboard types", () => {
     expect(workoutTypeLabel("repeaters")).toBe("Repeaters");
     expect(workoutTypeLabel("max-hang")).toBe("Max Hang");
-    expect(workoutTypeLabel("beginner")).toBe("Beginner");
   });
 
   it("maps gym types", () => {
