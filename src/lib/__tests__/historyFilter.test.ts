@@ -114,21 +114,28 @@ describe("workoutTypeCounts", () => {
 });
 
 describe("workoutTypeGroups", () => {
-  it("splits hangboard (fixed order) from gym (most-used first)", () => {
+  it("groups by activity category, hangboard first within indoor climbing", () => {
     const sessions = [
       makeSession({ id: "1", workoutType: "max-hang" }),
       makeSession({ id: "2", workoutType: "repeaters" }),
       makeSession({ id: "3", workoutType: "stretching" }),
       makeSession({ id: "4", workoutType: "stretching" }),
       makeSession({ id: "5", workoutType: "arc" }),
+      makeSession({ id: "6", workoutType: "campus" }),
+      makeSession({ id: "7", workoutType: "campus" }),
+      makeSession({ id: "8", workoutType: "lifts" }),
+      makeSession({ id: "9", workoutType: "injury" }),
     ];
-    const groups = workoutTypeGroups(sessions);
-    expect(groups.hangboard).toEqual(["repeaters", "max-hang"]);
-    expect(groups.gym).toEqual(["stretching", "arc"]);
+    expect(workoutTypeGroups(sessions)).toEqual([
+      { category: "indoor", types: ["repeaters", "max-hang", "campus", "arc"] },
+      { category: "lifting", types: ["lifts"] },
+      { category: "stretching", types: ["stretching"] },
+      { category: "other", types: ["injury"] },
+    ]);
   });
 
-  it("returns empty groups for no sessions", () => {
-    expect(workoutTypeGroups([])).toEqual({ hangboard: [], gym: [] });
+  it("returns no groups for no sessions", () => {
+    expect(workoutTypeGroups([])).toEqual([]);
   });
 });
 

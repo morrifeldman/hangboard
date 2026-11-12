@@ -115,7 +115,17 @@ is the shell.
 - **Max Hang** (`workoutType: "max-hang"`) — Workout B, 3 sets × 1 rep, 10s hang, 5lb progressions.
 - **Beginner** (`workoutType: "beginner"`) — single-set legacy.
 - **Test** (`workoutType: "test"`) — short-timers state under `?test`; never saved.
-- **Gym workout types**: `GYM_WORKOUT_TYPES` in `src/lib/history.ts` is the source of truth (`GymWorkoutType` derives from it). `src/lib/sessionKind.ts` (`isHangboardSession`, `sessionKind`) is the one way to classify a session; `src/lib/sessionSummary.ts` is the one summary text. Defined in `src/data/gymWorkouts.ts` with `fieldDefs` per type. `FieldType` supports `number | text | grade-v | grade-yds | select | multi-select`.
+- **Gym workout types**: `GYM_WORKOUT_TYPES` in `src/lib/history.ts` is the source of truth (`GymWorkoutType` derives from it). `src/lib/sessionSummary.ts` is the one summary text. Defined in `src/data/gymWorkouts.ts` with `fieldDefs` per type. `FieldType` supports `number | text | grade-v | grade-yds | select | multi-select`.
+
+### Activity categories (`src/lib/sessionKind.ts`)
+The one taxonomy. The log picker, History (chips, filter groups, climbing-day rows), the Activity calendar and the Schedule all read it; never classify a workout type anywhere else.
+
+- **Categories** (`ACTIVITY_CATEGORIES`, in display order, with the calendar colour): Outdoor climbing, Indoor climbing, Lifting, Cardio, Stretching, Other.
+- **Climbing and non-climbing never mix.** Power and endurance are climbing focuses (`sessionFocuses`, `climbFocus`); lifting, cardio and stretching have none, so they can never tick a Power or Endurance day.
+- **Indoor and outdoor are separate.** Indoor = climbing-gym logs, the hangboard and indoor route logs. Outdoor = route logs with `setting: "outdoor"` only (`climbCategory`).
+- Hangboard sessions are indoor climbing; `isHangboardSession` still picks them out where the board itself matters (PRs, the Hangboard day type).
+- Freeform is "other". Injury is "other" and `logOnly` (`isActivitySession` is false): no calendar colour, no effect on a rest day.
+- Schedule day types (`src/lib/schedules.ts`) are plans, not categories. `typeMatches` answers each from the taxonomy; outdoor boulders/routes still count toward Power/Endurance on purpose.
 
 ### Hold IDs (storage keys — never rename)
 `jug, large-edge, mr-shallow, small-edge, imr-shallow, wide-pinch, sloper, med-pinch`

@@ -4,20 +4,21 @@ import type { CalendarDay } from "../../lib/progressData";
 import type { SessionRecord } from "../../lib/history";
 import type { ClimbRecord } from "../../lib/climbs";
 import { toLocalDateString } from "../../lib/dates";
+import { ACTIVITY_CATEGORIES } from "../../lib/sessionKind";
 import { LegendItem, SectionHeading } from "./parts";
 
 /**
- * One heatmap cell. Each activity bucket present that day contributes an equal
- * slice: 1 → solid, 2 → halves, 3 → thirds, 4 → quarters (2×2), 5 → fifths. This
- * keeps every bucket visible on shared days instead of one masking the others.
+ * One heatmap cell. Each activity category present that day contributes an
+ * equal slice: 1 → solid, 2 → halves, 3 → thirds, 4 → quarters (2×2), 5+ →
+ * strips. This keeps every category visible on shared days instead of one
+ * masking the others.
  */
 function CalendarCell({ day, onSelect }: { day: CalendarDay; onSelect: () => void }) {
-  const segments: { key: string; color: string; label: string }[] = [];
-  if (day.gym) segments.push({ key: "gym", color: "bg-amber-500", label: "climbing gym" });
-  if (day.lifting) segments.push({ key: "lifting", color: "bg-sky-500", label: "lifting" });
-  if (day.cardio) segments.push({ key: "cardio", color: "bg-rose-500", label: "cardio" });
-  if (day.stretching) segments.push({ key: "stretching", color: "bg-violet-500", label: "stretching" });
-  if (day.outdoor) segments.push({ key: "outdoor", color: "bg-teal-600", label: "outdoor" });
+  const segments = ACTIVITY_CATEGORIES.filter((c) => day.categories.includes(c.id)).map((c) => ({
+    key: c.id,
+    color: c.color,
+    label: c.label.toLowerCase(),
+  }));
 
   const active = segments.length > 0;
   const title = active
@@ -67,11 +68,7 @@ type Props = {
 
 /** The Activity heatmap: one cell per day, coloured by what was logged. */
 export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
-  const climbDateSet = useMemo(() => new Set(climbs.map((c) => c.date)), [climbs]);
-  const calendarWeeks = useMemo(
-    () => buildCalendar(sessions, climbDateSet),
-    [sessions, climbDateSet],
-  );
+  const calendarWeeks = useMemo(() => buildCalendar(sessions, climbs), [sessions, climbs]);
   const monthLabels = useMemo(() => calendarMonthLabels(calendarWeeks), [calendarWeeks]);
 
   return (
@@ -108,11 +105,9 @@ export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
         </div>
 
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-700/60">
-          <LegendItem color="bg-teal-600" label="Outdoor" />
-          <LegendItem color="bg-amber-500" label="Climbing gym" />
-          <LegendItem color="bg-sky-500" label="Lifting" />
-          <LegendItem color="bg-rose-500" label="Cardio" />
-          <LegendItem color="bg-violet-500" label="Stretching" />
+          {ACTIVITY_CATEGORIES.map((c) => (
+            <LegendItem key={c.id} color={c.color} label={c.label} />
+          ))}
         </div>
       </div>
     </section>

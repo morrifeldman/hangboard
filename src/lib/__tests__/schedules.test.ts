@@ -137,6 +137,25 @@ describe("typeMatches (generous)", () => {
     expect(typeMatches("outdoor", [], [makeClimb("2026-05-19", { setting: "indoor" })])).toBe(false);
   });
 
+  it("power and endurance are climbing only: lifting, cardio and stretching never count", () => {
+    for (const t of ["lifts", "cardio", "stretching", "freeform", "injury"] as const) {
+      expect(typeMatches("power", [makeSessionOn(day, t)], [])).toBe(false);
+      expect(typeMatches("endurance", [makeSessionOn(day, t)], [])).toBe(false);
+    }
+  });
+
+  it("lifting matches only a lifts log", () => {
+    expect(typeMatches("lifting", [makeSessionOn(day, "lifts")], [])).toBe(true);
+    expect(typeMatches("lifting", [makeSessionOn(day, "max-hang")], [])).toBe(false);
+    expect(typeMatches("lifting", [makeSessionOn(day, "campus")], [])).toBe(false);
+    expect(typeMatches("rest", [makeSessionOn(day, "lifts")], [])).toBe(false);
+  });
+
+  it("an injury entry leaves a rest day intact; a freeform workout doesn't", () => {
+    expect(typeMatches("rest", [makeSessionOn(day, "injury")], [])).toBe(true);
+    expect(typeMatches("rest", [makeSessionOn(day, "freeform")], [])).toBe(false);
+  });
+
   it("stretching matches a stretching session", () => {
     expect(typeMatches("stretching", [makeSessionOn(day, "stretching")], [])).toBe(true);
     expect(typeMatches("stretching", [makeSessionOn(day, "repeaters")], [])).toBe(false);

@@ -22,6 +22,7 @@ export const DAY_TYPE_LABELS: Record<string, string> = {
   endurance: "Endurance",
   hangboard: "Hangboard",
   outdoor: "Outdoor",
+  lifting: "Lifting",
   stretching: "Stretching",
   cardio: "Cardio",
   rest: "Rest",

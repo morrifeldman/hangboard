@@ -1,5 +1,11 @@
 import type { SessionRecord, GymData, GymWorkoutType } from "./history";
-import { HANGBOARD_WORKOUT_TYPES } from "./sessionKind";
+import {
+  ACTIVITY_CATEGORIES,
+  HANGBOARD_WORKOUT_TYPES,
+  isHangboardType,
+  workoutTypeCategory,
+  type ActivityCategory,
+} from "./sessionKind";
 import type { ClimbRecord } from "./climbs";
 import type { NoteRecord } from "./notes";
 
@@ -50,20 +56,24 @@ export function workoutTypeCounts(sessions: SessionRecord[]): Map<string, number
 }
 
 /**
- * Chip lists for the Workouts sub-filter: hangboard types (fixed order) and
- * gym types (most-used first), each restricted to types present in history.
+ * Chip groups for the Workouts sub-filter, one per activity category in display
+ * order, restricted to types present in history. Within a group the hangboard
+ * types come first (fixed order), then the rest most-used first.
  */
-export function workoutTypeGroups(sessions: SessionRecord[]): {
-  hangboard: string[];
-  gym: string[];
-} {
+export function workoutTypeGroups(
+  sessions: SessionRecord[],
+): { category: ActivityCategory; types: string[] }[] {
   const counts = workoutTypeCounts(sessions);
-  const hangboard = HANGBOARD_WORKOUT_TYPES.filter((t) => counts.has(t));
-  const gym = [...counts.entries()]
-    .filter(([t]) => !(HANGBOARD_WORKOUT_TYPES as readonly string[]).includes(t))
+  const hangboard: string[] = HANGBOARD_WORKOUT_TYPES.filter((t) => counts.has(t));
+  const rest = [...counts.entries()]
+    .filter(([t]) => !isHangboardType(t))
     .sort((a, b) => b[1] - a[1])
     .map(([t]) => t);
-  return { hangboard: [...hangboard], gym };
+  const present = [...hangboard, ...rest];
+  return ACTIVITY_CATEGORIES.map((c) => ({
+    category: c.id as ActivityCategory,
+    types: present.filter((t) => workoutTypeCategory(t) === c.id),
+  })).filter((g) => g.types.length > 0);
 }
 
 // ─── Free-text search ────────────────────────────────────────────────────────

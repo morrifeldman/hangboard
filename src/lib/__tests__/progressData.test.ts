@@ -1,3 +1,4 @@
+import { toLocalDateString } from "../dates";
 import { describe, it, expect } from "vitest";
 import {
   buildTrend,
@@ -278,95 +279,87 @@ describe("buildTrend", () => {
 // ─── buildCalendar ────────────────────────────────────────────────────────────
 
 describe("buildCalendar", () => {
+  const daysAgo = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d;
+  };
+  const marked = (grid: ReturnType<typeof buildCalendar>) =>
+    grid.flat().filter((d) => d.categories.length > 0);
+
   it("returns 12 weeks × 7 days for empty sessions", () => {
     const grid = buildCalendar([]);
     expect(grid).toHaveLength(12);
     expect(grid[0]).toHaveLength(7);
-    for (const week of grid) {
-      for (const day of week) {
-        expect(day.workoutType).toBeNull();
-      }
-    }
+    expect(marked(grid)).toHaveLength(0);
   });
 
-  it("marks a board session as 'gym'", () => {
-    // Use a day guaranteed to be in the last 12 weeks
-    const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - 7);
-    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
-    const grid = buildCalendar([s]);
-    const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("gym");
-  });
-
-  it("collapses both hangboard types on the same day to 'gym'", () => {
-    const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - 5);
-    const sa = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
-    const sb = makeSession({ id: "2", workoutType: "max-hang", startedAt: recentDate.getTime() + 3600000 });
-    const grid = buildCalendar([sa, sb]);
-    const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("gym");
-  });
-
-  it("buckets cardio and stretching separately", () => {
-    const cardioDate = new Date();
-    cardioDate.setDate(cardioDate.getDate() - 4);
-    const stretchDate = new Date();
-    stretchDate.setDate(stretchDate.getDate() - 6);
-    const cardio = makeSession({
-      id: "1", workoutType: "cardio", startedAt: cardioDate.getTime(), holds: [],
-      gymData: { type: "cardio", mode: "Bike", durationMin: 30 },
-    });
-    const stretch = makeSession({
-      id: "2", workoutType: "stretching", startedAt: stretchDate.getTime(), holds: [],
-      gymData: { type: "stretching", reps: 3, holdSec: 30 },
-    });
-    const grid = buildCalendar([cardio, stretch]);
-    const marked = grid.flat().filter((d) => d.workoutType !== null);
-    expect(marked.map((d) => d.workoutType).sort()).toEqual(["cardio", "stretching"]);
-  });
-
-  it("prioritizes 'gym' for the fill but keeps the other buckets' flags", () => {
-    const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - 3);
-    const board = makeSession({ id: "1", workoutType: "repeaters", startedAt: recentDate.getTime() });
-    const cardio = makeSession({
-      id: "2", workoutType: "cardio", startedAt: recentDate.getTime() + 3600000, holds: [],
-      gymData: { type: "cardio", mode: "Run", durationMin: 20 },
-    });
-    const stretch = makeSession({
-      id: "3", workoutType: "stretching", startedAt: recentDate.getTime() + 7200000, holds: [],
-      gymData: { type: "stretching", reps: 3, holdSec: 30 },
-    });
-    const grid = buildCalendar([board, cardio, stretch]);
-    const found = grid.flat().find((d) => d.workoutType !== null);
-    expect(found?.workoutType).toBe("gym");
-    // Losing buckets stay flagged so the calendar can dot them.
-    expect(found?.gym).toBe(true);
-    expect(found?.cardio).toBe(true);
-    expect(found?.stretching).toBe(true);
-  });
-
-  it("buckets lifting apart from climbing-gym work", () => {
-    const day = new Date();
-    day.setDate(day.getDate() - 2);
-    const lifts = makeSession({
-      id: "1", workoutType: "lifts", startedAt: day.getTime(), holds: [],
-      gymData: { type: "lifts", lifts: [] },
-    });
-    const liftOnly = buildCalendar([lifts]).flat().find((d) => d.workoutType !== null);
-    expect(liftOnly?.workoutType).toBe("lifting");
-    expect(liftOnly?.gym).toBe(false);
-
+  it("marks hangboard and climbing-gym sessions as indoor climbing", () => {
+    const board = makeSession({ id: "1", workoutType: "repeaters", startedAt: daysAgo(7).getTime() });
+    const maxHang = makeSession({ id: "2", workoutType: "max-hang", startedAt: daysAgo(7).getTime() + 3600000 });
     const arc = makeSession({
-      id: "2", workoutType: "arc", startedAt: day.getTime() + 3600000, holds: [],
+      id: "3", workoutType: "arc", startedAt: daysAgo(5).getTime(), holds: [],
       gymData: { type: "arc", climbMin: 30 },
     });
-    const both = buildCalendar([lifts, arc]).flat().find((d) => d.workoutType !== null);
-    expect(both?.workoutType).toBe("gym");
-    expect(both?.gym).toBe(true);
-    expect(both?.lifting).toBe(true);
+    const days = marked(buildCalendar([board, maxHang, arc]));
+    expect(days.map((d) => d.categories)).toEqual([["indoor"], ["indoor"]]);
+  });
+
+  it("keeps lifting, cardio and stretching apart from climbing", () => {
+    const at = daysAgo(3).getTime();
+    const sessions = [
+      makeSession({ id: "1", workoutType: "repeaters", startedAt: at }),
+      makeSession({ id: "2", workoutType: "lifts", startedAt: at + 1, holds: [], gymData: { type: "lifts", lifts: [] } }),
+      makeSession({
+        id: "3", workoutType: "cardio", startedAt: at + 2, holds: [],
+        gymData: { type: "cardio", mode: "Run", durationMin: 20 },
+      }),
+      makeSession({
+        id: "4", workoutType: "stretching", startedAt: at + 3, holds: [],
+        gymData: { type: "stretching", reps: 3, holdSec: 30 },
+      }),
+    ];
+    const liftOnly = marked(buildCalendar([sessions[1]]));
+    expect(liftOnly[0].categories).toEqual(["lifting"]);
+    // Every category keeps its own slice, in display order.
+    const all = marked(buildCalendar(sessions));
+    expect(all).toHaveLength(1);
+    expect(all[0].categories).toEqual(["indoor", "lifting", "cardio", "stretching"]);
+  });
+
+  it("counts freeform as other and gives an injury entry no colour", () => {
+    const at = daysAgo(2).getTime();
+    const freeform = makeSession({
+      id: "1", workoutType: "freeform", startedAt: at, holds: [],
+      gymData: { type: "freeform", title: "Yoga", sections: [] },
+    });
+    const injury = makeSession({
+      id: "2", workoutType: "injury", startedAt: daysAgo(4).getTime(), holds: [],
+      gymData: { type: "injury" },
+    });
+    const days = marked(buildCalendar([freeform, injury]));
+    expect(days.map((d) => d.categories)).toEqual([["other"]]);
+  });
+
+  it("separates indoor from outdoor route logs", () => {
+    const outdoorDay = toLocalDateString(daysAgo(3));
+    const indoorDay = toLocalDateString(daysAgo(2));
+    const bothDay = toLocalDateString(daysAgo(1));
+    const grid = buildCalendar([], [
+      { date: outdoorDay, setting: "outdoor" },
+      { date: indoorDay, setting: "indoor" },
+      { date: bothDay, setting: "indoor" },
+      { date: bothDay, setting: "outdoor" },
+    ]);
+    const byDate = new Map(marked(grid).map((d) => [toLocalDateString(d.date), d.categories]));
+    expect(byDate.get(outdoorDay)).toEqual(["outdoor"]);
+    expect(byDate.get(indoorDay)).toEqual(["indoor"]);
+    expect(byDate.get(bothDay)).toEqual(["outdoor", "indoor"]);
+  });
+
+  it("does not include sessions older than 12 weeks", () => {
+    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: daysAgo(90).getTime() });
+    expect(marked(buildCalendar([s]))).toHaveLength(0);
   });
 
   it("week array is in Monday→Sunday order (day 0 is Mon)", () => {
@@ -375,36 +368,6 @@ describe("buildCalendar", () => {
     for (const week of grid) {
       expect(week[0].date.getDay()).toBe(1); // 1 = Monday
     }
-  });
-
-  it("does not include sessions older than 12 weeks", () => {
-    const oldDate = new Date();
-    oldDate.setDate(oldDate.getDate() - 90); // ~13 weeks ago
-    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: oldDate.getTime() });
-    const grid = buildCalendar([s]);
-    const anyMarked = grid.flat().some((d) => d.workoutType !== null);
-    expect(anyMarked).toBe(false);
-  });
-
-  it("marks outdoor days from climbDates", () => {
-    const recent = new Date();
-    recent.setDate(recent.getDate() - 3);
-    const key = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, "0")}-${String(recent.getDate()).padStart(2, "0")}`;
-    const grid = buildCalendar([], new Set([key]));
-    const outdoorDays = grid.flat().filter((d) => d.outdoor);
-    expect(outdoorDays).toHaveLength(1);
-    expect(outdoorDays[0].workoutType).toBeNull();
-  });
-
-  it("outdoor flag is independent of the workout bucket", () => {
-    const recent = new Date();
-    recent.setDate(recent.getDate() - 3);
-    const key = `${recent.getFullYear()}-${String(recent.getMonth() + 1).padStart(2, "0")}-${String(recent.getDate()).padStart(2, "0")}`;
-    const s = makeSession({ id: "1", workoutType: "repeaters", startedAt: recent.getTime() });
-    const grid = buildCalendar([s], new Set([key]));
-    const day = grid.flat().find((d) => d.outdoor);
-    expect(day?.workoutType).toBe("gym");
-    expect(day?.outdoor).toBe(true);
   });
 
   it("flags exactly one day as today", () => {

@@ -15,21 +15,10 @@ export type FieldDef = {
   showIf?: { key: string; values: string[] };
 };
 
-export type GymCategory = "endurance" | "power" | "strength" | "other";
-
-/** Picker groups, in display order. The Hangboard pill joins "power" in the UI. */
-export const GYM_CATEGORIES: { id: GymCategory; label: string }[] = [
-  { id: "endurance", label: "Endurance" },
-  { id: "power",     label: "Power" },
-  { id: "strength",  label: "Strength training" },
-  { id: "other",     label: "Other" },
-];
-
 export type GymWorkoutDef = {
   id: GymWorkoutType;
   label: string;
   description: string;
-  category: GymCategory;
   fieldDefs: FieldDef[];
 };
 
@@ -38,7 +27,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "arc",
     label: "ARC",
     description: "Aerobic Restoration & Capillarity — continuous climbing",
-    category: "endurance",
     fieldDefs: [
       { key: "climbMin",   label: "Climbing time", type: "number", unit: "min", step: 5 },
       { key: "routes",    label: "Routes",        type: "number", optional: true },
@@ -51,7 +39,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "cir",
     label: "CIR",
     description: "Continuous-Intensity Repetitions",
-    category: "endurance",
     fieldDefs: [
       { key: "repeats",     label: "Repeats",        type: "number" },
       { key: "climbRating", label: "Climb rating",   type: "grade-yds", optional: true },
@@ -62,7 +49,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "pe-route",
     label: "PE Intervals",
     description: "High intensity power endurance training. Target ~1 letter grade above current onsight grade",
-    category: "endurance",
     fieldDefs: [
       { key: "climbSec",  label: "Climb time",  type: "number", unit: "sec", step: 5 },
       { key: "dutyCycle", label: "Duty cycle",    type: "select", options: ["1:1", "1:1.5", "1:2"] },
@@ -73,7 +59,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "lbc",
     label: "LBC",
     description: "Linked Boulder Circuit — high intensity power endurance training",
-    category: "endurance",
     fieldDefs: [
       { key: "climbSec",      label: "Climb time",     type: "number", unit: "sec", step: 5 },
       { key: "dutyCycle",     label: "Duty cycle",       type: "select", options: ["1:1", "1:1.5", "1:2"] },
@@ -84,7 +69,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "wbl",
     label: "WBL",
     description: "Warmup Boulder Ladder — 1–3 problems at each grade up to flash level. No more than 3 attempts per problem",
-    category: "power",
     fieldDefs: [
       { key: "topV",        label: "Top grade",    type: "grade-v" },
       { key: "durationMin", label: "Duration",     type: "number", unit: "min", step: 5 },
@@ -94,7 +78,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "hard-bouldering",
     label: "Hard Boulder",
     description: "Just above flash level, 2–3 problems, 3–4 quality attempts per problem. 2–5 min rest between attempts",
-    category: "power",
     fieldDefs: [
       { key: "level",       label: "Level",    type: "grade-v" },
       { key: "durationMin", label: "Duration", type: "number", unit: "min", step: 5 },
@@ -104,7 +87,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "limit-bouldering",
     label: "Limit Boulder",
     description: "2–4 \"realistic\" problems, 4–5 quality attempts per problem. 2–5 min rest between attempts, 5–10 min rest between problems",
-    category: "power",
     fieldDefs: [
       { key: "level",       label: "Level",    type: "grade-v" },
       { key: "durationMin", label: "Duration", type: "number", unit: "min", step: 5 },
@@ -114,7 +96,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "performance",
     label: "Perf",
     description: "Climbing hard — a few routes or projects near your limit",
-    category: "power",
     fieldDefs: [
       { key: "grade",   label: "Grade",   type: "grade-yds" },
       { key: "tries",   label: "Tries",   type: "number", optional: true },
@@ -126,21 +107,18 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     label: "Campus",
     description:
       "Campus board — Metolius/Moon rung spacing. Each row is a set: pick rung size, ladder name, and hand sequence (B=both, L=left, R=right; number = rung). Starts from the standard routine — edit, add, or reset rows.",
-    category: "power",
     fieldDefs: [], // custom row editor, like freeform
   },
   {
     id: "lifts",
     label: "Lifts",
     description: "Weight training from your own lift library — sets, reps and weight",
-    category: "strength",
     fieldDefs: [], // custom lift editor, like freeform
   },
   {
     id: "climbing",
     label: "Climbing",
     description: "Unstructured climbing — just climb, no set protocol",
-    category: "other",
     fieldDefs: [
       { key: "discipline",  label: "Discipline", type: "select", options: ["Boulder", "Rope", "Mixed"] },
       { key: "durationMin", label: "Duration",   type: "number", unit: "min", step: 5 },
@@ -155,7 +133,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "cardio",
     label: "Cardio",
     description: "Bike, run, or elliptical — zone 2 / aerobic conditioning",
-    category: "other",
     fieldDefs: [
       { key: "mode",        label: "Mode",      type: "select", options: ["Bike", "Run", "Elliptical"] },
       { key: "durationMin", label: "Duration",  type: "number", unit: "min", step: 5 },
@@ -166,7 +143,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "stretching",
     label: "Stretch",
     description: "Mobility / flexibility work",
-    category: "other",
     fieldDefs: [
       { key: "stretches", label: "Stretches", type: "multi-select",
         options: ["Hamstrings", "Quads", "Adductors", "IT band", "Calves", "Forearms", "Glutes"], optional: true },
@@ -178,7 +154,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "injury",
     label: "Injury",
     description: "Log an injury or pain event",
-    category: "other",
     fieldDefs: [
       { key: "bodyPart", label: "Body part", type: "text", optional: true },
       { key: "severity", label: "Severity",  type: "select", options: ["Mild", "Moderate", "Severe"], optional: true },
@@ -188,7 +163,6 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "freeform",
     label: "Freeform",
     description: "Free-form workout — title, sections, key/value entries",
-    category: "other",
     fieldDefs: [],
   },
 ];

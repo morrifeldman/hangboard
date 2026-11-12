@@ -1,6 +1,7 @@
-import { GYM_WORKOUTS, GYM_CATEGORIES } from "../../data/gymWorkouts";
+import { GYM_WORKOUTS } from "../../data/gymWorkouts";
 import type { GymWorkoutDef } from "../../data/gymWorkouts";
 import type { GymWorkoutType } from "../../lib/history";
+import { workoutTypeCategory, workoutTypeFocus } from "../../lib/sessionKind";
 import { DumbbellIcon } from "../icons";
 import { PILL_CLS, PILL_ON_CLS, PILL_OFF_CLS } from "./styles";
 
@@ -20,6 +21,38 @@ type Props = {
   onCancelSwitch: () => void;
 };
 
+type PickerRow = { label: string; types: GymWorkoutDef[]; hangboard?: true };
+type PickerSection = { label?: string; rows: PickerRow[] };
+
+/**
+ * The picker's layout, derived from the shared taxonomy (sessionKind.ts):
+ * indoor climbing by focus, then everything that isn't climbing, each on its
+ * own row so the two never read as one group.
+ */
+const SECTIONS: PickerSection[] = (() => {
+  const indoor = GYM_WORKOUTS.filter((w) => workoutTypeCategory(w.id) === "indoor");
+  const inCategory = (...categories: string[]) =>
+    GYM_WORKOUTS.filter((w) => categories.includes(workoutTypeCategory(w.id)));
+  return [
+    {
+      label: "Indoor climbing",
+      rows: [
+        { label: "Endurance", types: indoor.filter((w) => workoutTypeFocus(w.id) === "endurance") },
+        { label: "Power", types: indoor.filter((w) => workoutTypeFocus(w.id) === "power") },
+        // The hangboard is both (repeaters and max hangs), so it sits with the unfocused types.
+        { label: "General", types: indoor.filter((w) => !workoutTypeFocus(w.id)), hangboard: true },
+      ],
+    },
+    {
+      label: "Not climbing",
+      rows: [
+        { label: "Training", types: inCategory("lifting", "cardio", "stretching") },
+        { label: "Other", types: inCategory("other") },
+      ],
+    },
+  ];
+})();
+
 /** Type pills (plus the Hangboard pill) that collapse to the chosen one. */
 export function WorkoutTypePicker({
   def,
@@ -37,36 +70,41 @@ export function WorkoutTypePicker({
   return (
     <div>
       {open && !editing ? (
-        <div className="flex flex-col gap-3">
-          {GYM_CATEGORIES.map((cat) => (
-            <div key={cat.id}>
-              <p className="text-gray-500 text-xs mb-1.5">{cat.label}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {GYM_WORKOUTS.filter((w) => w.category === cat.id).map((w) => (
-                  <button
-                    key={w.id}
-                    onClick={() => onSelectType(w.id)}
-                    aria-pressed={workoutType === w.id && !hangboardMode}
-                    className={`${PILL_CLS} ${
-                      workoutType === w.id && !hangboardMode ? PILL_ON_CLS : PILL_OFF_CLS
-                    }`}
-                  >
-                    {w.label}
-                  </button>
-                ))}
-                {/* Hangboard launches the guided timer rather than a log form */}
-                {cat.id === "power" && (
-                  <button
-                    onClick={onSelectHangboard}
-                    data-testid="workout-pill-hangboard"
-                    aria-pressed={hangboardMode}
-                    className={`${PILL_CLS} gap-1.5 ${hangboardMode ? PILL_ON_CLS : PILL_OFF_CLS}`}
-                  >
-                    <DumbbellIcon size={14} />
-                    Hangboard
-                  </button>
-                )}
-              </div>
+        <div className="flex flex-col gap-4">
+          {SECTIONS.map((section) => (
+            <div key={section.label} className="flex flex-col gap-2.5">
+              <p className="text-gray-200 text-sm font-semibold">{section.label}</p>
+              {section.rows.map((row) => (
+                <div key={row.label}>
+                  <p className="text-gray-500 text-xs mb-1.5">{row.label}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {row.types.map((w) => (
+                      <button
+                        key={w.id}
+                        onClick={() => onSelectType(w.id)}
+                        aria-pressed={workoutType === w.id && !hangboardMode}
+                        className={`${PILL_CLS} ${
+                          workoutType === w.id && !hangboardMode ? PILL_ON_CLS : PILL_OFF_CLS
+                        }`}
+                      >
+                        {w.label}
+                      </button>
+                    ))}
+                    {/* Hangboard launches the guided timer rather than a log form */}
+                    {row.hangboard && (
+                      <button
+                        onClick={onSelectHangboard}
+                        data-testid="workout-pill-hangboard"
+                        aria-pressed={hangboardMode}
+                        className={`${PILL_CLS} gap-1.5 ${hangboardMode ? PILL_ON_CLS : PILL_OFF_CLS}`}
+                      >
+                        <DumbbellIcon size={14} />
+                        Hangboard
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>

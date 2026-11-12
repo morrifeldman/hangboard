@@ -1,6 +1,13 @@
 import type { SessionRecord } from "./history";
 import { sessionPRs } from "./personalRecords";
-import { sessionKind } from "./sessionKind";
+import type { ClimbRecord } from "./climbs";
+import {
+  ACTIVITY_CATEGORIES,
+  climbCategory,
+  isActivitySession,
+  sessionCategory,
+  type ActivityCategory,
+} from "./sessionKind";
 import { addDays, startOfWeek, toLocalDateString } from "./dates";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -15,26 +22,13 @@ export type TrendPoint = {
   sessionId: string;
 };
 
-export type WorkoutBucket = "gym" | "lifting" | "cardio" | "stretching";
-
 export type CalendarDay = {
   date: Date;
   /**
-   * Highest-priority bucket present that day (gym > lifting > cardio >
-   * stretching), or
-   * null if none. Handy as a summary, but the calendar renders every flagged
-   * bucket as its own slice rather than picking one.
-   * - "gym": any board (repeaters/max-hang/beginner) or gym session that isn't
-   *   lifting, cardio or stretching — hangboarding counts as gym.
-   * - "lifting": weight training, apart from climbing-gym work.
-   * - "cardio" / "stretching": their own buckets so recovery work stands apart.
+   * Every activity category logged that day, in display order (see
+   * sessionKind.ts). The calendar draws one slice per category.
    */
-  workoutType: WorkoutBucket | null;
-  gym: boolean;
-  lifting: boolean;
-  cardio: boolean;
-  stretching: boolean;
-  outdoor: boolean;
+  categories: ActivityCategory[];
   isToday: boolean;
 };
 
@@ -94,31 +88,27 @@ export function buildTrend(
 // ─── buildCalendar ────────────────────────────────────────────────────────────
 
 /**
- * Collapse a session into one of the calendar buckets. Board work and climbing
- * gym workouts read as "gym"; lifting, cardio and stretching get their own.
- */
-function sessionCategory(s: SessionRecord): WorkoutBucket {
-  const kind = sessionKind(s);
-  return kind === "lifting" || kind === "cardio" || kind === "stretching" ? kind : "gym";
-}
-
-/**
  * Returns a 12×7 grid of CalendarDay objects covering 12 ISO weeks ending with
  * the current week.  Outer index = week (0 = oldest), inner index = day (0 =
  * Monday, 6 = Sunday).
+ *
+ * Sessions and logged routes are both classified by sessionKind.ts, so an
+ * indoor route log reads as indoor climbing and an injury entry colours nothing.
  */
 export function buildCalendar(
   sessions: SessionRecord[],
-  climbDates?: Set<string>,
+  climbs: ReadonlyArray<Pick<ClimbRecord, "date" | "setting">> = [],
 ): CalendarDay[][] {
-  // Build a lookup keyed by ISO date string "YYYY-MM-DD" → set of buckets.
-  const dayMap = new Map<string, Set<WorkoutBucket>>();
-  for (const s of sessions) {
-    const d = new Date(s.startedAt);
-    const key = toLocalDateString(d);
+  // Local date key "YYYY-MM-DD" → categories logged that day.
+  const dayMap = new Map<string, Set<ActivityCategory>>();
+  const mark = (key: string, category: ActivityCategory) => {
     if (!dayMap.has(key)) dayMap.set(key, new Set());
-    dayMap.get(key)!.add(sessionCategory(s));
+    dayMap.get(key)!.add(category);
+  };
+  for (const s of sessions) {
+    if (isActivitySession(s)) mark(toLocalDateString(new Date(s.startedAt)), sessionCategory(s));
   }
+  for (const c of climbs) mark(c.date, climbCategory(c));
 
   // Find the Monday of the current ISO week
   const today = new Date();
@@ -133,30 +123,12 @@ export function buildCalendar(
     for (let d = 0; d < 7; d++) {
       const date = addDays(startMonday, w * 7 + d);
       const key = toLocalDateString(date);
-      const types = dayMap.get(key);
-      const gym = types?.has("gym") ?? false;
-      const lifting = types?.has("lifting") ?? false;
-      const cardio = types?.has("cardio") ?? false;
-      const stretching = types?.has("stretching") ?? false;
-      // Priority for the fill color: gym (the main effort), then lifting, then
-      // recovery work.
-      const workoutType: CalendarDay["workoutType"] = gym
-        ? "gym"
-        : lifting
-          ? "lifting"
-          : cardio
-            ? "cardio"
-            : stretching
-              ? "stretching"
-              : null;
+      const logged = dayMap.get(key);
       week.push({
         date: new Date(date),
-        workoutType,
-        gym,
-        lifting,
-        cardio,
-        stretching,
-        outdoor: climbDates?.has(key) ?? false,
+        categories: logged
+          ? ACTIVITY_CATEGORIES.map((c) => c.id).filter((id) => logged.has(id))
+          : [],
         isToday: key === todayKey,
       });
     }

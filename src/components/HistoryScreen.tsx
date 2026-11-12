@@ -19,6 +19,7 @@ import {
   climbMatchesQuery,
   noteMatchesQuery,
 } from "../lib/historyFilter";
+import { climbCategory, sessionCategory, type ActivityCategory } from "../lib/sessionKind";
 import { shortLocation } from "../lib/format";
 import { dateKeyToTime, startOfWeek, toLocalDateString } from "../lib/dates";
 import { withCurrentLiftNames } from "../lib/lifts";
@@ -73,6 +74,8 @@ const CHIP_TONES = {
   green:   "bg-green-500/15 text-green-300",
   blue:    "bg-blue-500/15 text-blue-300",
   sky:     "bg-sky-500/15 text-sky-300",
+  rose:    "bg-rose-500/15 text-rose-300",
+  violet:  "bg-violet-500/15 text-violet-300",
   muted:   "bg-gray-700/60 text-gray-400",
 } as const;
 
@@ -163,7 +166,8 @@ function weekLabel(start: number, now: number): string {
 
 function weekTally(items: TimelineItem[]): string {
   const workouts = items.filter((i) => i.kind === "session").length;
-  const climbDays = items.filter((i) => i.kind === "climbs").length;
+  // Indoor and outdoor rows on the same date are still one climbing day.
+  const climbDays = new Set(items.flatMap((i) => (i.kind === "climbs" ? [i.date] : []))).size;
   const parts: string[] = [];
   if (workouts > 0) parts.push(`${workouts} workout${workouts === 1 ? "" : "s"}`);
   if (climbDays > 0) parts.push(`${climbDays} climbing day${climbDays === 1 ? "" : "s"}`);
@@ -241,7 +245,8 @@ function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }
   defaultExpanded?: boolean;
 }) {
   const ts = dateKeyToTime(climbs[0].date);
-  const hasOutdoor = climbs.some((c) => c.setting === "outdoor");
+  // A row holds one day's climbs in one setting, so the first climb speaks for all.
+  const category = climbCategory(climbs[0]);
   const locations = [...new Set(
     climbs
       .map((c) => shortLocation(c.location))
@@ -260,7 +265,7 @@ function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }
         <DateColumn ts={ts} show={showDate} />
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
-            <Chip tone={hasOutdoor ? "teal" : "orange"}>{hasOutdoor ? "Outdoor" : "Indoor"}</Chip>
+            <Chip tone={CATEGORY_TONES[category]}>{category === "outdoor" ? "Outdoor" : "Indoor"}</Chip>
             {locations.length > 0 && (
               <span className="text-gray-300 text-sm truncate">{locations.join(" · ")}</span>
             )}
@@ -316,11 +321,19 @@ function NoteRow({ record, showDate, onEdit }: {
   );
 }
 
+/** Chip colour per activity category — the same hues as the Activity calendar. */
+const CATEGORY_TONES: Record<ActivityCategory, ChipTone> = {
+  outdoor: "teal",
+  indoor: "orange",
+  lifting: "sky",
+  cardio: "rose",
+  stretching: "violet",
+  other: "muted",
+};
+
 function sessionTone(record: SessionRecord): ChipTone {
-  if (record.gymData === undefined) return "neutral";
   if (record.workoutType === "injury") return "red";
-  // Lifting isn't climbing: its own colour keeps it apart from climbing-gym logs.
-  return record.workoutType === "lifts" ? "sky" : "orange";
+  return CATEGORY_TONES[sessionCategory(record)];
 }
 
 function SessionRow({ record, showDate, prCount, onEdit }: {
@@ -404,7 +417,7 @@ export function HistoryScreen({
   const setWorkoutTypes = (next: Set<string>) => onViewChange({ types: [...next] });
   const scrollRef = useScrollRestore<HTMLElement>("history", !loading);
 
-  // Workout type chips: only types present in history, hangboard group first.
+  // Workout type chips: only types present in history, grouped by activity category.
   const typeGroups = useMemo(() => workoutTypeGroups(sessions), [sessions]);
 
   const toggleIn = (current: Set<string>, apply: (next: Set<string>) => void) =>
@@ -428,17 +441,18 @@ export function HistoryScreen({
   }, [notes]);
 
   const timeline = useMemo((): TimelineItem[] => {
-    // Group climbs by date string
-    const climbsByDate = new Map<string, ClimbRecord[]>();
+    // One row per day and setting: indoor and outdoor climbing never share a row.
+    const climbGroups = new Map<string, ClimbRecord[]>();
     for (const c of climbs) {
-      const arr = climbsByDate.get(c.date) ?? [];
+      const key = `${c.date}|${climbCategory(c)}`;
+      const arr = climbGroups.get(key) ?? [];
       arr.push(c);
-      climbsByDate.set(c.date, arr);
+      climbGroups.set(key, arr);
     }
-    const climbItems: TimelineItem[] = [...climbsByDate.entries()].map(([date, cs]) => ({
+    const climbItems: TimelineItem[] = [...climbGroups.values()].map((cs) => ({
       kind: "climbs",
-      date,
-      ts: dateKeyToTime(date),
+      date: cs[0].date,
+      ts: dateKeyToTime(cs[0].date),
       climbs: cs,
     }));
     const sessionItems: TimelineItem[] = sessions.map((record) => ({
@@ -565,30 +579,22 @@ export function HistoryScreen({
             ))}
           </div>
           {/* Workout type sub-filter */}
-          {filter === "workouts" && (typeGroups.hangboard.length > 0 || typeGroups.gym.length > 0) && (
+          {filter === "workouts" && typeGroups.length > 0 && (
             <div className={PILL_ROW}>
-              {typeGroups.hangboard.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => toggleWorkoutType(t)}
-                  aria-pressed={workoutTypes.has(t)}
-                  className={subChipClass(workoutTypes.has(t))}
-                >
-                  {workoutTypeLabel(t)}
-                </button>
-              ))}
-              {typeGroups.hangboard.length > 0 && typeGroups.gym.length > 0 && (
-                <div className="shrink-0 w-px h-5 bg-gray-700 mx-0.5" />
-              )}
-              {typeGroups.gym.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => toggleWorkoutType(t)}
-                  aria-pressed={workoutTypes.has(t)}
-                  className={subChipClass(workoutTypes.has(t))}
-                >
-                  {workoutTypeLabel(t)}
-                </button>
+              {typeGroups.map((group, gi) => (
+                <Fragment key={group.category}>
+                  {gi > 0 && <div className="shrink-0 w-px h-5 bg-gray-700 mx-0.5" />}
+                  {group.types.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => toggleWorkoutType(t)}
+                      aria-pressed={workoutTypes.has(t)}
+                      className={subChipClass(workoutTypes.has(t))}
+                    >
+                      {workoutTypeLabel(t)}
+                    </button>
+                  ))}
+                </Fragment>
               ))}
               {workoutTypes.size > 0 && (
                 <button
@@ -667,7 +673,7 @@ export function HistoryScreen({
                   const newDay = !prev || toLocalDateString(prev.ts) !== toLocalDateString(item.ts);
                   return (
                     <li
-                      key={item.kind === "climbs" ? `${item.date}-${searching}` : item.record.id}
+                      key={item.kind === "climbs" ? `${item.date}-${climbCategory(item.climbs[0])}-${searching}` : item.record.id}
                       className={i === 0 ? "" : newDay
                         ? "border-t border-gray-700/60"
                         // Same-day rows share the date column, so their divider starts after it.

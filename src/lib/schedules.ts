@@ -2,7 +2,14 @@ import { getDB } from "./db";
 import type { SessionRecord } from "./history";
 import type { ClimbRecord } from "./climbs";
 import { addDays, toLocalDateString } from "./dates";
-import { isHangboardSession } from "./sessionKind";
+import {
+  climbCategory,
+  climbFocus,
+  isActivitySession,
+  isHangboardSession,
+  sessionCategory,
+  sessionFocuses,
+} from "./sessionKind";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -11,6 +18,7 @@ export type ScheduleDayType =
   | "endurance"
   | "hangboard"
   | "outdoor"
+  | "lifting"
   | "stretching"
   | "cardio"
   | "rest";
@@ -20,6 +28,7 @@ export const SCHEDULE_TYPE_META: Record<ScheduleDayType, { label: string; bg: st
   endurance: { label: "Endurance", bg: "bg-blue-600", dot: "bg-blue-400" },
   hangboard: { label: "Hangboard", bg: "bg-indigo-600", dot: "bg-indigo-400" },
   outdoor: { label: "Outdoor", bg: "bg-teal-600", dot: "bg-teal-400" },
+  lifting: { label: "Lifting", bg: "bg-sky-600", dot: "bg-sky-400" },
   stretching: { label: "Stretching", bg: "bg-purple-600", dot: "bg-purple-400" },
   cardio: { label: "Cardio", bg: "bg-pink-600", dot: "bg-pink-400" },
   rest: { label: "Rest", bg: "bg-gray-600", dot: "bg-gray-400" },
@@ -30,6 +39,7 @@ export const SCHEDULE_TYPE_ORDER: ScheduleDayType[] = [
   "endurance",
   "hangboard",
   "outdoor",
+  "lifting",
   "stretching",
   "cardio",
   "rest",
@@ -80,49 +90,44 @@ export type ScheduleDay = {
 
 /**
  * Generously decide whether anything logged on a day could be construed as
- * satisfying a planned type. `rest` is special: it is "matched" when nothing
- * was logged, or when the only thing logged was stretching or cardio (both are
- * compatible with a rest day).
+ * satisfying a planned type. Every answer comes from the shared taxonomy in
+ * sessionKind.ts.
+ *
+ * Power and endurance are climbing focuses, so only climbing satisfies them
+ * (indoors or out); lifting never does. `rest` is "matched" when nothing was
+ * logged, or when the only things logged were stretching, cardio or a log entry
+ * such as an injury.
  */
 export function typeMatches(
   type: ScheduleDayType,
   sessions: ReadonlyArray<SessionRecord>,
   climbs: ReadonlyArray<ClimbRecord>,
 ): boolean {
-  const workouts = new Set(sessions.map((s) => s.workoutType));
-  const has = (...kinds: SessionRecord["workoutType"][]) =>
-    kinds.some((k) => workouts.has(k));
-  const anyBoulder = climbs.some((c) => c.type === "boulder");
-  const anySport = climbs.some((c) => c.type === "sport");
-  // Unstructured climbing counts by discipline: bouldering → power, rope → endurance.
-  const climbingIn = (...disciplines: string[]) =>
-    sessions.some(
-      (s) => s.gymData?.type === "climbing" && disciplines.includes(s.gymData.discipline),
-    );
+  const inCategory = (category: ReturnType<typeof sessionCategory>) =>
+    sessions.some((s) => isActivitySession(s) && sessionCategory(s) === category);
 
   switch (type) {
     case "hangboard":
       return sessions.some(isHangboardSession);
     case "power":
-      // wbl is a warm-up boulder ladder, not a power session — excluded here.
-      return (
-        has("max-hang", "performance", "hard-bouldering", "limit-bouldering", "campus") ||
-        anyBoulder ||
-        climbingIn("Boulder", "Mixed")
-      );
     case "endurance":
-      return has("repeaters", "arc", "cir", "pe-route", "lbc") || anySport || climbingIn("Rope", "Mixed");
+      return (
+        sessions.some((s) => sessionFocuses(s).includes(type)) ||
+        climbs.some((c) => climbFocus(c) === type)
+      );
     case "outdoor":
-      return climbs.some((c) => c.setting === "outdoor");
+      return climbs.some((c) => climbCategory(c) === "outdoor");
+    case "lifting":
     case "stretching":
-      return has("stretching");
     case "cardio":
-      return has("cardio");
+      return inCategory(type);
     case "rest":
-      // Resting — or only stretching / cardio — keeps a rest day satisfied.
       return (
         climbs.length === 0 &&
-        sessions.every((s) => s.workoutType === "stretching" || s.workoutType === "cardio")
+        sessions.every((s) => {
+          const category = sessionCategory(s);
+          return !isActivitySession(s) || category === "stretching" || category === "cardio";
+        })
       );
   }
 }
