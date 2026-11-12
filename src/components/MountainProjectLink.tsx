@@ -3,9 +3,14 @@ import { mountainProjectIntentUrl } from "../lib/mountainProjectLink";
 const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 
 /**
- * Opens the route's Mountain Project page. On Android it goes through an
- * intent link so the app opens when it's installed; elsewhere it's a plain
- * https link (iOS hands those to the app itself when it claims them).
+ * Opens the route's Mountain Project page.
+ *
+ * On Android it must be an intent link: tested on a phone, a plain https link
+ * opened the website even with the app installed, while the intent opens the
+ * app on the route (and falls back to the web page without it).
+ *
+ * Elsewhere it's a plain https link. iOS can't reach the app at all: MP's
+ * apple-app-site-association is `{}`, so no universal links.
  */
 export function MountainProjectLink({ url, className = "" }: { url: string; className?: string }) {
   // An intent link navigates out to the app, so it must not open a blank tab first.
