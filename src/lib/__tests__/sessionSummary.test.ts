@@ -20,6 +20,8 @@ describe("sessionSummary", () => {
     expect(text({ type: "cir", repeats: 4, avgRestSec: 90 })).toBe("4 repeats · ~90s rest");
     expect(text({ type: "performance", grade: "5.12a", tries: 3, success: "No" }))
       .toBe("5.12a · 3 tries · no send");
+    expect(text({ type: "performance", grade: "5.11c", success: "Yes" }))
+      .toBe("5.11c · sent");
     expect(text({ type: "wbl", topV: "V4", durationMin: 30 })).toBe("Top V4 · 30 min");
     expect(text({ type: "stretching", reps: 3, holdSec: 30, stretches: ["Calves"] }))
       .toBe("3 × 30s · Calves");

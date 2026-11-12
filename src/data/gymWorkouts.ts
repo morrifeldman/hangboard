@@ -112,11 +112,11 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
   {
     id: "performance",
     label: "Perf",
-    description: "Projecting specific grades",
+    description: "Climbing hard — a few routes or projects near your limit",
     category: "power",
     fieldDefs: [
       { key: "grade",   label: "Grade",   type: "grade-yds" },
-      { key: "tries",   label: "Tries",   type: "number" },
+      { key: "tries",   label: "Tries",   type: "number", optional: true },
       { key: "success", label: "Success", type: "select", options: ["Yes", "No"] },
     ],
   },

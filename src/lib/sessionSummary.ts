@@ -48,12 +48,12 @@ export function gymSummaryParts(data: GymData): SummaryPart[] {
         [f(`${data.climbSec}s`), t(" on")],
         [f(data.dutyCycle), t(" rest")],
       ];
-    case "performance":
-      return [
-        [f(data.grade)],
-        [f(data.tries), t(" tries")],
-        [t(data.success === "Yes" ? "sent" : "no send")],
-      ];
+    case "performance": {
+      const parts: SummaryPart[] = [[f(data.grade)]];
+      if (data.tries) parts.push([f(data.tries), t(data.tries === 1 ? " try" : " tries")]);
+      parts.push([t(data.success === "Yes" ? "sent" : "no send")]);
+      return parts;
+    }
     case "wbl":
       return [[t("Top "), f(data.topV)], [f(data.durationMin), t(" min")]];
     case "hard-bouldering":

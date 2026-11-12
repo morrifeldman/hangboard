@@ -25,7 +25,7 @@ export type GymData =
   | { type: "cir";              repeats: number; climbRating?: string; avgRestSec: number }
   | { type: "pe-route";         climbSec: number; dutyCycle: string; reps: number }
   | { type: "lbc";              climbSec: number; dutyCycle: string; sets: number }
-  | { type: "performance";      grade: string; tries: number; success?: string }
+  | { type: "performance";      grade: string; tries?: number; success?: string }
   | { type: "wbl";              topV: string; durationMin: number }
   | { type: "hard-bouldering";  level: string; durationMin: number }
   | { type: "limit-bouldering"; level: string; durationMin: number }
