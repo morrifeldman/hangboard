@@ -114,7 +114,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
       <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
         {loaded && schedules.length === 0 && (
           <p className="text-gray-400 text-sm" data-testid="schedule-hint">
-            Tap a day to plan it. Its dot turns into a tick once you log it.
+            Tap a day to plan it. Its marker fills in once you log it.
           </p>
         )}
         {weeks.map((week, wIdx) => {
@@ -194,7 +194,7 @@ function DayChip({
       data-type-status={statusAttr}
       data-adherence={day.adherence}
       aria-current={day.isToday ? "date" : undefined}
-      className={`relative aspect-square rounded-lg ${tone} flex flex-col items-center justify-center active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300`}
+      className={`relative aspect-square rounded-lg ${tone} flex flex-col items-center justify-center pb-3 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300`}
     >
       <span
         className={`text-[10px] leading-none font-medium ${
@@ -203,7 +203,7 @@ function DayChip({
       >
         {letter}
       </span>
-      <span className="font-num text-lg leading-tight">
+      <span className="font-num text-[15px] leading-tight">
         {day.jsDate.getDate()}
       </span>
       <TypeRow statuses={day.typeStatus} />
@@ -231,46 +231,50 @@ function TypeRow({ statuses }: { statuses: TypeStatus[] }) {
 }
 
 /**
- * The plan marker's shape says what kind of day it is: a peak for climbing, a
- * dot for everything else. Colour still says which one.
+ * The plan marker. Shape says what kind of day it is: a peak for climbing, a
+ * dot for everything else. Colour says which one. Fill says how it went:
+ * solid once logged, an outline while planned, a faint outline when missed.
  */
-function TypeShape({ type, className = "" }: { type: ScheduleDayType; className?: string }) {
-  const shape = isClimbingDayType(type)
-    ? "[clip-path:polygon(50%_4%,100%_96%,0_96%)]"
-    : "rounded-full scale-[0.8]";
-  return <span className={`block w-full h-full ${SCHEDULE_TYPE_META[type].dot} ${shape} ${className}`} />;
+function TypeShape({
+  type,
+  state,
+  label,
+}: {
+  type: ScheduleDayType;
+  state: TypeStatus["state"];
+  label?: string;
+}) {
+  const done = state === "done";
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className={`block w-full h-full ${SCHEDULE_TYPE_META[type].text} ${state === "missed" ? "opacity-45" : ""}`}
+      fill={done ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+    >
+      {isClimbingDayType(type) ? (
+        <polygon points="6,1.6 10.9,10.2 1.1,10.2" />
+      ) : (
+        <circle cx="6" cy="6" r="3.9" />
+      )}
+    </svg>
+  );
 }
 
 function TypeMarker({ status }: { status: TypeStatus }) {
   const { type, state } = status;
-  const meta = SCHEDULE_TYPE_META[type];
-  if (state === "done") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        className={`w-3 h-3 ${meta.text}`}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-label={`${meta.label} done`}
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    );
-  }
-  if (state === "missed") {
-    return (
-      <span className="relative inline-flex w-2.5 h-2.5" aria-label={`${meta.label} missed`}>
-        <TypeShape type={type} className="opacity-40" />
-        <span className="absolute left-1/2 top-[60%] w-[3px] h-0.5 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-white/80" />
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex w-2.5 h-2.5" aria-label={`${meta.label} planned`}>
-      <TypeShape type={type} />
+    <span className="inline-flex w-3 h-3">
+      <TypeShape
+        type={type}
+        state={state}
+        label={`${SCHEDULE_TYPE_META[type].label} ${STATE_LABEL[state]}`}
+      />
     </span>
   );
 }
@@ -414,7 +418,7 @@ function EditSheet({
                   }`}
                 >
                   <span className="w-3 h-3 shrink-0">
-                    <TypeShape type={t} />
+                    <TypeShape type={t} state="done" />
                   </span>
                   {SCHEDULE_TYPE_META[t].label}
                 </button>
