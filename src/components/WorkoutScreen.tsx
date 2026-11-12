@@ -309,17 +309,20 @@ export function WorkoutScreen() {
         className={`border-t px-4 py-2 ${tone} ${inWarmup ? "bg-warmup-panel border-warmup-edge" : "bg-gray-800 border-gray-700"}`}
         data-testid="phase-bar"
       >
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <span className="min-w-0 truncate text-base font-semibold">
             {phaseLabel()}
           </span>
           {phase !== "done" && phase !== "idle" && totalScheduledSecs > 0 && (
             <div
-              className="flex shrink-0 items-baseline gap-4 whitespace-nowrap text-sm text-gray-400"
+              className="flex shrink-0 items-baseline gap-3 whitespace-nowrap text-sm text-gray-400"
               data-testid="time-readout"
             >
               <span>
                 <span className="font-num text-base text-white">{fmtTime(remainingSecs)}</span> left
+              </span>
+              <span data-testid="total-time">
+                <span className="font-num text-base text-white">{fmtTime(totalScheduledSecs)}</span> total
               </span>
               <span data-testid="finish-time">
                 ends <span className="font-num text-base text-white">{finishAt}</span>
