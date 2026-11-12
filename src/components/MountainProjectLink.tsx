@@ -1,14 +1,20 @@
+import { mountainProjectIntentUrl } from "../lib/mountainProjectLink";
+
+const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+
 /**
- * Opens the route's Mountain Project page. A plain https link is deliberate:
- * on a phone with the Mountain Project app installed, the OS hands
- * mountainproject.com links to the app; everywhere else it opens in the browser.
+ * Opens the route's Mountain Project page. On Android it goes through an
+ * intent link so the app opens when it's installed; elsewhere it's a plain
+ * https link (iOS hands those to the app itself when it claims them).
  */
 export function MountainProjectLink({ url, className = "" }: { url: string; className?: string }) {
+  // An intent link navigates out to the app, so it must not open a blank tab first.
+  const linkProps = isAndroid
+    ? { href: mountainProjectIntentUrl(url) }
+    : { href: url, target: "_blank", rel: "noopener noreferrer" };
   return (
     <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...linkProps}
       className={`inline-flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300 ${className}`}
     >
       Mountain Project
