@@ -15,20 +15,23 @@ export type TrendPoint = {
   sessionId: string;
 };
 
-export type WorkoutBucket = "gym" | "cardio" | "stretching";
+export type WorkoutBucket = "gym" | "lifting" | "cardio" | "stretching";
 
 export type CalendarDay = {
   date: Date;
   /**
-   * Highest-priority bucket present that day (gym > cardio > stretching), or
+   * Highest-priority bucket present that day (gym > lifting > cardio >
+   * stretching), or
    * null if none. Handy as a summary, but the calendar renders every flagged
    * bucket as its own slice rather than picking one.
    * - "gym": any board (repeaters/max-hang/beginner) or gym session that isn't
-   *   cardio or stretching — hangboarding counts as gym.
+   *   lifting, cardio or stretching — hangboarding counts as gym.
+   * - "lifting": weight training, apart from climbing-gym work.
    * - "cardio" / "stretching": their own buckets so recovery work stands apart.
    */
   workoutType: WorkoutBucket | null;
   gym: boolean;
+  lifting: boolean;
   cardio: boolean;
   stretching: boolean;
   outdoor: boolean;
@@ -91,12 +94,12 @@ export function buildTrend(
 // ─── buildCalendar ────────────────────────────────────────────────────────────
 
 /**
- * Collapse a session into one of the three calendar buckets. Board work and
- * most gym workouts read as "gym"; cardio and stretching get their own bucket.
+ * Collapse a session into one of the calendar buckets. Board work and climbing
+ * gym workouts read as "gym"; lifting, cardio and stretching get their own.
  */
 function sessionCategory(s: SessionRecord): WorkoutBucket {
   const kind = sessionKind(s);
-  return kind === "cardio" || kind === "stretching" ? kind : "gym";
+  return kind === "lifting" || kind === "cardio" || kind === "stretching" ? kind : "gym";
 }
 
 /**
@@ -132,20 +135,25 @@ export function buildCalendar(
       const key = toLocalDateString(date);
       const types = dayMap.get(key);
       const gym = types?.has("gym") ?? false;
+      const lifting = types?.has("lifting") ?? false;
       const cardio = types?.has("cardio") ?? false;
       const stretching = types?.has("stretching") ?? false;
-      // Priority for the fill color: gym (the main effort) over recovery work.
+      // Priority for the fill color: gym (the main effort), then lifting, then
+      // recovery work.
       const workoutType: CalendarDay["workoutType"] = gym
         ? "gym"
-        : cardio
-          ? "cardio"
-          : stretching
-            ? "stretching"
-            : null;
+        : lifting
+          ? "lifting"
+          : cardio
+            ? "cardio"
+            : stretching
+              ? "stretching"
+              : null;
       week.push({
         date: new Date(date),
         workoutType,
         gym,
+        lifting,
         cardio,
         stretching,
         outdoor: climbDates?.has(key) ?? false,

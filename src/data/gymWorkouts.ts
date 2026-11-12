@@ -15,12 +15,13 @@ export type FieldDef = {
   showIf?: { key: string; values: string[] };
 };
 
-export type GymCategory = "endurance" | "power" | "other";
+export type GymCategory = "endurance" | "power" | "strength" | "other";
 
 /** Picker groups, in display order. The Hangboard pill joins "power" in the UI. */
 export const GYM_CATEGORIES: { id: GymCategory; label: string }[] = [
   { id: "endurance", label: "Endurance" },
-  { id: "power",     label: "Strength & power" },
+  { id: "power",     label: "Power" },
+  { id: "strength",  label: "Strength training" },
   { id: "other",     label: "Other" },
 ];
 
@@ -132,7 +133,7 @@ export const GYM_WORKOUTS: GymWorkoutDef[] = [
     id: "lifts",
     label: "Lifts",
     description: "Weight training from your own lift library — sets, reps and weight",
-    category: "power",
+    category: "strength",
     fieldDefs: [], // custom lift editor, like freeform
   },
   {

@@ -8,12 +8,13 @@ import { LegendItem, SectionHeading } from "./parts";
 
 /**
  * One heatmap cell. Each activity bucket present that day contributes an equal
- * slice: 1 → solid, 2 → halves, 3 → thirds, 4 → quarters (2×2). This keeps every
- * bucket visible on shared days instead of one masking the others.
+ * slice: 1 → solid, 2 → halves, 3 → thirds, 4 → quarters (2×2), 5 → fifths. This
+ * keeps every bucket visible on shared days instead of one masking the others.
  */
 function CalendarCell({ day, onSelect }: { day: CalendarDay; onSelect: () => void }) {
   const segments: { key: string; color: string; label: string }[] = [];
-  if (day.gym) segments.push({ key: "gym", color: "bg-amber-500", label: "gym" });
+  if (day.gym) segments.push({ key: "gym", color: "bg-amber-500", label: "climbing gym" });
+  if (day.lifting) segments.push({ key: "lifting", color: "bg-sky-500", label: "lifting" });
   if (day.cardio) segments.push({ key: "cardio", color: "bg-rose-500", label: "cardio" });
   if (day.stretching) segments.push({ key: "stretching", color: "bg-violet-500", label: "stretching" });
   if (day.outdoor) segments.push({ key: "outdoor", color: "bg-teal-600", label: "outdoor" });
@@ -108,7 +109,8 @@ export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
 
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-700/60">
           <LegendItem color="bg-teal-600" label="Outdoor" />
-          <LegendItem color="bg-amber-500" label="Gym" />
+          <LegendItem color="bg-amber-500" label="Climbing gym" />
+          <LegendItem color="bg-sky-500" label="Lifting" />
           <LegendItem color="bg-rose-500" label="Cardio" />
           <LegendItem color="bg-violet-500" label="Stretching" />
         </div>

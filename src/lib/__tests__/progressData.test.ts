@@ -348,6 +348,27 @@ describe("buildCalendar", () => {
     expect(found?.stretching).toBe(true);
   });
 
+  it("buckets lifting apart from climbing-gym work", () => {
+    const day = new Date();
+    day.setDate(day.getDate() - 2);
+    const lifts = makeSession({
+      id: "1", workoutType: "lifts", startedAt: day.getTime(), holds: [],
+      gymData: { type: "lifts", lifts: [] },
+    });
+    const liftOnly = buildCalendar([lifts]).flat().find((d) => d.workoutType !== null);
+    expect(liftOnly?.workoutType).toBe("lifting");
+    expect(liftOnly?.gym).toBe(false);
+
+    const arc = makeSession({
+      id: "2", workoutType: "arc", startedAt: day.getTime() + 3600000, holds: [],
+      gymData: { type: "arc", climbMin: 30 },
+    });
+    const both = buildCalendar([lifts, arc]).flat().find((d) => d.workoutType !== null);
+    expect(both?.workoutType).toBe("gym");
+    expect(both?.gym).toBe(true);
+    expect(both?.lifting).toBe(true);
+  });
+
   it("week array is in Monday→Sunday order (day 0 is Mon)", () => {
     const grid = buildCalendar([]);
     // Each week's first day should be a Monday (getDay() === 1)

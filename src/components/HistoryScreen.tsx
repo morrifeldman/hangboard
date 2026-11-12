@@ -72,6 +72,7 @@ const CHIP_TONES = {
   teal:    "bg-teal-500/15 text-teal-300",
   green:   "bg-green-500/15 text-green-300",
   blue:    "bg-blue-500/15 text-blue-300",
+  sky:     "bg-sky-500/15 text-sky-300",
   muted:   "bg-gray-700/60 text-gray-400",
 } as const;
 
@@ -317,7 +318,9 @@ function NoteRow({ record, showDate, onEdit }: {
 
 function sessionTone(record: SessionRecord): ChipTone {
   if (record.gymData === undefined) return "neutral";
-  return record.workoutType === "injury" ? "red" : "orange";
+  if (record.workoutType === "injury") return "red";
+  // Lifting isn't climbing: its own colour keeps it apart from climbing-gym logs.
+  return record.workoutType === "lifts" ? "sky" : "orange";
 }
 
 function SessionRow({ record, showDate, prCount, onEdit }: {

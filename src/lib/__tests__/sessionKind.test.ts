@@ -15,7 +15,9 @@ describe("sessionKind", () => {
   it("classifies cardio, stretching and everything else", () => {
     expect(sessionKind({ workoutType: "cardio" })).toBe("cardio");
     expect(sessionKind({ workoutType: "stretching" })).toBe("stretching");
-    for (const workoutType of ["arc", "lifts", "campus", "freeform", "injury"] as const) {
+    expect(sessionKind({ workoutType: "lifts" })).toBe("lifting");
+    expect(isHangboardSession({ workoutType: "lifts" })).toBe(false);
+    for (const workoutType of ["arc", "campus", "freeform", "injury"] as const) {
       expect(sessionKind({ workoutType })).toBe("gym");
       expect(isHangboardSession({ workoutType })).toBe(false);
     }
