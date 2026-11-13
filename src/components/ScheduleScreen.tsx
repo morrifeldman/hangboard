@@ -114,7 +114,7 @@ export function ScheduleScreen({ onShowSettings }: Props) {
       <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
         {loaded && schedules.length === 0 && (
           <p className="text-gray-400 text-sm" data-testid="schedule-hint">
-            Tap a day to plan it. Its marker fills in once you log it.
+            Tap a day to plan it. Its marker fills in once you log it, and a tick shows when the whole day is done.
           </p>
         )}
         {weeks.map((week, wIdx) => {
@@ -186,6 +186,12 @@ function DayChip({
       ? "bg-gray-800/50 text-gray-400"
       : "bg-gray-800 text-white";
   const statusAttr = day.typeStatus.map((s) => `${s.type}:${s.state}`).join(",");
+  // Everything planned got done. A rest day only counts once it's over: until
+  // then "nothing logged" is just a day that hasn't happened yet.
+  const complete =
+    day.typeStatus.length > 0 &&
+    day.typeStatus.every((s) => s.state === "done") &&
+    (day.isPast || (day.isToday && !day.dayTypes.includes("rest")));
   return (
     <button
       onClick={onClick}
@@ -193,6 +199,7 @@ function DayChip({
       data-day-types={day.dayTypes.join(",")}
       data-type-status={statusAttr}
       data-adherence={day.adherence}
+      data-complete={complete || undefined}
       aria-current={day.isToday ? "date" : undefined}
       className={`relative aspect-square rounded-lg ${tone} flex flex-col items-center justify-center pb-3 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-300`}
     >
@@ -207,6 +214,21 @@ function DayChip({
         {day.jsDate.getDate()}
       </span>
       <TypeRow statuses={day.typeStatus} />
+      {complete && (
+        <svg
+          viewBox="0 0 24 24"
+          className="absolute top-1 left-1 w-3 h-3 text-gray-200"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          role="img"
+          aria-label="All planned done"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      )}
       {day.note && (
         <NoteIcon
           size={14}
