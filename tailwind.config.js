@@ -9,6 +9,14 @@ export default {
       fontFamily: {
         sans: ["Archivo Variable", "system-ui", "sans-serif"],
       },
+      // A row that was just added: an accent wash that fades out, to show where it went.
+      keyframes: {
+        "row-added": {
+          "0%, 30%": { backgroundColor: "rgb(34 197 94 / 0.28)" },
+          "100%": { backgroundColor: "rgb(34 197 94 / 0)" },
+        },
+      },
+      animation: { "row-added": "row-added 1.8s ease-out" },
       colors: {
         // The one colour that means "tap here" or "you are here", on every screen.
         // Category colours (ARC orange, Cardio red, …) stay for labelling types only.

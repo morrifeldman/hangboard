@@ -9,6 +9,9 @@ type Props = {
   pickedLabel?: string;
   /** Stops results being picked, e.g. while the last pick is still loading. */
   disabled?: boolean;
+  /** The result whose pick is in flight; its row says `busyLabel`. */
+  busyId?: string | null;
+  busyLabel?: string;
   /** Appended to a failed search's message: what to do instead. */
   failureHint?: string;
   placeholder?: string;
@@ -20,6 +23,8 @@ export function MpUserSearch({
   isPicked,
   pickedLabel = "Selected",
   disabled = false,
+  busyId = null,
+  busyLabel = "Loading…",
   failureHint = "",
   placeholder = "Your name on Mountain Project",
 }: Props) {
@@ -115,8 +120,9 @@ export function MpUserSearch({
                     {user.name}
                   </span>
                   <span className="block truncate text-xs text-gray-500">
-                    {picked ? `${pickedLabel} · ` : ""}
-                    {user.location || `User ${user.id}`}
+                    {busyId === user.id
+                      ? busyLabel
+                      : `${picked ? `${pickedLabel} · ` : ""}${user.location || `User ${user.id}`}`}
                   </span>
                 </button>
                 <a

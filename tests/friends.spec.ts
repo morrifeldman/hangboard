@@ -32,7 +32,14 @@ test("friends: add one by search, see their pyramid, then remove them", async ({
   await page.getByTestId("settings-mp-search-submit").click();
   await page.getByTestId("settings-mp-result").click();
 
-  // Lands on the friend's pyramid, drawn from their ticks.
+  // They join the list above, highlighted, and the search stays put.
+  await expect(page.getByTestId("friend-row")).toContainText("Ada Climber");
+  await expect(page.getByTestId("friend-row")).toHaveAttribute("data-flash", "true");
+  await expect(page.getByTestId("settings-mp-result")).toContainText("Added");
+  await expect(page).toHaveURL(/\/friends$/);
+
+  // Tapping them opens their pyramid, drawn from their ticks.
+  await page.getByTestId("friend-row").getByText("Ada Climber").click();
   await expect(page).toHaveURL(/\/pyramid\?who=111$/);
   expect(exportRequested).toBe("https://www.mountainproject.com/user/111/ada-climber/tick-export");
   await expect(page.getByTestId("pyramid-friend-info")).toContainText("Ada Climber · 2 ticks");
