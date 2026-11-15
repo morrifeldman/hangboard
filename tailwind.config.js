@@ -25,7 +25,7 @@ export default {
       animation: {
         "row-added": "row-added 1.8s ease-out",
         // Lasts as long as CAPTION_MS in useToggleCaption.
-        caption: "caption 2.2s ease-out forwards",
+        caption: "caption 1.5s ease-out forwards",
       },
       colors: {
         // The one colour that means "tap here" or "you are here", on every screen.

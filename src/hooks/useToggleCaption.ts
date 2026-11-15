@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** How long a caption stays up. Matches the `caption` animation in tailwind.config.js. */
-const CAPTION_MS = 2200;
+const CAPTION_MS = 1500;
 
 export type ToggleCaptionState = { text: string; n: number } | null;
 
