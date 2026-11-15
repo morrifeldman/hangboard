@@ -1,6 +1,8 @@
 import { RefreshCw, BarChart2, Trophy, CalendarDays, Hash } from "lucide-react";
 import { IconToggle } from "../ui";
 import { BackChevronIcon } from "../icons";
+import { ToggleCaption } from "./ToggleCaption";
+import { useToggleCaption } from "../../hooks/useToggleCaption";
 
 type Props = {
   onRefresh: () => void;
@@ -15,8 +17,10 @@ type Props = {
 };
 
 export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
+  const { caption, show } = useToggleCaption();
   return (
-    <div className="bg-gray-800 px-4 py-4">
+    <div className="relative bg-gray-800 px-4 py-4">
+      <ToggleCaption caption={caption} />
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-2 -ml-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400" aria-label="Back">
@@ -31,7 +35,10 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
           <div className="flex items-center gap-0.5 rounded-xl bg-gray-900 p-0.5 ring-1 ring-inset ring-white/5">
             <IconToggle
               on={showSendsOnly}
-              onToggle={onToggleSendsOnly}
+              onToggle={() => {
+                show(showSendsOnly ? "Including top rope and attempts" : "Lead sends only");
+                onToggleSendsOnly();
+              }}
               label="Toggle sends only"
               title={showSendsOnly ? "Lead sends only — tap to include top rope and attempts" : "Showing all — tap to filter to sends only"}
             >
@@ -39,7 +46,10 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
             </IconToggle>
             <IconToggle
               on={showCounts}
-              onToggle={onToggleCounts}
+              onToggle={() => {
+                show(showCounts ? "Counts hidden" : "Showing counts per grade");
+                onToggleCounts();
+              }}
               label="Toggle counts"
               title="Toggle per-grade counts and cumulative bars"
             >
@@ -47,7 +57,10 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
             </IconToggle>
             <IconToggle
               on={showSessionCounts}
-              onToggle={onToggleSessionCounts}
+              onToggle={() => {
+                show(showSessionCounts ? "Tiles count climbs" : "Tiles count sessions");
+                onToggleSessionCounts();
+              }}
               label="Toggle session vs climb counts"
               title={
                 showSessionCounts

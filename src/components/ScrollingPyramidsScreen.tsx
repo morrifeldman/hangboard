@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useClimberClimbs } from "../hooks/useClimberClimbs";
 import { ClimberSwitcher } from "./pyramid/ClimberSwitcher";
+import { ToggleCaption } from "./pyramid/ToggleCaption";
+import { useToggleCaption } from "../hooks/useToggleCaption";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Trophy, Hash } from "lucide-react";
 import { IconToggle, Pill, PillRow } from "./ui";
 import type { ClimbRecord } from "../lib/climbs";
@@ -43,6 +45,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
   const [showSessionCounts, setShowSessionCounts] = useState(false);
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
+  const { caption, show } = useToggleCaption();
 
 
   // viewClimbs is always the per-window dedup pool so attempt records can
@@ -70,7 +73,8 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
 
   return (
     <div className="h-full bg-gray-900 flex flex-col overflow-hidden">
-      <header className="bg-gray-800 px-4 py-4 flex items-center gap-3">
+      <header className="relative bg-gray-800 px-4 py-4 flex items-center gap-3">
+        <ToggleCaption caption={caption} />
         <button
           onClick={onBack}
           aria-label="Back"
@@ -82,7 +86,10 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
         <div className="ml-auto flex items-center gap-2">
           <IconToggle
             on={showSendsOnly}
-            onToggle={() => setShowSendsOnly((v) => !v)}
+            onToggle={() => {
+              show(showSendsOnly ? "Including top rope and attempts" : "Lead sends only");
+              setShowSendsOnly((v) => !v);
+            }}
             label="Toggle sends only"
             title={showSendsOnly ? "Lead sends only — tap to include top rope and attempts" : "Showing all — tap to filter to sends only"}
           >
@@ -90,7 +97,10 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
           </IconToggle>
           <IconToggle
             on={showCounts}
-            onToggle={() => setShowCounts((v) => !v)}
+            onToggle={() => {
+              show(showCounts ? "Counts hidden" : "Showing counts per grade");
+              setShowCounts((v) => !v);
+            }}
             label="Toggle counts"
             title="Toggle per-grade counts and cumulative bars"
           >
@@ -98,7 +108,10 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
           </IconToggle>
           <IconToggle
             on={showSessionCounts}
-            onToggle={() => setShowSessionCounts((v) => !v)}
+            onToggle={() => {
+              show(showSessionCounts ? "Tiles count climbs" : "Tiles count sessions");
+              setShowSessionCounts((v) => !v);
+            }}
             label="Toggle session vs climb counts"
             title={
               showSessionCounts
@@ -109,7 +122,10 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
             {showSessionCounts ? <CalendarDays size={16} /> : <Hash size={16} />}
           </IconToggle>
           <button
-            onClick={() => setNewestFirst((v) => !v)}
+            onClick={() => {
+              show(newestFirst ? "Oldest first" : "Newest first");
+              setNewestFirst((v) => !v);
+            }}
             className="flex items-center px-2.5 py-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 bg-gray-700/60 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
             title={newestFirst ? "Newest first — tap to reverse" : "Oldest first — tap to reverse"}
             aria-label={newestFirst ? "Sort: newest first" : "Sort: oldest first"}

@@ -11,12 +11,22 @@ export default {
       },
       // A row that was just added: an accent wash that fades out, to show where it went.
       keyframes: {
+        // A toggle's caption: in quickly, hold, fade out.
+        caption: {
+          "0%": { opacity: "0", transform: "translateY(-4px)" },
+          "8%, 80%": { opacity: "1", transform: "translateY(0)" },
+          "100%": { opacity: "0", transform: "translateY(0)" },
+        },
         "row-added": {
           "0%, 30%": { backgroundColor: "rgb(34 197 94 / 0.28)" },
           "100%": { backgroundColor: "rgb(34 197 94 / 0)" },
         },
       },
-      animation: { "row-added": "row-added 1.8s ease-out" },
+      animation: {
+        "row-added": "row-added 1.8s ease-out",
+        // Lasts as long as CAPTION_MS in useToggleCaption.
+        caption: "caption 2.2s ease-out forwards",
+      },
       colors: {
         // The one colour that means "tap here" or "you are here", on every screen.
         // Category colours (ARC orange, Cardio red, …) stay for labelling types only.
