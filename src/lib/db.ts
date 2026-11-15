@@ -4,12 +4,12 @@ import { DB_NAME } from "./reminderCore";
 // One IndexedDB database for everything the app records. The service worker
 // opens it too (raw API, see sw.ts), so the name lives in reminderCore.
 
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 /** Device-local key/value store (reminder config etc.) shared with the service worker. */
 const META_STORE = "meta";
 
 /** The record stores. Each record has a string `id` keyPath. */
-export type RecordStoreName = "sessions" | "climbs" | "notes" | "schedules";
+export type RecordStoreName = "sessions" | "climbs" | "notes" | "schedules" | "friends";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -44,6 +44,10 @@ export function getDB(): Promise<IDBPDatabase> {
         if (!db.objectStoreNames.contains("schedules")) {
           const schedStore = db.createObjectStore("schedules", { keyPath: "id" });
           schedStore.createIndex("by-date", "date", { unique: true });
+        }
+        if (!db.objectStoreNames.contains("friends")) {
+          // One record per friend, with their ticks embedded (see friends.ts).
+          db.createObjectStore("friends", { keyPath: "id" });
         }
         if (!db.objectStoreNames.contains(META_STORE)) {
           // Out-of-line keys: db.put(META_STORE, value, key)

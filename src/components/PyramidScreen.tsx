@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PyramidHeader } from "./pyramid/PyramidHeader";
 import { ViewTabs } from "./pyramid/ViewTabs";
 import { TimeRangeSlider } from "./pyramid/TimeRangeSlider";
@@ -6,16 +6,25 @@ import { PyramidVisualization } from "./pyramid/PyramidVisualization";
 import { TimelineVisualization } from "./pyramid/TimelineVisualization";
 import { Legend } from "./pyramid/Legend";
 import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
-import { getClimbs } from "../lib/climbs";
+import { ClimberSwitcher } from "./pyramid/ClimberSwitcher";
+import { useClimberClimbs } from "../hooks/useClimberClimbs";
+import { fetchedAgo, isFriendStale, refreshFriend } from "../lib/friends";
 import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
 import type { ClimbRecord } from "../lib/climbs";
 import type { ViewKey } from "../constants/climbGrades";
 import { useScrollRestore } from "../hooks/useScrollRestore";
 
-type Props = { onBack: () => void; onShowScrollingPyramids: () => void };
+type Props = {
+  onBack: () => void;
+  onShowScrollingPyramids: () => void;
+  /** The friend whose climbs to show; undefined for your own. */
+  who?: string;
+  onWho: (id: string | undefined) => void;
+  onManageFriends: () => void;
+};
 
-export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
-  const [climbs, setClimbs] = useState<ClimbRecord[]>([]);
+export function PyramidScreen({ onBack, onShowScrollingPyramids, who, onWho, onManageFriends }: Props) {
+  const { climbs, friends, friend, missing, reload } = useClimberClimbs(who);
   const currentView: ViewKey = "outdoor-sport";
   const [showSendsOnly, setShowSendsOnly] = useState(true);
   const [timeRange, setTimeRange] = useState<[number, number]>([0, 100]);
@@ -32,23 +41,53 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
   const [showSessionCounts, setShowSessionCounts] = useState(false);
   const [refreshNote, setRefreshNote] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    setClimbs(await getClimbs());
-  }, []);
+  // A friend who is no longer saved: show your own climbs instead.
+  useEffect(() => {
+    if (missing) onWho(undefined);
+  }, [missing, onWho]);
 
-  useEffect(() => { reload(); }, [reload]);
+  const refreshShownFriend = async (id: string, quiet: boolean) => {
+    setRefreshNote(null);
+    setIsRefreshing(true);
+    try {
+      const updated = await refreshFriend(id);
+      reload();
+      if (!quiet) {
+        const n = updated.climbs.length;
+        setRefreshNote(`Loaded ${n} tick${n === 1 ? "" : "s"} for ${updated.name}.`);
+      }
+    } catch (err) {
+      setRefreshNote(`Refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Refetch a friend's ticks on open when the saved copy is old. Once per
+  // visit, so a failing fetch isn't retried in a loop.
+  const autoRefreshed = useRef(false);
+  useEffect(() => {
+    if (!friend || autoRefreshed.current || !isFriendStale(friend)) return;
+    autoRefreshed.current = true;
+    void refreshShownFriend(friend.id, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the friend first loads
+  }, [friend]);
 
   const handleRefresh = async () => {
+    if (who !== undefined) {
+      await refreshShownFriend(who, false);
+      return;
+    }
     const mpUrl = getMountainProjectUrl();
     if (!mpUrl) {
-      setRefreshNote("Add your Mountain Project tick-export URL in Settings first.");
+      setRefreshNote("Find your Mountain Project account in Settings first.");
       return;
     }
     setRefreshNote(null);
     setIsRefreshing(true);
     try {
       const count = await refreshFromMountainProject(mpUrl);
-      await reload();
+      reload();
       setRefreshNote(`Imported ${count} climb${count === 1 ? "" : "s"}.`);
     } catch (err) {
       setRefreshNote(`Refresh failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -86,6 +125,14 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
         </div>
       )}
 
+      <ClimberSwitcher friends={friends} who={who} onWho={onWho} onManageFriends={onManageFriends} />
+      {friend && (
+        <p className="px-4 pt-2 text-xs text-gray-500" data-testid="pyramid-friend-info">
+          {friend.name} · {friend.climbs.length} tick{friend.climbs.length === 1 ? "" : "s"} ·{" "}
+          {isRefreshing ? "updating…" : fetchedAgo(friend.fetchedAt)}
+        </p>
+      )}
+
       <ViewTabs
         currentView={currentView}
         showSendsOnly={showSendsOnly}
@@ -105,6 +152,7 @@ export function PyramidScreen({ onBack, onShowScrollingPyramids }: Props) {
           timeRange={timeRange}
           onClimbClick={openClimb}
           onRefreshClick={handleRefresh}
+          friendName={friend?.name}
         />
 
         <TimelineVisualization

@@ -1,8 +1,8 @@
-import { useLoad } from "../hooks/useLoad";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useClimberClimbs } from "../hooks/useClimberClimbs";
+import { ClimberSwitcher } from "./pyramid/ClimberSwitcher";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Trophy, Hash } from "lucide-react";
 import { IconToggle, Pill, PillRow } from "./ui";
-import { getClimbs } from "../lib/climbs";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
 import type { SeasonWindow, WindowKind } from "../lib/pyramidData";
@@ -15,7 +15,13 @@ import { RouteHistoryModal } from "./RouteHistoryModal";
 import { BackChevronIcon } from "./icons";
 import { PyramidBody } from "./pyramid/PyramidBody";
 
-type Props = { onBack: () => void };
+type Props = {
+  onBack: () => void;
+  /** The friend whose climbs to show; undefined for your own. */
+  who?: string;
+  onWho: (id: string | undefined) => void;
+  onManageFriends: () => void;
+};
 
 const KINDS: { key: WindowKind; label: string }[] = [
   { key: "seasons", label: "Seasons" },
@@ -24,8 +30,12 @@ const KINDS: { key: WindowKind; label: string }[] = [
   { key: "halves-ws-sf", label: "Winter+Spring / Summer+Fall" },
 ];
 
-export function ScrollingPyramidsScreen({ onBack }: Props) {
-  const { data: climbs, loading } = useLoad(getClimbs, [] as ClimbRecord[]);
+export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }: Props) {
+  const { climbs, friends, loading, missing } = useClimberClimbs(who);
+  // A friend who is no longer saved: show your own climbs instead.
+  useEffect(() => {
+    if (missing) onWho(undefined);
+  }, [missing, onWho]);
   const view: ViewKey = "outdoor-sport";
   const [kind, setKind] = useState<WindowKind>("seasons");
   const [newestFirst, setNewestFirst] = useState(true);
@@ -108,6 +118,8 @@ export function ScrollingPyramidsScreen({ onBack }: Props) {
           </button>
         </div>
       </header>
+
+      <ClimberSwitcher friends={friends} who={who} onWho={onWho} onManageFriends={onManageFriends} />
 
       <PillRow className="px-4 py-3">
         {KINDS.map((k) => (

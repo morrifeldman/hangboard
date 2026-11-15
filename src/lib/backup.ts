@@ -6,6 +6,9 @@ import { getSchedules } from "./schedules";
 import type { ScheduleRecord } from "./schedules";
 import { getNotes } from "./notes";
 import type { NoteRecord } from "./notes";
+import { friendFromRef, getFriends, toFriendRef } from "./friends";
+import type { FriendRef } from "./friends";
+import { tickExportUrlFrom } from "./mpAccount";
 import { replaceStores } from "./db";
 import { isDateKey, toLocalDateString } from "./dates";
 import { useWorkoutStore } from "../store/useWorkoutStore";
@@ -25,6 +28,8 @@ export type BackupData = {
   gymDefaults: Record<string, Record<string, string>>;
   lifts: LiftDefinition[];
   mountainProjectUrl: string;
+  /** Friends by id and name only; their ticks are fetched again after a restore. */
+  friends: FriendRef[];
 };
 
 export type BackupFile = {
@@ -47,6 +52,7 @@ export type BuildBackupArgs = {
   gymDefaults: Record<string, Record<string, string>>;
   lifts: LiftDefinition[];
   mountainProjectUrl: string;
+  friends?: FriendRef[];
   now?: number;
 };
 
@@ -66,6 +72,7 @@ export function buildBackup(args: BuildBackupArgs): BackupFile {
       gymDefaults: args.gymDefaults,
       lifts: args.lifts,
       mountainProjectUrl: args.mountainProjectUrl,
+      friends: args.friends ?? [],
     },
   };
 }
@@ -86,7 +93,7 @@ const isFiniteNumber = (v: unknown): v is number => typeof v === "number" && Num
 const hasId: Check = (r) => (typeof r.id === "string" && r.id !== "" ? null : "id must be a non-empty string");
 const hasDateKey: Check = (r) => (isDateKey(r.date) ? null : "date must be YYYY-MM-DD");
 
-const RECORD_CHECKS: Record<"sessions" | "climbs" | "schedules" | "notes" | "lifts", Check[]> = {
+const RECORD_CHECKS: Record<"sessions" | "climbs" | "schedules" | "notes" | "lifts" | "friends", Check[]> = {
   sessions: [
     hasId,
     (r) => (typeof r.workoutType === "string" ? null : "workoutType must be a string"),
@@ -105,6 +112,12 @@ const RECORD_CHECKS: Record<"sessions" | "climbs" | "schedules" | "notes" | "lif
     (r) => (typeof r.text === "string" ? null : "text must be a string"),
   ],
   lifts: [hasId, (r) => (typeof r.name === "string" ? null : "name must be a string")],
+  friends: [
+    hasId,
+    (r) => (typeof r.name === "string" && typeof r.tickExportUrl === "string" ? null : "name and tickExportUrl must be strings"),
+    (r) => (isFiniteNumber(r.addedAt) ? null : "addedAt must be a number"),
+    (r) => (tickExportUrlFrom(String(r.tickExportUrl)) ? null : "tickExportUrl must be a Mountain Project user link"),
+  ],
 };
 
 function checkRecords(field: keyof typeof RECORD_CHECKS, list: unknown[]): string | null {
@@ -151,12 +164,12 @@ export function validateBackup(parsed: unknown): ValidateResult {
   }
   const data = parsed.data;
   if (!isObject(data)) return { ok: false, error: "Missing data section." };
-  // Schedules, notes and the lift library were added after v1 of the backup
-  // format; older files may omit them.
-  for (const field of ["schedules", "notes", "lifts"] as const) {
+  // Schedules, notes, the lift library and friends were added after v1 of the
+  // backup format; older files may omit them.
+  for (const field of ["schedules", "notes", "lifts", "friends"] as const) {
     if (data[field] === undefined) data[field] = [];
   }
-  for (const field of ["sessions", "climbs", "schedules", "notes", "lifts"] as const) {
+  for (const field of ["sessions", "climbs", "schedules", "notes", "lifts", "friends"] as const) {
     const list = data[field];
     if (!Array.isArray(list)) return { ok: false, error: `data.${field} must be an array.` };
     const problem = checkRecords(field, list);
@@ -180,11 +193,12 @@ export function validateBackup(parsed: unknown): ValidateResult {
 }
 
 export async function exportBackup(): Promise<BackupFile> {
-  const [sessions, climbs, schedules, notes] = await Promise.all([
+  const [sessions, climbs, schedules, notes, friends] = await Promise.all([
     getSessions(),
     getClimbs(),
     getSchedules(),
     getNotes(),
+    getFriends(),
   ]);
   const s = useWorkoutStore.getState();
   const selected: BackupSelectedWorkout = s.selectedWorkout === "max-hang" ? "max-hang" : "repeaters";
@@ -199,6 +213,7 @@ export async function exportBackup(): Promise<BackupFile> {
     gymDefaults: s.gymDefaults,
     lifts: s.lifts,
     mountainProjectUrl: localStorage.getItem(MP_URL_KEY) ?? "",
+    friends: friends.map(toFriendRef),
   });
 }
 
@@ -211,6 +226,7 @@ export async function restoreBackup(file: BackupFile): Promise<void> {
     climbs: data.climbs,
     schedules: data.schedules,
     notes: data.notes,
+    friends: data.friends.map(friendFromRef),
   });
   useWorkoutStore.setState({
     weights: data.weights,

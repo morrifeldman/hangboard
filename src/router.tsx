@@ -11,6 +11,7 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
+import { useCallback } from "react";
 import { useWorkoutStore } from "./store/useWorkoutStore";
 import { useWakeLock } from "./hooks/useWakeLock";
 import { WorkoutScreen } from "./components/WorkoutScreen";
@@ -23,6 +24,7 @@ import type { ProgressView } from "./components/ProgressScreen";
 import { PyramidScreen } from "./components/PyramidScreen";
 import { ScrollingPyramidsScreen } from "./components/ScrollingPyramidsScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
+import { FriendsScreen } from "./components/FriendsScreen";
 import { NoteEditorScreen } from "./components/NoteEditorScreen";
 import { LiftEditorScreen } from "./components/LiftEditorScreen";
 import { ScheduleScreen } from "./components/ScheduleScreen";
@@ -297,15 +299,44 @@ const settingsRoute = createRoute({
   },
 });
 
+/**
+ * Whose climbs the pyramid screens show: a friend's Mountain Project id, or
+ * nothing for your own. Kept as a number so the URL stays `?who=200938052`
+ * (TanStack would quote a numeric string).
+ */
+type PyramidSearch = { who?: number };
+
+function validatePyramidSearch(raw: Record<string, unknown>): PyramidSearch {
+  const who = Number(raw.who);
+  return Number.isSafeInteger(who) && who > 0 ? { who } : {};
+}
+
+/** The search for viewing friend `id`, or your own climbs when undefined. */
+function pyramidSearchFor(id: string | undefined): PyramidSearch {
+  return id === undefined ? {} : validatePyramidSearch({ who: id });
+}
+
 const pyramidRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/pyramid",
+  validateSearch: validatePyramidSearch,
   component: function Pyramid() {
     const navigate = useNavigate();
+    const search = pyramidRoute.useSearch();
+    const who = search.who === undefined ? undefined : String(search.who);
+    const onWho = useCallback(
+      (id: string | undefined) =>
+        void navigate({ to: "/pyramid", search: pyramidSearchFor(id), replace: true }),
+      [navigate],
+    );
     return (
       <PyramidScreen
+        key={who ?? "me"}
+        who={who}
+        onWho={onWho}
+        onManageFriends={() => void navigate({ to: "/friends" })}
         onBack={useGoBack("/")}
-        onShowScrollingPyramids={() => void navigate({ to: "/pyramid/scrolling" })}
+        onShowScrollingPyramids={() => void navigate({ to: "/pyramid/scrolling", search })}
       />
     );
   },
@@ -314,8 +345,40 @@ const pyramidRoute = createRoute({
 const scrollingPyramidsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/pyramid/scrolling",
+  validateSearch: validatePyramidSearch,
   component: function ScrollingPyramids() {
-    return <ScrollingPyramidsScreen onBack={useGoBack("/pyramid")} />;
+    const navigate = useNavigate();
+    const search = scrollingPyramidsRoute.useSearch();
+    const who = search.who === undefined ? undefined : String(search.who);
+    const onWho = useCallback(
+      (id: string | undefined) =>
+        void navigate({ to: "/pyramid/scrolling", search: pyramidSearchFor(id), replace: true }),
+      [navigate],
+    );
+    return (
+      <ScrollingPyramidsScreen
+        key={who ?? "me"}
+        who={who}
+        onWho={onWho}
+        onManageFriends={() => void navigate({ to: "/friends" })}
+        onBack={useGoBack("/pyramid")}
+      />
+    );
+  },
+});
+
+const friendsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/friends",
+  component: function Friends() {
+    const navigate = useNavigate();
+    return (
+      <FriendsScreen
+        onBack={useGoBack("/pyramid")}
+        // Replace, so back from the friend's pyramid doesn't return to this list.
+        onView={(id) => void navigate({ to: "/pyramid", search: pyramidSearchFor(id), replace: true })}
+      />
+    );
   },
 });
 
@@ -408,6 +471,7 @@ const routeTree = rootRoute.addChildren([
   settingsRoute,
   pyramidRoute,
   scrollingPyramidsRoute,
+  friendsRoute,
   importRoute,
   editSessionRoute,
   newNoteRoute,

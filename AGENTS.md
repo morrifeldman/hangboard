@@ -61,7 +61,7 @@ is the shell.
 - Tabs are real paths: `/` (Progress), `/schedule`, `/workout`, `/history`. They
   hang off a pathless `shellRoute` that draws the tab bar.
 - Drill-in screens are siblings of the shell, so they render full-screen with no
-  tab bar: `/settings`, `/pyramid`, `/pyramid/scrolling`, `/import`,
+  tab bar: `/settings`, `/pyramid`, `/pyramid/scrolling`, `/friends`, `/import`,
   `/sessions/$sessionId/edit`, `/notes/new`, `/notes/$noteId/edit`.
 - Editors load their record by id in a route `loader` and redirect to `/history`
   when it's gone, so a stale deep link can't render an empty form.
@@ -104,11 +104,17 @@ is the shell.
 
 ### Persistence (IDB)
 - `src/lib/db.ts` owns the connection (`getDB`, with `blocking` handling so a future upgrade isn't stuck behind an old tab), `getMeta`/`setMeta`, a generic `recordStore<T>(name)` that the domain modules wrap (`saveSession`, `saveClimb`, `saveNote`, …), and `replaceStores()` — one transaction for backup restore and Mountain Project refresh, so a bad record changes nothing.
-- DB: `"hangboard-history"`, version 5. Add `oldVersion` branches in `upgrade` before the next schema change.
-- Stores: `"sessions"` (workout records, including gym entries), `"climbs"` (route logs), `"notes"` (dated notes), `"schedules"` (planner days, `by-date` unique index), `"meta"` (device-local key/value, out-of-line keys — reminder config etc., **shared with the service worker**).
+- DB: `"hangboard-history"`, version 6. Add `oldVersion` branches in `upgrade` before the next schema change.
+- Stores: `"sessions"` (workout records, including gym entries), `"climbs"` (route logs), `"notes"` (dated notes), `"schedules"` (planner days, `by-date` unique index), `"friends"` (see below), `"meta"` (device-local key/value, out-of-line keys — reminder config etc., **shared with the service worker**).
 - Session index: `"by-start"` on `startedAt`.
 - The SW reads `meta`/`schedules` via the raw IndexedDB API (no `idb` import). Reminder logic both sides share (keys, labels, `shouldFireReminder`) lives in `src/lib/reminderCore.ts`; the IDB key `reminder-last-fired` is the only "already fired today" record.
 - Backups are validated per record (`validateBackup`) before anything is written.
+
+### Mountain Project accounts and friends
+- `src/lib/mpAccount.ts` — `tickExportUrlFrom(input)` turns a tick-export URL, any profile link or a bare user id into the export URL (only the numeric id matters to Mountain Project), and `searchMountainProjectUsers` / `parseMpUserSearch` read the undocumented user search through `api/search-mp-users.js`. `MpUserSearch` is the one search UI (Settings and Friends).
+- `src/lib/mpFetch.ts` — `fetchTickExport` / `parseOrRefuse`: the one gate every tick import passes.
+- `src/lib/friends.ts` — one `friends` record per friend (id = Mountain Project user id) with their ticks **embedded**. Friends' ticks never go in `climbs`, which is the user's own log. Backups keep `FriendRef`s only; ticks are refetched when a friend is opened and the copy is over a day old.
+- The pyramid screens take `?who=<id>` (`useClimberClimbs`, `ClimberSwitcher`); a `who` that isn't saved falls back to your own climbs. Both API proxies have a dev twin in `vite.config.ts`: keep them in sync.
 
 ### Workout types
 - **Repeaters** (`workoutType: "repeaters"`) — Workout A, 2 sets of 7/6 reps, 7s hang / 3s rest.

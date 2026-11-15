@@ -15,6 +15,8 @@ type Props = {
   onClimbClick: (c: ClimbRecord, row: ClimbRecord[]) => void;
   /** The empty state's button: pull ticks from Mountain Project. */
   onRefreshClick: () => void;
+  /** Set when these are a friend's climbs, so the empty state talks about them. */
+  friendName?: string;
 };
 
 export function PyramidVisualization({
@@ -26,6 +28,7 @@ export function PyramidVisualization({
   timeRange,
   onClimbClick,
   onRefreshClick,
+  friendName,
 }: Props) {
   const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, timeRange);
   const deduplicatedClimbs = deduplicateForPyramid(viewAndTimeFiltered);
@@ -40,7 +43,9 @@ export function PyramidVisualization({
         <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
         <h3 className="text-lg font-semibold text-white mb-2">No climbs yet</h3>
         <p className="text-gray-400 mb-5">
-          Your Mountain Project ticks show up here. Add your tick-export URL in Settings, then refresh.
+          {friendName
+            ? `${friendName} has no public outdoor sport ticks in this range, or they haven't loaded yet.`
+            : "Your Mountain Project ticks show up here. Find your account in Settings, then refresh."}
         </p>
         <button
           onClick={onRefreshClick}
