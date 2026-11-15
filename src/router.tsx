@@ -205,11 +205,12 @@ const workoutRoute = createRoute({
         mode="tab"
         onBack={() => {}}
         onDone={() => {
-          // The new entry lands at the top of History, so don't drop the user
-          // back at wherever they last were in the list.
+          // The screen stays put for the next entry. The new one lands at the
+          // top of History, so don't later drop the user back at wherever
+          // they last were in the list.
           forgetScrollPosition("history");
-          void navigate({ to: "/history" });
         }}
+        onShowHistory={() => void navigate({ to: "/history" })}
         onShowSettings={() => void navigate({ to: "/settings" })}
       />
     );

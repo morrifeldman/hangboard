@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { saveSession, deleteSession, getSessions } from "../lib/history";
 import type { SessionRecord, GymData, GymWorkoutType, FreeformSection } from "../lib/history";
 import { GYM_WORKOUTS } from "../data/gymWorkouts";
@@ -39,13 +39,21 @@ import { FIELD_CLS } from "./gymlog/styles";
 
 type Props = {
   onBack: () => void;
-  /** After a successful save or delete. */
+  /**
+   * After a successful save or delete. A new log stays on the screen, reset
+   * for the next entry; an edit is expected to close.
+   */
   onDone: () => void;
+  /** Where "View" on the just-added line goes. */
+  onShowHistory?: () => void;
   initialRecord?: SessionRecord;
   /** "tab" = Workout tab (no back button, hangboard pill, gear); "edit" = drill-in editor. */
   mode?: "tab" | "edit";
   onShowSettings?: () => void;
 };
+
+/** How long the save button reads "Added" (and ignores taps) after a save. */
+const ADDED_FLASH_MS = 1600;
 
 const NO_AUTOCOMPLETE: GymAutocomplete = {
   keys: [],
@@ -54,7 +62,7 @@ const NO_AUTOCOMPLETE: GymAutocomplete = {
   campusSequences: {},
 };
 
-export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettings }: Props) {
+export function GymLogScreen({ onBack, onDone, onShowHistory, initialRecord, mode, onShowSettings }: Props) {
   const editing = initialRecord !== undefined;
   const tabMode = (mode ?? (editing ? "edit" : "tab")) === "tab";
   // The Workout tab opens on a gym type (ARC by default); the Hangboard pill switches in.
@@ -117,12 +125,23 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
       : [emptyLiftRow()],
   );
 
+  // What this visit has logged so far, oldest first. The screen stays up after
+  // a save, because several entries often go in back to back.
+  const [added, setAdded] = useState<string[]>([]);
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+  }, []);
+  const lastSavedAt = useRef<number | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+
   // Suggestions from past sessions. When editing, the record being edited is
   // never offered as the "last" freeform.
   const { data: autocomplete } = useLoad(
     () => getSessions().then((sessions) => collectGymAutocomplete(sessions, initialRecord?.id)),
     NO_AUTOCOMPLETE,
-    [initialRecord?.id],
+    [initialRecord?.id, added.length],
   );
 
   const def = GYM_WORKOUTS.find((w) => w.id === workoutType)!;
@@ -237,8 +256,8 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
     setFreeformBaseline(freeformFingerprint(gd.title, sections));
   };
 
-  // Minted once, so retrying a failed save can't create a second record.
-  const [newId] = useState(() => crypto.randomUUID());
+  // Minted once per entry, so retrying a failed save can't create a second record.
+  const [newId, setNewId] = useState(() => crypto.randomUUID());
 
   const save = async () => {
     // Lift ids are settled here, but the library itself only changes once the session is stored.
@@ -259,9 +278,15 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
       initialRecord &&
       dateValue === toLocalDateString(initialRecord.startedAt) &&
       timeValue === toLocalTimeString(initialRecord.startedAt);
-    const startedAt = unchanged
+    let startedAt = unchanged
       ? initialRecord.startedAt
       : new Date(`${dateValue}T${timeValue || "12:00"}:00`).getTime();
+    // Entries logged back to back share a minute. Nudge each one a second
+    // past the last so History keeps them in the order they were entered.
+    const last = lastSavedAt.current;
+    if (!initialRecord && last !== null && startedAt <= last && last - startedAt < 60_000) {
+      startedAt = last + 1000;
+    }
     if (initialRecord) {
       const duration = initialRecord.completedAt - initialRecord.startedAt;
       await saveSession({
@@ -289,6 +314,7 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
         committed.created.forEach(addLift);
         committed.entries.forEach((e) => setLiftBase(e.liftId, e.nextBase));
       }
+      lastSavedAt.current = startedAt;
     }
     // Freeform shape doesn't fit the flat Record<string,string> defaults store;
     // "Use last freeform" handles carry-forward instead.
@@ -297,11 +323,35 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
     }
   };
 
+  // A new log was stored: say so, and clear the form for the next one. The
+  // date, time and type stay, since the next entry is usually the same day.
+  const resetForNext = () => {
+    setNewId(crypto.randomUUID());
+    setSessionNotes("");
+    if (workoutType === "freeform") {
+      const sections = emptyFreeformSections();
+      setFreeformTitle("");
+      setFreeformSections(sections);
+      setFreeformBaseline(freeformFingerprint("", sections));
+    }
+    if (isCampus) setCampusRows(campusTemplateRows());
+    if (isLifts) setLiftRows([emptyLiftRow()]);
+    setAdded((a) => [...a, def.label]);
+    setFlash(`${def.label} added`);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(null), ADDED_FLASH_MS);
+    scroller.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const editor = useEditor({
     dirty,
     onSave: save,
     onDelete: initialRecord ? () => deleteSession(initialRecord.id) : undefined,
-    onDone,
+    onDone: () => {
+      if (!editing) resetForNext();
+      onDone();
+    },
+    stayOpenAfterSave: !editing,
   });
 
   return (
@@ -331,7 +381,7 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
         )}
       </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-8 flex flex-col gap-5">
+      <div ref={scroller} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-8 flex flex-col gap-5">
         {!hangboardMode && (
           <div className="flex items-center gap-2">
             <input
@@ -407,12 +457,29 @@ export function GymLogScreen({ onBack, onDone, initialRecord, mode, onShowSettin
         )}
       </div>
 
+      {!hangboardMode && added.length > 0 && (
+        <div
+          data-testid="added-list"
+          className="shrink-0 px-4 py-2 flex items-center gap-3 text-sm border-t border-gray-800"
+        >
+          <p className="flex-1 min-w-0 truncate text-gray-400">
+            <span className="font-num text-accent-400">{added.length}</span> added: {added.join(", ")}
+          </p>
+          {onShowHistory && (
+            <button onClick={onShowHistory} className="shrink-0 font-semibold text-accent-400">
+              View
+            </button>
+          )}
+        </div>
+      )}
+
       {!hangboardMode && (
         <EditorFooter
           editor={editor}
           saveLabel={editing ? "Save changes" : "Save session"}
           saveDisabled={!dateValue || !valid}
           deleteLabel="Delete session"
+          savedFlash={flash}
         />
       )}
 

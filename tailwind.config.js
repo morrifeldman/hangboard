@@ -17,6 +17,16 @@ export default {
           "8%, 80%": { opacity: "1", transform: "translateY(0)" },
           "100%": { opacity: "0", transform: "translateY(0)" },
         },
+        // The save button right after a save that stays on the screen.
+        "saved-pop": {
+          "0%": { transform: "scale(0.96)" },
+          "45%": { transform: "scale(1.03)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "tick-draw": {
+          "0%, 15%": { strokeDashoffset: "1" },
+          "100%": { strokeDashoffset: "0" },
+        },
         "row-added": {
           "0%, 30%": { backgroundColor: "rgb(34 197 94 / 0.28)" },
           "100%": { backgroundColor: "rgb(34 197 94 / 0)" },
@@ -24,6 +34,8 @@ export default {
       },
       animation: {
         "row-added": "row-added 1.8s ease-out",
+        "saved-pop": "saved-pop 0.35s ease-out",
+        "tick-draw": "tick-draw 0.45s ease-out both",
         // Lasts as long as CAPTION_MS in useToggleCaption.
         caption: "caption 1.5s ease-out forwards",
       },

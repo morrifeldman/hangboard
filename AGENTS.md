@@ -97,6 +97,10 @@ is the shell.
 ### Large screens
 `GymLogScreen` composes `src/components/gymlog/*` (type picker, fields, campus, freeform forms; pure helpers in `src/lib/gymForm.ts`). `SettingsScreen` composes `src/components/settings/*`. Put new sections in those folders rather than growing the screen file.
 
+Saving a new log on the Workout tab **stays on the tab**: the save button reads "ARC added" for a moment (and ignores taps, so a double tap can't log twice), the form resets with the date, time and type kept, and a line above the footer lists what this visit added. Entries saved in the same minute are nudged a second apart so History keeps their order. Editing a session still closes to History.
+
+Saving a new log on the Workout tab **stays on the tab**: the save button reads "ARC added" for a moment (and ignores taps, so a double tap can't log twice), the form resets with the date, time and type kept, and a line above the footer lists what this visit added. Entries saved in the same minute are nudged a second apart so History keeps their order. Editing a session still closes to History.
+
 ### Shared UI and hooks
 - `src/components/ui.tsx` — `Pill`, `PillRow` (hidden scrollbar), `Segmented`, `IconToggle`. Use these instead of hand-rolled selected states.
 - `ScreenHeader`, `EditorFooter` and `src/hooks/useEditor.ts` (`useEditor`, `useConfirmTap`) — every editor's header, save/delete footer, leave guard, double-submit guard and error display. A failed write keeps the screen open with an error.

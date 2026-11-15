@@ -51,13 +51,18 @@ export function useEditor(opts: {
   onDelete?: () => Promise<void> | void;
   /** Called after a successful save or delete. */
   onDone: () => void;
+  /**
+   * The screen stays up after a save, ready for the next entry, so the
+   * editor has to become usable again instead of waiting to be unmounted.
+   */
+  stayOpenAfterSave?: boolean;
 }): Editor {
   const guard = useLeaveGuard(opts.dirty);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
 
-  const run = async (action: () => Promise<void> | void, failure: string) => {
+  const run = async (action: () => Promise<void> | void, failure: string, stayOpen = false) => {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -71,7 +76,12 @@ export function useEditor(opts: {
       inFlight.current = false;
       return;
     }
-    guard.allowLeave();
+    if (stayOpen) {
+      setBusy(false);
+      inFlight.current = false;
+    } else {
+      guard.allowLeave();
+    }
     opts.onDone();
   };
 
@@ -84,7 +94,7 @@ export function useEditor(opts: {
     guard,
     busy,
     error,
-    save: () => void run(opts.onSave, "Couldn't save. Try again."),
+    save: () => void run(opts.onSave, "Couldn't save. Try again.", opts.stayOpenAfterSave),
     remove: onDelete ? confirmDelete : undefined,
   };
 }
