@@ -4,6 +4,7 @@ import {
 } from "./mountainProjectImport";
 import { replaceAllClimbs } from "./climbs";
 import { MP_URL_KEY } from "./backup";
+import { tickExportUrlFrom } from "./mpAccount";
 import type { ClimbRecord } from "./climbs";
 
 /** Content types we are willing to read as a tick export. */
@@ -37,17 +38,24 @@ function parseOrRefuse(csvText: string, sourceNote: string): ClimbRecord[] {
 }
 
 /**
- * Fetch the Mountain Project tick export at `url`, parse it, and replace every
- * stored climb with the result. The URL is only remembered when the whole thing
- * succeeds, so a fetch that fails doubles as validation of what the user typed.
+ * Fetch the Mountain Project tick export for `url`, parse it, and replace every
+ * stored climb with the result. `url` may be the export URL itself, any link to
+ * the user's Mountain Project profile, or their bare user id. The export URL is
+ * only remembered when the whole thing succeeds, so a fetch that fails doubles
+ * as validation of what the user typed.
  *
  * Returns the number of climbs imported.
  */
 export async function refreshFromMountainProject(url: string): Promise<number> {
-  const trimmed = url.trim();
-  if (!trimmed) throw new Error("No Mountain Project URL.");
+  if (!url.trim()) throw new Error("No Mountain Project URL.");
+  const exportUrl = tickExportUrlFrom(url);
+  if (!exportUrl) {
+    throw new Error(
+      `That isn't a Mountain Project profile link or user ID. ${LEFT_ALONE}`,
+    );
+  }
 
-  const response = await fetch(`/api/fetch-mp-csv?url=${encodeURIComponent(trimmed)}`);
+  const response = await fetch(`/api/fetch-mp-csv?url=${encodeURIComponent(exportUrl)}`);
   if (!response.ok) {
     throw new Error(`Fetch failed: ${response.status} ${response.statusText}`.trim());
   }
@@ -63,7 +71,7 @@ export async function refreshFromMountainProject(url: string): Promise<number> {
 
   const climbs = parseOrRefuse(await response.text(), sourceNote);
   await replaceAllClimbs(climbs);
-  localStorage.setItem(MP_URL_KEY, trimmed);
+  localStorage.setItem(MP_URL_KEY, exportUrl);
   return climbs.length;
 }
 

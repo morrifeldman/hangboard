@@ -12,6 +12,34 @@ test("settings: sections render and an unsaved Mountain Project URL guards leavi
   await expect(page.getByTestId("settings-mountain-project")).toHaveCount(0);
 });
 
+test("settings: picking a Mountain Project search result fills in its tick export", async ({ page }) => {
+  await page.route("**/api/search-mp-users?*", (route) =>
+    route.fulfill({
+      json: {
+        results: {
+          Users: [
+            '<a href="https://www.mountainproject.com/user/111/ada-climber?search=1">' +
+              '<div class="text-truncate">Ada Climber</div><div class="small">Bishop, CA</div></a>',
+            '<a href="https://www.mountainproject.com/user/222/ada-other?search=1">' +
+              '<div class="text-truncate">Ada Other</div><div class="small"></div></a>',
+          ],
+        },
+      },
+    }),
+  );
+  await page.goto("/settings");
+  await page.getByTestId("settings-mp-search").fill("Ada");
+  await page.getByTestId("settings-mp-search-submit").click();
+  await expect(page.getByTestId("settings-mp-result")).toHaveCount(2);
+  await expect(page.getByTestId("settings-mp-results")).toContainText("Bishop, CA");
+
+  await page.getByTestId("settings-mp-result").first().click();
+  await expect(page.getByTestId("settings-mp-url")).toHaveValue(
+    "https://www.mountainproject.com/user/111/ada-climber/tick-export",
+  );
+  await expect(page.getByTestId("settings-mp-result").first()).toHaveAttribute("aria-pressed", "true");
+});
+
 test("settings: a backup downloads", async ({ page }) => {
   await page.goto("/settings");
   const download = page.waitForEvent("download");

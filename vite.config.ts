@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import type { Plugin } from "vite";
 
 /**
- * Serve /api/fetch-mp-csv during `npm run dev`.
+ * Serve /api/fetch-mp-csv and /api/search-mp-users during `npm run dev`.
  *
  * `api/` is a Vercel convention: in production Vercel runs api/fetch-mp-csv.js
  * as a serverless function, but Vite knows nothing about that and used to serve
@@ -53,6 +53,39 @@ function mpCsvDevEndpoint(): Plugin {
               details: error instanceof Error ? error.message : String(error),
             }),
           );
+        }
+      });
+
+      // Keep the behaviour here in sync with api/search-mp-users.js.
+      server.middlewares.use("/api/search-mp-users", async (req, res) => {
+        const send = (status: number, body: unknown) => {
+          res.statusCode = status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(body));
+        };
+
+        if (req.method !== "GET") return send(405, { error: "Method not allowed" });
+
+        const params = new URL(req.url ?? "", "http://localhost").searchParams;
+        const q = (params.get("q") ?? "").trim();
+        if (!q || q.length > 100) return send(400, { error: "q must be 1 to 100 characters" });
+        const offset = Number.parseInt(params.get("offset") ?? "", 10);
+        const o = Number.isInteger(offset) && offset > 0 && offset <= 1000 ? offset : 0;
+
+        try {
+          const upstream = await fetch(
+            "https://www.mountainproject.com/ajax/public/search/results/category" +
+              `?q=${encodeURIComponent(q)}&c=Users&o=${o}&s=Default`,
+          );
+          if (!upstream.ok) {
+            throw new Error(`HTTP ${upstream.status}: ${upstream.statusText}`);
+          }
+          send(200, await upstream.json());
+        } catch (error) {
+          send(502, {
+            error: "Failed to search Mountain Project",
+            details: error instanceof Error ? error.message : String(error),
+          });
         }
       });
     },
