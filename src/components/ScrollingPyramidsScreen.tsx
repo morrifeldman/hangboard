@@ -87,7 +87,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
           <IconToggle
             on={showSendsOnly}
             onToggle={() => {
-              show(showSendsOnly ? "Including top rope and attempts" : "Lead sends only");
+              show(showSendsOnly ? "+ top rope and attempts" : "Lead sends only");
               setShowSendsOnly((v) => !v);
             }}
             label="Toggle sends only"

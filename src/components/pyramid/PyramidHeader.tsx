@@ -36,7 +36,7 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
             <IconToggle
               on={showSendsOnly}
               onToggle={() => {
-                show(showSendsOnly ? "Including top rope and attempts" : "Lead sends only");
+                show(showSendsOnly ? "+ top rope and attempts" : "Lead sends only");
                 onToggleSendsOnly();
               }}
               label="Toggle sends only"
