@@ -98,7 +98,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
           <IconToggle
             on={showCounts}
             onToggle={() => {
-              show(showCounts ? "Counts hidden" : "Showing counts per grade");
+              show(showCounts ? "Counts hidden" : "+ counts per grade");
               setShowCounts((v) => !v);
             }}
             label="Toggle counts"

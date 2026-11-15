@@ -69,7 +69,7 @@ test("pyramid: a toggle says what it switched to, then the caption goes away", a
   await page.getByRole("button", { name: "Toggle sends only" }).click();
   await expect(page.getByTestId("toggle-caption")).toHaveText("+ top rope and attempts");
   await page.getByRole("button", { name: "Toggle counts" }).click();
-  await expect(page.getByTestId("toggle-caption")).toHaveText("Showing counts per grade");
+  await expect(page.getByTestId("toggle-caption")).toHaveText("+ counts per grade");
   await expect(page.getByTestId("toggle-caption")).toHaveCount(0, { timeout: 5000 });
 
   await page.goto("/pyramid/scrolling");

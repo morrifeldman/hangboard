@@ -47,7 +47,7 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
             <IconToggle
               on={showCounts}
               onToggle={() => {
-                show(showCounts ? "Counts hidden" : "Showing counts per grade");
+                show(showCounts ? "Counts hidden" : "+ counts per grade");
                 onToggleCounts();
               }}
               label="Toggle counts"
