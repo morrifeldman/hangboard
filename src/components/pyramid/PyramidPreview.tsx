@@ -88,7 +88,7 @@ export function PyramidPreview({ climbs, onOpen }: Props) {
             </div>
             <div className="mt-4 flex flex-col items-center gap-2.5 border-t border-gray-700/60 pt-3">
               <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5">
-                {/* Lead sends only, so no top rope here. */
+                {/* Lead sends only, so no top rope here. */}
                 {STYLE_LEGEND.filter((s) => s.style !== "toprope").map((s) => (
                   <span key={s.style} className="flex items-center gap-1.5 whitespace-nowrap text-xs text-gray-400">
                     <span className={`h-2.5 w-2.5 rounded-sm ${s.color}`} style={{ boxShadow: STONE_EDGE }} />
