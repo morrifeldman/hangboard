@@ -109,7 +109,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
           <IconToggle
             on={showSessionCounts}
             onToggle={() => {
-              show(showSessionCounts ? "Tiles count climbs" : "Tiles count sessions");
+              show(showSessionCounts ? "Count climbs" : "Count sessions");
               setShowSessionCounts((v) => !v);
             }}
             label="Toggle session vs climb counts"

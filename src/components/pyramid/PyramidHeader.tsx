@@ -58,7 +58,7 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
             <IconToggle
               on={showSessionCounts}
               onToggle={() => {
-                show(showSessionCounts ? "Tiles count climbs" : "Tiles count sessions");
+                show(showSessionCounts ? "Count climbs" : "Count sessions");
                 onToggleSessionCounts();
               }}
               label="Toggle session vs climb counts"
