@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { buildPyramid, climbsInView, getStyleColor } from "../../lib/climbUtils";
+import { buildPyramid, climbsInView, getStyleColor, isLeadSend } from "../../lib/climbUtils";
 import { deduplicateForPyramid } from "../../lib/deduplication";
 import type { ClimbRecord } from "../../lib/climbs";
 import { STONE_EDGE, STYLE_LEGEND, stoneRadius } from "./stone";
@@ -37,7 +37,7 @@ export function PyramidPreview({ climbs, onOpen }: Props) {
 
   const filtered = climbsInView(climbs, "outdoor-sport");
   const deduped = deduplicateForPyramid(filtered);
-  const sends = deduped.filter((c) => c.style !== "attempt");
+  const sends = deduped.filter(isLeadSend);
   // Only non-empty grade rows keep the preview short; the widening toward the
   // base still reads as a pyramid.
   const rows = buildPyramid(sends, "outdoor-sport").filter((r) => r.climbs.length > 0);

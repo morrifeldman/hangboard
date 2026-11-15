@@ -33,7 +33,7 @@ export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onT
               on={showSendsOnly}
               onToggle={onToggleSendsOnly}
               label="Toggle sends only"
-              title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
+              title={showSendsOnly ? "Lead sends only — tap to include top rope and attempts" : "Showing all — tap to filter to sends only"}
             >
               <Trophy size={16} />
             </IconToggle>

@@ -1,6 +1,7 @@
 import { VIEWS } from "../../constants/climbGrades";
 import type { ViewKey } from "../../constants/climbGrades";
 import type { ClimbRecord } from "../../lib/climbs";
+import { isLeadSend } from "../../lib/climbUtils";
 
 type Props = {
   currentView: ViewKey;
@@ -13,7 +14,7 @@ export function ViewTabs({ currentView, showSendsOnly, climbs, onShowScrolling }
   const viewConfig = VIEWS.find((v) => v.key === currentView)!;
   const count = climbs.filter((c) => {
     const matchesView = c.type === viewConfig.type && c.setting === viewConfig.setting;
-    return matchesView && (showSendsOnly ? c.style !== "attempt" : true);
+    return matchesView && (showSendsOnly ? isLeadSend(c) : true);
   }).length;
 
   return (

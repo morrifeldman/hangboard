@@ -1,5 +1,5 @@
 import { Mountain } from "lucide-react";
-import { buildPyramid, getFilteredClimbs } from "../../lib/climbUtils";
+import { buildPyramid, getFilteredClimbs, isLeadSend } from "../../lib/climbUtils";
 import { deduplicateForPyramid } from "../../lib/deduplication";
 import type { ClimbRecord } from "../../lib/climbs";
 import type { ViewKey } from "../../constants/climbGrades";
@@ -33,7 +33,7 @@ export function PyramidVisualization({
   const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, timeRange);
   const deduplicatedClimbs = deduplicateForPyramid(viewAndTimeFiltered);
   const finalClimbs = showSendsOnly
-    ? deduplicatedClimbs.filter((c) => c.style !== "attempt")
+    ? deduplicatedClimbs.filter(isLeadSend)
     : deduplicatedClimbs;
   const pyramidData = buildPyramid(finalClimbs, currentView);
 

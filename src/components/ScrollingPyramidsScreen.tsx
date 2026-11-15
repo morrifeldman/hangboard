@@ -6,7 +6,7 @@ import { IconToggle, Pill, PillRow } from "./ui";
 import type { ClimbRecord } from "../lib/climbs";
 import { generateWindows, filterClimbsByWindow } from "../lib/pyramidData";
 import type { SeasonWindow, WindowKind } from "../lib/pyramidData";
-import { climbsInView } from "../lib/climbUtils";
+import { climbsInView, isLeadSend } from "../lib/climbUtils";
 import type { PyramidRow } from "../lib/climbUtils";
 import { deduplicateForPyramid } from "../lib/deduplication";
 import { SPORT_GRADES } from "../constants/climbGrades";
@@ -56,7 +56,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
     [climbs, view],
   );
   const viewSends = useMemo(
-    () => viewClimbs.filter((c) => c.style !== "attempt"),
+    () => viewClimbs.filter(isLeadSend),
     [viewClimbs],
   );
   const windowSource = showSendsOnly ? viewSends : viewClimbs;
@@ -84,7 +84,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
             on={showSendsOnly}
             onToggle={() => setShowSendsOnly((v) => !v)}
             label="Toggle sends only"
-            title={showSendsOnly ? "Sends only — tap to include attempts" : "Showing all — tap to filter to sends only"}
+            title={showSendsOnly ? "Lead sends only — tap to include top rope and attempts" : "Showing all — tap to filter to sends only"}
           >
             <Trophy size={16} />
           </IconToggle>
@@ -188,7 +188,7 @@ function SeasonCard({
   // when sends-only is on, drop pure-attempt routes (never sent in this window).
   const windowClimbs = useMemo(() => {
     const deduped = deduplicateForPyramid(filterClimbsByWindow(climbs, window));
-    return showSendsOnly ? deduped.filter((c) => c.style !== "attempt") : deduped;
+    return showSendsOnly ? deduped.filter(isLeadSend) : deduped;
   }, [climbs, window, showSendsOnly]);
   const rows = useMemo(
     () => buildRowsForRange(windowClimbs, gradesToShow),

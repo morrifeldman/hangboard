@@ -21,6 +21,15 @@ const STYLE_BADGE: Record<ClimbStyle, string> = {
   attempt: "bg-gray-700 text-gray-400",
 };
 
+/**
+ * What the pyramids' "sends only" view keeps: a clean ascent on lead. Top rope
+ * and following are clean but not led, so they sit with attempts behind the
+ * toggle, in their own colour.
+ */
+export function isLeadSend(c: Pick<ClimbRecord, "style">): boolean {
+  return c.style !== "attempt" && c.style !== "toprope";
+}
+
 /** Solid fill for a style (pyramid tiles, timeline dots, legend). */
 export function getStyleColor(style: ClimbStyle): string {
   return STYLE_SOLID[style] ?? "bg-gray-500";

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { SPORT_GRADES, BOULDER_GRADES } from "../../constants/climbGrades";
 import { deduplicateForTimeline } from "../../lib/deduplication";
-import { climbsInView, getFilteredClimbs, getStyleColor } from "../../lib/climbUtils";
+import { climbsInView, getFilteredClimbs, getStyleColor, isLeadSend } from "../../lib/climbUtils";
 import { climbPRs } from "../../lib/climbPRs";
 import { prGlow } from "./stone";
 import { formatDateKey } from "../../lib/dates";
@@ -22,7 +22,7 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
 
   // Filter by view and time range, then deduplicate
   const deduped = deduplicateForTimeline(getFilteredClimbs(climbs, currentView, timeRange));
-  const filtered = showSendsOnly ? deduped.filter((c) => c.style !== "attempt") : deduped;
+  const filtered = showSendsOnly ? deduped.filter(isLeadSend) : deduped;
   // PRs come from the whole history in view, so zooming the range can't make one.
   const prs = climbPRs(deduplicateForTimeline(climbsInView(climbs, currentView)));
 
