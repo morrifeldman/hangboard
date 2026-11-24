@@ -325,9 +325,9 @@ function NoteRow({ record, showDate, onEdit }: {
 const CATEGORY_TONES: Record<ActivityCategory, ChipTone> = {
   outdoor: "teal",
   indoor: "orange",
-  lifting: "sky",
+  lifting: "blue",
   cardio: "rose",
-  stretching: "violet",
+  stretching: "purple",
   other: "muted",
 };
 

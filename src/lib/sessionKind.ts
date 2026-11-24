@@ -19,9 +19,9 @@ export type ActivityCategory = "outdoor" | "indoor" | "lifting" | "cardio" | "st
 export const ACTIVITY_CATEGORIES = [
   { id: "outdoor",    label: "Outdoor climbing", color: "bg-teal-600" },
   { id: "indoor",     label: "Indoor climbing",  color: "bg-amber-500" },
-  { id: "lifting",    label: "Lifting",          color: "bg-sky-500" },
+  { id: "lifting",    label: "Lifting",          color: "bg-blue-500" },
   { id: "cardio",     label: "Cardio",           color: "bg-rose-500" },
-  { id: "stretching", label: "Stretching",       color: "bg-violet-500" },
+  { id: "stretching", label: "Stretching",       color: "bg-purple-500" },
   { id: "other",      label: "Other",            color: "bg-gray-500" },
 ] as const satisfies readonly { id: ActivityCategory; label: string; color: string }[];
 
