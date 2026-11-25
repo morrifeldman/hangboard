@@ -79,16 +79,12 @@ describe("climbsInView with a discipline", () => {
 });
 
 describe("buildGradeTrend", () => {
-  it("includes trad and leaves out top-rope-only routes", () => {
+  it("includes trad routes", () => {
     const trend = buildGradeTrend(
-      [
-        climb({ id: "t", grade: "5.11a", discipline: "trad", date: "2025-04-01" }),
-        climb({ id: "r", grade: "5.13a", discipline: "tr", date: "2025-04-02" }),
-      ],
+      [climb({ id: "t", grade: "5.11a", discipline: "trad", date: "2025-04-01" })],
       "years",
     );
     expect(trend).toHaveLength(1);
     expect(trend[0].redpoint).not.toBeNull();
-    expect(trend[0].redpoint).toBeLessThan(8); // 5.11a, not the TR 5.13a
   });
 });

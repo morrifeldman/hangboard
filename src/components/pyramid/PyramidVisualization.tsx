@@ -40,19 +40,6 @@ export function PyramidVisualization({
     : deduplicatedClimbs;
   const pyramidData = buildPyramid(finalClimbs, currentView);
 
-  // TR routes are mostly top-rope ticks, which Sends only hides.
-  if (pyramidData.length === 0 && discipline === "tr" && showSendsOnly && deduplicatedClimbs.length > 0) {
-    return (
-      <div className="text-center py-12" data-testid="pyramid-empty-discipline">
-        <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
-        <h3 className="text-lg font-semibold text-white mb-2">No lead sends on TR routes</h3>
-        <p className="text-gray-400">
-          Top-rope ticks are hidden while Sends only is on. Tap the trophy to show them.
-        </p>
-      </div>
-    );
-  }
-
   // Some routes, just none of this kind: older imports have every route as
   // sport, and a refresh is what sorts trad and TR out of them.
   if (pyramidData.length === 0 && discipline !== "all" && climbsInView(climbs, currentView).length > 0) {

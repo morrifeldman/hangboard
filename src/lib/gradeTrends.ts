@@ -1,4 +1,4 @@
-import { climbDiscipline, climbsInView } from "./climbUtils";
+import { climbsInView } from "./climbUtils";
 import type { ClimbRecord } from "./climbs";
 import { SPORT_GRADES } from "../constants/climbGrades";
 
@@ -161,13 +161,13 @@ function maxGrade(a: number | null, b: number | null): number | null {
 
 /**
  * Build the grade-trend series for the given climbs.
- * Filters to outdoor led routes (sport and trad, not top-rope-only), buckets by granularity, and
+ * Filters to outdoor routes (sport, trad and TR), buckets by granularity, and
  * computes the max-grade index per style per bucket. Empty buckets between
  * min and max climb date are emitted with all-null values so the X axis
  * stays evenly spaced (and so Recharts can render gaps in the lines).
  */
 export function buildGradeTrend(climbs: ClimbRecord[], kind: Granularity): GradeTrendPoint[] {
-  const filtered = climbsInView(climbs, "outdoor-sport").filter((c) => climbDiscipline(c) !== "tr");
+  const filtered = climbsInView(climbs, "outdoor-sport");
   if (filtered.length === 0) return [];
 
   // bucket → per-style max index
