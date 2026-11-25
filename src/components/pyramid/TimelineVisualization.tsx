@@ -1,30 +1,32 @@
 import { useEffect, useRef } from "react";
 import { SPORT_GRADES, BOULDER_GRADES } from "../../constants/climbGrades";
 import { deduplicateForTimeline } from "../../lib/deduplication";
-import { climbsInView, getFilteredClimbs, getStyleColor, isLeadSend } from "../../lib/climbUtils";
+import { climbsInView, getFilteredClimbs, getStyleColor, isLeadSend, isTrad } from "../../lib/climbUtils";
 import { climbPRs } from "../../lib/climbPRs";
 import { prGlow } from "./stone";
 import { formatDateKey } from "../../lib/dates";
 import type { ClimbRecord } from "../../lib/climbs";
-import type { ViewKey } from "../../constants/climbGrades";
+import type { DisciplineFilter, ViewKey } from "../../constants/climbGrades";
 
 type Props = {
   climbs: ClimbRecord[];
   currentView: ViewKey;
+  discipline: DisciplineFilter;
   showSendsOnly: boolean;
   timeRange: [number, number];
   /** `row` is every climb shown at the tapped climb's grade, oldest first. */
   onClimbClick: (c: ClimbRecord, row: ClimbRecord[]) => void;
 };
 
-export function TimelineVisualization({ climbs, currentView, showSendsOnly, timeRange, onClimbClick }: Props) {
+export function TimelineVisualization({ climbs, currentView, discipline, showSendsOnly, timeRange, onClimbClick }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Filter by view and time range, then deduplicate
-  const deduped = deduplicateForTimeline(getFilteredClimbs(climbs, currentView, timeRange));
+  const deduped = deduplicateForTimeline(getFilteredClimbs(climbs, currentView, timeRange, discipline));
   const filtered = showSendsOnly ? deduped.filter(isLeadSend) : deduped;
-  // PRs come from the whole history in view, so zooming the range can't make one.
-  const prs = climbPRs(deduplicateForTimeline(climbsInView(climbs, currentView)));
+  // PRs come from the whole history in view, so zooming the range can't make
+  // one. Sport and trad each have their own, like the pyramid you're looking at.
+  const prs = climbPRs(deduplicateForTimeline(climbsInView(climbs, currentView, discipline)));
 
   // Group by date
   const climbsByDate: Record<string, ClimbRecord[]> = {};
@@ -102,16 +104,18 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
                     const gi = reversed.indexOf(climb.grade);
                     if (gi === -1) return null;
                     const isPR = prs.has(climb.id);
+                    const trad = isTrad(climb);
                     return (
                       <div
                         key={`${climb.id}-${ci}`}
-                        className={`absolute ${isPR ? "z-20" : "z-10"} w-6 h-6 rounded ${getStyleColor(climb.style)} border border-gray-900 shadow-sm cursor-pointer hover:scale-110 transition-transform`}
+                        className={`absolute ${isPR ? "z-20" : "z-10"} w-6 h-6 ${trad ? "rounded-full" : "rounded"} ${getStyleColor(climb.style)} border border-gray-900 shadow-sm cursor-pointer hover:scale-110 transition-transform`}
                         style={{
                           top: `${(gi + 1) * gradeHeight - 12}px`,
                           left: `${ci * 8}px`,
                           boxShadow: isPR ? prGlow(climb.style) : undefined,
                         }}
-                        title={`${climb.route} - ${climb.grade} (${climb.style}${isPR ? ", personal record" : ""})`}
+                        data-trad={trad || undefined}
+                        title={`${climb.route}${trad ? " · trad" : ""} - ${climb.grade} (${climb.style}${isPR ? ", personal record" : ""})`}
                         onClick={() =>
                           onClimbClick(
                             climb,
@@ -129,7 +133,7 @@ export function TimelineVisualization({ climbs, currentView, showSendsOnly, time
                             </span>
                           ) : null;
                         })()}
-                                              </div>
+                      </div>
                     );
                   })}
                 </div>

@@ -1,4 +1,4 @@
-import type { ClimbStyle, ClimbType, ClimbSetting } from "../constants/climbGrades";
+import type { ClimbStyle, ClimbType, ClimbSetting, RouteDiscipline } from "../constants/climbGrades";
 import { recordStore, replaceStores } from "./db";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -10,6 +10,8 @@ export type ClimbRecord = {
   location: string;
   type: ClimbType;
   setting: ClimbSetting;
+  /** Routes only. Absent means sport (records imported before trad was kept). */
+  discipline?: RouteDiscipline;
   style: ClimbStyle;
   climbs: number;
   date: string; // YYYY-MM-DD

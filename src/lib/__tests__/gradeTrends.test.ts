@@ -36,7 +36,7 @@ describe("enumerateBuckets", () => {
 });
 
 describe("buildGradeTrend", () => {
-  it("filters to outdoor sport only", () => {
+  it("filters to outdoor routes only", () => {
     const climbs: ClimbRecord[] = [
       climb({ date: "2025-04-15", grade: "5.11a", style: "redpoint" }),
       climb({ date: "2025-04-15", grade: "V5", type: "boulder", style: "redpoint" }),
@@ -117,7 +117,7 @@ describe("buildGradeTrend", () => {
     expect(gradeLabel(points[2].redpoint!)).toBe("5.12a");
   });
 
-  it("returns empty array when no outdoor sport climbs", () => {
+  it("returns empty array when no outdoor routes", () => {
     expect(buildGradeTrend([], "months")).toEqual([]);
     expect(buildGradeTrend([climb({ setting: "indoor" })], "months")).toEqual([]);
   });

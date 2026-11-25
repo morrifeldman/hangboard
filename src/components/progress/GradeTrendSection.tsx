@@ -27,7 +27,7 @@ type Props = {
   onGranularityChange: (g: Granularity) => void;
 };
 
-/** Outdoor sport grade trend, with a Months / Seasons / Years grouping. */
+/** Outdoor route grade trend, with a Months / Seasons / Years grouping. */
 export function GradeTrendSection({ climbs, granularity, onGranularityChange }: Props) {
   const trend = useMemo(() => buildGradeTrend(climbs, granularity), [climbs, granularity]);
 
@@ -44,7 +44,7 @@ export function GradeTrendSection({ climbs, granularity, onGranularityChange }: 
 
         {trend.length === 0 ? (
           <div className="h-[180px] flex items-center justify-center">
-            <p className="text-gray-600 text-sm">No outdoor sport climbs yet</p>
+            <p className="text-gray-600 text-sm">No outdoor routes yet</p>
           </div>
         ) : (
           // The range starts at the full span whenever the bucket list changes

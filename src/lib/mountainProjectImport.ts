@@ -1,7 +1,7 @@
 import { todayDateString } from "./dates";
 import { normalizeGrade } from "./climbGradeUtils";
 import type { ClimbRecord } from "./climbs";
-import type { ClimbStyle } from "../constants/climbGrades";
+import type { ClimbStyle, RouteDiscipline } from "../constants/climbGrades";
 
 /** Parse the Mountain Project Pitches column as total attempt count. */
 export function parsePitches(value: string | undefined): number {
@@ -23,6 +23,20 @@ export function convertStyle(leadStyle: string | undefined, style?: string): Cli
     case "Fell/Hung":
     default:         return "attempt";
   }
+}
+
+/**
+ * Read Mountain Project's Route Type ("Trad", "Sport", "Trad, Sport", "TR",
+ * "Trad, Aid", …) as a route discipline. Any bolts make it sport, so mixed
+ * routes are sport. Only a route with no sport or trad listed is top-rope-only.
+ * Anything else (Aid, Ice, a blank column) reads as sport, as it always has.
+ */
+export function routeDiscipline(routeType: string | undefined): RouteDiscipline {
+  const parts = (routeType ?? "").split(",").map((p) => p.trim().toLowerCase());
+  if (parts.includes("sport")) return "sport";
+  if (parts.includes("trad")) return "trad";
+  if (parts.includes("tr")) return "tr";
+  return "sport";
 }
 
 /** Detect indoor gym from location string (whole words, so "Gymnasium Rock" is not a gym). */
@@ -134,12 +148,14 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
     if (!grade) continue;
 
     const url = parseRouteUrl(row.URL);
+    const isBoulder = row["Route Type"] === "Boulder";
     climbs.push({
       id: crypto.randomUUID(),
       route: row.Route,
       grade,
       location: row.Location || "",
-      type: row["Route Type"] === "Boulder" ? "boulder" : "sport",
+      type: isBoulder ? "boulder" : "sport",
+      ...(isBoulder ? {} : { discipline: routeDiscipline(row["Route Type"]) }),
       setting: isIndoor(row.Location) ? "indoor" : "outdoor",
       style: convertStyle(row["Lead Style"], row.Style),
       climbs: parsePitches(row.Pitches),

@@ -44,6 +44,8 @@ function buildPyramidSeeds(
         location: "Red River Gorge",
         type: "sport",
         setting: "outdoor",
+        // Every fourth route is trad (not in step with the styles), so the round trad stones show up.
+        discipline: (k + i) % 4 === 2 ? "trad" : "sport",
         style,
         climbs: style === "redpoint" ? 1 + (k % 4) : 1,
         date,

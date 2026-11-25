@@ -5,7 +5,7 @@ import type { ClimbRecord } from "../../lib/climbs";
 import { STONE_EDGE, STYLE_LEGEND, stoneRadius } from "./stone";
 
 // Compact, read-only outdoor-sport pyramid rendered on the home screen. Mirrors
-// the default view of the full PyramidScreen (outdoor sport, sends only, full
+// the default view of the full PyramidScreen (outdoor routes, sends only, full
 // time range) but strips all interactivity — tapping anywhere opens the full
 // pyramid page with the real controls.
 const MAX_TILE = 14;
@@ -51,7 +51,7 @@ export function PyramidPreview({ climbs, onOpen }: Props) {
       <div>
         <h2 className="text-white text-lg font-semibold leading-tight">Route pyramid</h2>
         <p className="text-gray-500 text-xs mt-0.5">
-          Outdoor sport
+          Outdoor routes
           {sends.length > 0 && ` · ${sends.length} route${sends.length === 1 ? "" : "s"} sent`}
         </p>
       </div>
@@ -63,7 +63,7 @@ export function PyramidPreview({ climbs, onOpen }: Props) {
       >
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <p className="text-gray-400 text-sm">No outdoor sport sends yet</p>
+            <p className="text-gray-400 text-sm">No outdoor sends yet</p>
             <span className="text-accent-400 text-sm font-semibold">Open pyramid</span>
           </div>
         ) : (

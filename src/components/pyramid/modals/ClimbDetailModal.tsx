@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { climbStyleLabel, getStyleColor, styleBadgeClass } from "../../../lib/climbUtils";
+import { climbStyleLabel, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
 import { routeUrl, type ClimbRecord } from "../../../lib/climbs";
 import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
@@ -209,8 +209,12 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
             <h3 className="text-xl font-bold text-white">{climb.route}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="font-num text-xl text-white">{climb.grade}</span>
-              <div className={`w-3 h-3 rounded-[3px] ${getStyleColor(climb.style)}`} style={{ boxShadow: STONE_EDGE }} />
+              <div
+                className={`w-3 h-3 ${isTrad(climb) ? "rounded-full" : "rounded-[3px]"} ${getStyleColor(climb.style)}`}
+                style={{ boxShadow: STONE_EDGE }}
+              />
               <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
+              {isTrad(climb) && <span className="text-sm text-gray-400">· Trad</span>}
               {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
               {position && (
                 <span className="text-sm text-gray-500">

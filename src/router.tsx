@@ -35,6 +35,7 @@ import type { SessionRecord } from "./lib/history";
 import { getNote } from "./lib/notes";
 import { forgetScrollPosition } from "./hooks/useScrollRestore";
 import { isDateKey, todayDateString } from "./lib/dates";
+import type { DisciplineFilter } from "./constants/climbGrades";
 
 // ─── Back ────────────────────────────────────────────────────────────────────
 
@@ -319,20 +320,46 @@ const settingsRoute = createRoute({
 });
 
 /**
- * Whose climbs the pyramid screens show: a friend's Mountain Project id, or
- * nothing for your own. Kept as a number so the URL stays `?who=200938052`
- * (TanStack would quote a numeric string).
+ * The pyramid screens' view state. `who` is whose climbs: a friend's Mountain
+ * Project id, or nothing for your own. Kept as a number so the URL stays
+ * `?who=200938052` (TanStack would quote a numeric string). `gear` narrows the
+ * routes to sport or trad; omitted means all.
  */
-type PyramidSearch = { who?: number };
+type PyramidSearch = { who?: number; gear?: "sport" | "trad" };
 
 function validatePyramidSearch(raw: Record<string, unknown>): PyramidSearch {
+  const search: PyramidSearch = {};
   const who = Number(raw.who);
-  return Number.isSafeInteger(who) && who > 0 ? { who } : {};
+  if (Number.isSafeInteger(who) && who > 0) search.who = who;
+  if (raw.gear === "sport" || raw.gear === "trad") search.gear = raw.gear;
+  return search;
 }
 
 /** The search for viewing friend `id`, or your own climbs when undefined. */
-function pyramidSearchFor(id: string | undefined): PyramidSearch {
-  return id === undefined ? {} : validatePyramidSearch({ who: id });
+function pyramidSearchFor(id: string | undefined, gear?: PyramidSearch["gear"]): PyramidSearch {
+  return validatePyramidSearch({ who: id, gear });
+}
+
+/** Read and update the pyramid search on `path`; updates replace the entry. */
+function usePyramidSearch(path: "/pyramid" | "/pyramid/scrolling", search: PyramidSearch) {
+  const navigate = useNavigate();
+  const who = search.who === undefined ? undefined : String(search.who);
+  const discipline: DisciplineFilter = search.gear ?? "all";
+  const onWho = useCallback(
+    (id: string | undefined) =>
+      void navigate({ to: path, search: (prev) => pyramidSearchFor(id, prev.gear), replace: true }),
+    [navigate, path],
+  );
+  const onDiscipline = useCallback(
+    (d: DisciplineFilter) =>
+      void navigate({
+        to: path,
+        search: (prev) => ({ ...prev, gear: d === "all" ? undefined : d }),
+        replace: true,
+      }),
+    [navigate, path],
+  );
+  return { navigate, who, discipline, onWho, onDiscipline };
 }
 
 const pyramidRoute = createRoute({
@@ -340,19 +367,15 @@ const pyramidRoute = createRoute({
   path: "/pyramid",
   validateSearch: validatePyramidSearch,
   component: function Pyramid() {
-    const navigate = useNavigate();
     const search = pyramidRoute.useSearch();
-    const who = search.who === undefined ? undefined : String(search.who);
-    const onWho = useCallback(
-      (id: string | undefined) =>
-        void navigate({ to: "/pyramid", search: pyramidSearchFor(id), replace: true }),
-      [navigate],
-    );
+    const { navigate, who, discipline, onWho, onDiscipline } = usePyramidSearch("/pyramid", search);
     return (
       <PyramidScreen
         key={who ?? "me"}
         who={who}
         onWho={onWho}
+        discipline={discipline}
+        onDiscipline={onDiscipline}
         onManageFriends={() => void navigate({ to: "/friends" })}
         onBack={useGoBack("/")}
         onShowScrollingPyramids={() => void navigate({ to: "/pyramid/scrolling", search })}
@@ -366,19 +389,15 @@ const scrollingPyramidsRoute = createRoute({
   path: "/pyramid/scrolling",
   validateSearch: validatePyramidSearch,
   component: function ScrollingPyramids() {
-    const navigate = useNavigate();
     const search = scrollingPyramidsRoute.useSearch();
-    const who = search.who === undefined ? undefined : String(search.who);
-    const onWho = useCallback(
-      (id: string | undefined) =>
-        void navigate({ to: "/pyramid/scrolling", search: pyramidSearchFor(id), replace: true }),
-      [navigate],
-    );
+    const { navigate, who, discipline, onWho, onDiscipline } = usePyramidSearch("/pyramid/scrolling", search);
     return (
       <ScrollingPyramidsScreen
         key={who ?? "me"}
         who={who}
         onWho={onWho}
+        discipline={discipline}
+        onDiscipline={onDiscipline}
         onManageFriends={() => void navigate({ to: "/friends" })}
         onBack={useGoBack("/pyramid")}
       />

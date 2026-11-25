@@ -1,26 +1,28 @@
-import { VIEWS } from "../../constants/climbGrades";
-import type { ViewKey } from "../../constants/climbGrades";
+import type { DisciplineFilter, ViewKey } from "../../constants/climbGrades";
 import type { ClimbRecord } from "../../lib/climbs";
-import { isLeadSend } from "../../lib/climbUtils";
+import { climbsInView, isLeadSend } from "../../lib/climbUtils";
 
 type Props = {
   currentView: ViewKey;
+  discipline: DisciplineFilter;
   showSendsOnly: boolean;
   climbs: ClimbRecord[];
   onShowScrolling: () => void;
 };
 
-export function ViewTabs({ currentView, showSendsOnly, climbs, onShowScrolling }: Props) {
-  const viewConfig = VIEWS.find((v) => v.key === currentView)!;
-  const count = climbs.filter((c) => {
-    const matchesView = c.type === viewConfig.type && c.setting === viewConfig.setting;
-    return matchesView && (showSendsOnly ? isLeadSend(c) : true);
-  }).length;
+/** "Outdoor routes", "Outdoor sport" or "Outdoor trad", for the chosen filter. */
+function routesLabel(discipline: DisciplineFilter): string {
+  return discipline === "all" ? "Outdoor routes" : `Outdoor ${discipline}`;
+}
+
+export function ViewTabs({ currentView, discipline, showSendsOnly, climbs, onShowScrolling }: Props) {
+  const inView = climbsInView(climbs, currentView, discipline);
+  const count = showSendsOnly ? inView.filter(isLeadSend).length : inView.length;
 
   return (
     <div className="border-b border-gray-800 px-4 py-1 flex items-center justify-between">
-      <span className="text-sm text-gray-400">
-        Outdoor sport · <span className="font-num text-gray-200">{count}</span>{" "}
+      <span className="text-sm text-gray-400" data-testid="pyramid-count">
+        {routesLabel(discipline)} · <span className="font-num text-gray-200">{count}</span>{" "}
         {showSendsOnly ? "send" : "climb"}{count === 1 ? "" : "s"}
       </span>
       <button

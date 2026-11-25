@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getStyleColor } from "../../lib/climbUtils";
+import { getStyleColor, isTrad } from "../../lib/climbUtils";
 import type { ClimbRecord } from "../../lib/climbs";
 import type { PyramidRow } from "../../lib/climbUtils";
-import { STONE_EDGE, stoneRadius } from "./stone";
+import { STONE_EDGE, tileRadius as stoneShape } from "./stone";
 
 const IDEAL_TILE = 24;
 const IDEAL_GAP = 3;
@@ -10,7 +10,6 @@ const MIN_TILE = 6;
 const MIN_GAP = 1;
 const TILE_COUNT_THRESHOLD = 14;
 const IDEAL_ROW_HEIGHT = Math.max(20, IDEAL_TILE + 6);
-const IDEAL_TILE_RADIUS = stoneRadius(IDEAL_TILE);
 
 function fitTiles(avail: number, n: number) {
   if (n <= 0) return { tile: IDEAL_TILE, gap: IDEAL_GAP };
@@ -32,13 +31,14 @@ function fitTiles(avail: number, n: number) {
 function defaultTitle(climb: ClimbRecord & { sessions?: number }): string {
   const sessionsText =
     climb.sessions && climb.sessions > 1 ? ` · ${climb.sessions} sessions` : "";
-  const base = `${climb.route} - ${climb.style}${sessionsText}`;
+  const trad = isTrad(climb) ? " · trad" : "";
+  const base = `${climb.route}${trad} - ${climb.style}${sessionsText}`;
   if (climb.style === "redpoint" && climb.climbs > 2) {
     return `${base} after ${climb.climbs - 1} attempts`;
   }
-  if (climb.style === "toprope") return `${climb.route} - top rope${sessionsText}`;
+  if (climb.style === "toprope") return `${climb.route}${trad} - top rope${sessionsText}`;
   if (climb.style === "attempt") {
-    return `${climb.route} — ${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}${sessionsText}`;
+    return `${climb.route}${trad} — ${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}${sessionsText}`;
   }
   return base;
 }
@@ -94,7 +94,6 @@ export function PyramidBody({
     containerWidth === null ? Infinity : Math.max(0, containerWidth - labelGutter - 4);
   const { tile: tileSize, gap: tileGap } = fitTiles(availForTiles, maxClimbs);
   const rowHeight = Math.max(20, tileSize + 6);
-  const tileRadius = stoneRadius(tileSize);
   const showTileCount = tileSize >= TILE_COUNT_THRESHOLD;
   const rowMinWidth = maxClimbs * tileSize + Math.max(0, maxClimbs - 1) * tileGap;
 
@@ -178,7 +177,6 @@ export function PyramidBody({
               const t = isExpanded ? IDEAL_TILE : tileSize;
               const g = isExpanded ? IDEAL_GAP : tileGap;
               const rh = isExpanded ? IDEAL_ROW_HEIGHT : rowHeight;
-              const radius = isExpanded ? IDEAL_TILE_RADIUS : tileRadius;
               const withCount = isExpanded ? true : showTileCount;
               const rowIdealWidth =
                 r.climbs.length * t + Math.max(0, r.climbs.length - 1) * g;
@@ -197,11 +195,12 @@ export function PyramidBody({
                     type="button"
                     onClick={() => onClimbClick(climb, r.climbs)}
                     title={getClimbTitle(climb)}
+                    data-trad={isTrad(climb) || undefined}
                     className={`${getStyleColor(climb.style)} flex shrink-0 items-center justify-center text-white font-num text-xs cursor-pointer hover:brightness-110 transition appearance-none p-0 border-0 leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-white`}
                     style={{
                       width: t,
                       height: t,
-                      borderRadius: radius,
+                      borderRadius: stoneShape(t, isTrad(climb)),
                       boxShadow: STONE_EDGE,
                     }}
                   >

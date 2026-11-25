@@ -1,7 +1,7 @@
 import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
 import type { ClimbRecord } from "./climbs";
 import { VIEWS } from "../constants/climbGrades";
-import type { ClimbStyle, ViewKey } from "../constants/climbGrades";
+import type { ClimbStyle, DisciplineFilter, RouteDiscipline, ViewKey } from "../constants/climbGrades";
 import { dateKeyToTime } from "./dates";
 
 // One colour per send style, used everywhere a climb's style is shown.
@@ -83,10 +83,31 @@ function viewDef(view: ViewKey) {
   return VIEWS.find((v) => v.key === view)!;
 }
 
-/** Climbs matching a pyramid view (setting + type). */
-export function climbsInView(climbs: ClimbRecord[], view: ViewKey): ClimbRecord[] {
+/** A route's discipline; records from before it was kept are sport. */
+export function climbDiscipline(c: Pick<ClimbRecord, "discipline">): RouteDiscipline {
+  return c.discipline ?? "sport";
+}
+
+export function isTrad(c: Pick<ClimbRecord, "discipline">): boolean {
+  return c.discipline === "trad";
+}
+
+/**
+ * Climbs matching a pyramid view (setting + type), narrowed to sport or trad.
+ * Top-rope-only routes are left out of every route view.
+ */
+export function climbsInView(
+  climbs: ClimbRecord[],
+  view: ViewKey,
+  discipline: DisciplineFilter = "all",
+): ClimbRecord[] {
   const { setting, type } = viewDef(view);
-  return climbs.filter((c) => c.setting === setting && c.type === type);
+  return climbs.filter((c) => {
+    if (c.setting !== setting || c.type !== type) return false;
+    if (type === "boulder") return true;
+    const d = climbDiscipline(c);
+    return d !== "tr" && (discipline === "all" || d === discipline);
+  });
 }
 
 /**
@@ -112,8 +133,9 @@ export function getFilteredClimbs(
   climbs: ClimbRecord[],
   view: ViewKey,
   timeRange: [number, number],
+  discipline: DisciplineFilter = "all",
 ): ClimbRecord[] {
-  const inView = climbsInView(climbs, view);
+  const inView = climbsInView(climbs, view, discipline);
   const w = timeWindow(inView, timeRange);
   if (!w) return inView;
   return inView.filter((c) => {
@@ -132,8 +154,9 @@ export function getDateRangeInfo(
   climbs: ClimbRecord[],
   view: ViewKey,
   timeRange: [number, number],
+  discipline: DisciplineFilter = "all",
 ): DateRangeInfo | null {
-  const w = timeWindow(climbsInView(climbs, view), timeRange);
+  const w = timeWindow(climbsInView(climbs, view, discipline), timeRange);
   if (!w) return null;
   return {
     startDate: new Date(w.start),

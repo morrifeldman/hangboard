@@ -76,3 +76,35 @@ test("pyramid: a toggle says what it switched to, then the caption goes away", a
   await page.getByRole("button", { name: "Sort: newest first" }).click();
   await expect(page.getByTestId("toggle-caption")).toHaveText("Oldest first");
 });
+
+test("pyramid: All / Sport / Trad narrows the routes and stays in the URL", async ({ page }) => {
+  await page.goto("/pyramid?test");
+  await page.evaluate(() =>
+    (window as unknown as { __seedSyntheticClimbs: (s?: string) => Promise<unknown> }).__seedSyntheticClimbs("default"),
+  );
+  await page.goto("/pyramid");
+  const count = page.getByTestId("pyramid-count");
+  await expect(count).toContainText("Outdoor routes");
+  const all = Number((await count.locator("span").textContent()) ?? "0");
+  expect(all).toBeGreaterThan(0);
+  await expect(page.getByText("Trad", { exact: true }).last()).toBeVisible(); // legend key
+
+  const group = page.getByRole("group", { name: "Route type" });
+  await group.getByRole("button", { name: "Trad" }).click();
+  await expect(page).toHaveURL(/gear=trad/);
+  await expect(count).toContainText("Outdoor trad");
+  const trad = Number((await count.locator("span").textContent()) ?? "0");
+
+  await group.getByRole("button", { name: "Sport" }).click();
+  await expect(count).toContainText("Outdoor sport");
+  const sport = Number((await count.locator("span").textContent()) ?? "0");
+  expect(trad).toBeGreaterThan(0);
+  expect(sport + trad).toBe(all);
+
+  // The choice carries over to the over-time screen.
+  await page.getByRole("button", { name: "Pyramids over time" }).click();
+  await expect(page).toHaveURL(/\/pyramid\/scrolling\?gear=sport/);
+  await expect(
+    page.getByRole("group", { name: "Route type" }).getByRole("button", { name: "Sport" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});

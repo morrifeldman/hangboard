@@ -10,6 +10,18 @@ export function stoneRadius(tile: number): number {
   return Math.max(1.5, Math.round(tile / 6));
 }
 
+/**
+ * Trad routes are round stones, sport routes square ones. Below this size the
+ * two look alike, so small tiles stay square and the shape shows once a row is
+ * expanded or the pyramid is small enough to draw full-size tiles.
+ */
+export const TRAD_SHAPE_MIN_TILE = 14;
+
+/** The corner radius of a tile, round for trad once it's big enough to tell. */
+export function tileRadius(tile: number, trad: boolean): number | string {
+  return trad && tile >= TRAD_SHAPE_MIN_TILE ? "50%" : stoneRadius(tile);
+}
+
 export const STYLE_LEGEND = [
   { style: "onsight", label: "Onsight", color: getStyleColor("onsight") },
   { style: "flash", label: "Flash", color: getStyleColor("flash") },

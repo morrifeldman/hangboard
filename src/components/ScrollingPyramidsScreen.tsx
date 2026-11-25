@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useClimberClimbs } from "../hooks/useClimberClimbs";
 import { ClimberSwitcher } from "./pyramid/ClimberSwitcher";
+import { DisciplinePicker } from "./pyramid/DisciplinePicker";
 import { ToggleCaption } from "./pyramid/ToggleCaption";
 import { useToggleCaption } from "../hooks/useToggleCaption";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Trophy, Hash } from "lucide-react";
@@ -12,7 +13,7 @@ import { climbsInView, isLeadSend } from "../lib/climbUtils";
 import type { PyramidRow } from "../lib/climbUtils";
 import { deduplicateForPyramid } from "../lib/deduplication";
 import { SPORT_GRADES } from "../constants/climbGrades";
-import type { ViewKey } from "../constants/climbGrades";
+import type { DisciplineFilter, ViewKey } from "../constants/climbGrades";
 import { RouteHistoryModal } from "./RouteHistoryModal";
 import { BackChevronIcon } from "./icons";
 import { PyramidBody } from "./pyramid/PyramidBody";
@@ -22,6 +23,9 @@ type Props = {
   /** The friend whose climbs to show; undefined for your own. */
   who?: string;
   onWho: (id: string | undefined) => void;
+  /** All, sport or trad routes. */
+  discipline: DisciplineFilter;
+  onDiscipline: (d: DisciplineFilter) => void;
   onManageFriends: () => void;
 };
 
@@ -32,7 +36,7 @@ const KINDS: { key: WindowKind; label: string }[] = [
   { key: "halves-ws-sf", label: "Winter+Spring / Summer+Fall" },
 ];
 
-export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }: Props) {
+export function ScrollingPyramidsScreen({ onBack, who, onWho, discipline, onDiscipline, onManageFriends }: Props) {
   const { climbs, friends, loading, missing } = useClimberClimbs(who);
   // A friend who is no longer saved: show your own climbs instead.
   useEffect(() => {
@@ -55,8 +59,8 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
   // when the toggle is on (skip seasons where the user only ever bailed) and
   // all climbs when the toggle is off (show project-only seasons too).
   const viewClimbs = useMemo(
-    () => climbsInView(climbs, view),
-    [climbs, view],
+    () => climbsInView(climbs, view, discipline),
+    [climbs, view, discipline],
   );
   const viewSends = useMemo(
     () => viewClimbs.filter(isLeadSend),
@@ -136,6 +140,13 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, onManageFriends }:
       </header>
 
       <ClimberSwitcher friends={friends} who={who} onWho={onWho} onManageFriends={onManageFriends} />
+
+      <div className="px-4 pt-3">
+        <DisciplinePicker value={discipline} onChange={onDiscipline} />
+        {discipline === "all" && (
+          <p className="pt-2 text-xs text-gray-500">Trad routes are round stones once the tiles are big enough. Tap a grade to expand it.</p>
+        )}
+      </div>
 
       <PillRow className="px-4 py-3">
         {KINDS.map((k) => (

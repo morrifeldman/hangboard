@@ -1,13 +1,14 @@
 import { Mountain } from "lucide-react";
-import { buildPyramid, getFilteredClimbs, isLeadSend } from "../../lib/climbUtils";
+import { buildPyramid, climbsInView, getFilteredClimbs, isLeadSend } from "../../lib/climbUtils";
 import { deduplicateForPyramid } from "../../lib/deduplication";
 import type { ClimbRecord } from "../../lib/climbs";
-import type { ViewKey } from "../../constants/climbGrades";
+import type { DisciplineFilter, ViewKey } from "../../constants/climbGrades";
 import { PyramidBody } from "./PyramidBody";
 
 type Props = {
   climbs: ClimbRecord[];
   currentView: ViewKey;
+  discipline: DisciplineFilter;
   showSendsOnly: boolean;
   showCounts: boolean;
   showSessionCounts: boolean;
@@ -22,6 +23,7 @@ type Props = {
 export function PyramidVisualization({
   climbs,
   currentView,
+  discipline,
   showSendsOnly,
   showCounts,
   showSessionCounts,
@@ -30,12 +32,32 @@ export function PyramidVisualization({
   onRefreshClick,
   friendName,
 }: Props) {
-  const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, timeRange);
+  const viewAndTimeFiltered = getFilteredClimbs(climbs, currentView, timeRange, discipline);
   const deduplicatedClimbs = deduplicateForPyramid(viewAndTimeFiltered);
   const finalClimbs = showSendsOnly
     ? deduplicatedClimbs.filter(isLeadSend)
     : deduplicatedClimbs;
   const pyramidData = buildPyramid(finalClimbs, currentView);
+
+  // Some routes, just none of this kind: older imports have every route as
+  // sport, and a refresh is what sorts the trad out of them.
+  if (pyramidData.length === 0 && discipline !== "all" && climbsInView(climbs, currentView).length > 0) {
+    return (
+      <div className="text-center py-12" data-testid="pyramid-empty-discipline">
+        <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
+        <h3 className="text-lg font-semibold text-white mb-2">No {discipline} routes here</h3>
+        <p className="text-gray-400 mb-5">
+          Ticks imported before trad was tracked all count as sport. Refresh to sort them.
+        </p>
+        <button
+          onClick={onRefreshClick}
+          className="bg-accent-500 text-gray-900 font-semibold px-5 py-2.5 rounded-lg active:bg-accent-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+        >
+          Refresh from Mountain Project
+        </button>
+      </div>
+    );
+  }
 
   if (pyramidData.length === 0) {
     return (
@@ -44,7 +66,7 @@ export function PyramidVisualization({
         <h3 className="text-lg font-semibold text-white mb-2">No climbs yet</h3>
         <p className="text-gray-400 mb-5">
           {friendName
-            ? `${friendName} has no public outdoor sport ticks in this range, or they haven't loaded yet.`
+            ? `${friendName} has no public ${discipline === "all" ? "outdoor route" : `outdoor ${discipline}`} ticks in this range, or they haven't loaded yet.`
             : "Your Mountain Project ticks show up here. Find your account in Settings, then refresh."}
         </p>
         <button

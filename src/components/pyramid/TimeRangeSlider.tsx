@@ -1,19 +1,20 @@
 import type { ClimbRecord } from "../../lib/climbs";
 import { getDateRangeInfo } from "../../lib/climbUtils";
 import { formatDateKey, toLocalDateString } from "../../lib/dates";
-import type { ViewKey } from "../../constants/climbGrades";
+import type { DisciplineFilter, ViewKey } from "../../constants/climbGrades";
 
 type Props = {
   climbs: ClimbRecord[];
   currentView: ViewKey;
+  discipline: DisciplineFilter;
   timeRange: [number, number];
   setTimeRange: (v: [number, number]) => void;
 };
 
-export function TimeRangeSlider({ climbs, currentView, timeRange, setTimeRange }: Props) {
+export function TimeRangeSlider({ climbs, currentView, discipline, timeRange, setTimeRange }: Props) {
   if (climbs.length === 0) return null;
 
-  const dateInfo = getDateRangeInfo(climbs, currentView, timeRange);
+  const dateInfo = getDateRangeInfo(climbs, currentView, timeRange, discipline);
 
   const handleDragStart = (isStart: boolean) => (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.preventDefault();
