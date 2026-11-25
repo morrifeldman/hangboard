@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseMountainProjectCSV, routeDiscipline } from "../mountainProjectImport";
-import { climbsInView, getFilteredClimbs } from "../climbUtils";
+import { buildPyramid, climbsInView, getFilteredClimbs } from "../climbUtils";
 import { buildGradeTrend } from "../gradeTrends";
 import type { ClimbRecord } from "../climbs";
 
@@ -84,5 +84,21 @@ describe("buildGradeTrend", () => {
     );
     expect(trend).toHaveLength(1);
     expect(trend[0].redpoint).not.toBeNull();
+  });
+});
+
+describe("easy and hard routes", () => {
+  it("keeps 5.8+ trad and 5.14 routes in the pyramid", () => {
+    const csv =
+      "Date,Route,Rating,Notes,Pitches,Location,Route Type,Lead Style\n" +
+      "2026-11-20,Arachnid,5.8+,,1,Kentucky > Red River Gorge,Trad,Onsight\n" +
+      "2026-11-20,Outside Voice,5.7,,4,Kentucky > Red River Gorge,Trad,Onsight\n" +
+      "2026-11-21,Hard,5.14a,,1,Kentucky > Red River Gorge,Sport,Redpoint\n";
+    const climbs = parseMountainProjectCSV(csv);
+    expect(climbs.map((c) => c.grade)).toEqual(["5.8", "5.7", "5.14a"]);
+    const rows = buildPyramid(climbsInView(climbs, "outdoor-sport", "all"), "outdoor-sport");
+    const shown = rows.flatMap((r) => r.climbs.map((c) => c.route));
+    expect(shown.sort()).toEqual(["Arachnid", "Hard", "Outside Voice"]);
+    expect(buildPyramid(climbsInView(climbs, "outdoor-sport", "trad"), "outdoor-sport").at(-1)?.grade).toBe("5.7");
   });
 });

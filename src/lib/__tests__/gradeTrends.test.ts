@@ -124,8 +124,8 @@ describe("buildGradeTrend", () => {
 
   it("ignores grades outside the SPORT_GRADES scale", () => {
     const climbs: ClimbRecord[] = [
-      climb({ date: "2025-04-15", grade: "5.13d", style: "redpoint" }), // top of scale
-      climb({ date: "2025-04-15", grade: "5.9", style: "redpoint" }),   // not in scale
+      climb({ date: "2025-04-15", grade: "5.13d", style: "redpoint" }),
+      climb({ date: "2025-04-15", grade: "5.easy", style: "redpoint" }), // not in scale
     ];
     const [p] = buildGradeTrend(climbs, "months");
     expect(gradeLabel(p.redpoint!)).toBe("5.13d");

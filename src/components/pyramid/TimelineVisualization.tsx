@@ -72,7 +72,7 @@ export function TimelineVisualization({ climbs, currentView, discipline, showSen
                 className="absolute flex items-center justify-end pr-2 font-num text-[13px] text-gray-500 bg-gray-900"
                 style={{ top: `${(gi + 1) * gradeHeight - 10}px`, height: "20px", right: 0, width: "100%" }}
               >
-                {isBoulder || grade.endsWith("a") || grade.endsWith("c") ? grade : ""}
+                {isBoulder || !/[bd]$/.test(grade) ? grade : ""}
               </div>
             ))}
           </div>

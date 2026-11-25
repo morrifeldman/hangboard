@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { buildGradeTrend, gradeLabel } from "../../lib/gradeTrends";
 import type { Granularity, GradeTrendPoint } from "../../lib/gradeTrends";
 import type { ClimbRecord } from "../../lib/climbs";
+import { SPORT_GRADES } from "../../constants/climbGrades";
 import { Segmented } from "../ui";
 import { AXIS_NUM_TICK, AXIS_TICK, STYLE_HEX } from "./chartTheme";
 import { ChartTooltip } from "./ChartTooltip";
@@ -71,7 +72,7 @@ function GradeChart({ trend }: { trend: GradeTrendPoint[] }) {
       if (p.redpoint !== null) vals.push(p.redpoint);
     }
     if (vals.length === 0) return undefined;
-    return [Math.max(0, Math.min(...vals) - 1), Math.min(15, Math.max(...vals) + 1)];
+    return [Math.max(0, Math.min(...vals) - 1), Math.min(SPORT_GRADES.length - 1, Math.max(...vals) + 1)];
   }, [visible]);
 
   return (
@@ -95,7 +96,7 @@ function GradeChart({ trend }: { trend: GradeTrendPoint[] }) {
             interval="preserveStartEnd"
           />
           <YAxis
-            domain={yDomain ?? [0, 15]}
+            domain={yDomain ?? [0, SPORT_GRADES.length - 1]}
             type="number"
             ticks={yDomain ? rangeTicks(yDomain[0], yDomain[1]) : undefined}
             tick={AXIS_NUM_TICK}
