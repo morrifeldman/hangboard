@@ -323,15 +323,15 @@ const settingsRoute = createRoute({
  * The pyramid screens' view state. `who` is whose climbs: a friend's Mountain
  * Project id, or nothing for your own. Kept as a number so the URL stays
  * `?who=200938052` (TanStack would quote a numeric string). `gear` narrows the
- * routes to sport or trad; omitted means all.
+ * routes to sport, trad or TR; omitted means all.
  */
-type PyramidSearch = { who?: number; gear?: "sport" | "trad" };
+type PyramidSearch = { who?: number; gear?: "sport" | "trad" | "tr" };
 
 function validatePyramidSearch(raw: Record<string, unknown>): PyramidSearch {
   const search: PyramidSearch = {};
   const who = Number(raw.who);
   if (Number.isSafeInteger(who) && who > 0) search.who = who;
-  if (raw.gear === "sport" || raw.gear === "trad") search.gear = raw.gear;
+  if (raw.gear === "sport" || raw.gear === "trad" || raw.gear === "tr") search.gear = raw.gear;
   return search;
 }
 

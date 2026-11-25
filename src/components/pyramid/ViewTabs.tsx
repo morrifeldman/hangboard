@@ -1,3 +1,4 @@
+import { disciplineName } from "../../constants/climbGrades";
 import type { DisciplineFilter, ViewKey } from "../../constants/climbGrades";
 import type { ClimbRecord } from "../../lib/climbs";
 import { climbsInView, isLeadSend } from "../../lib/climbUtils";
@@ -10,9 +11,9 @@ type Props = {
   onShowScrolling: () => void;
 };
 
-/** "Outdoor routes", "Outdoor sport" or "Outdoor trad", for the chosen filter. */
+/** "Outdoor routes", "Outdoor sport", "Outdoor trad" or "Outdoor TR", for the chosen filter. */
 function routesLabel(discipline: DisciplineFilter): string {
-  return discipline === "all" ? "Outdoor routes" : `Outdoor ${discipline}`;
+  return discipline === "all" ? "Outdoor routes" : `Outdoor ${disciplineName(discipline)}`;
 }
 
 export function ViewTabs({ currentView, discipline, showSendsOnly, climbs, onShowScrolling }: Props) {

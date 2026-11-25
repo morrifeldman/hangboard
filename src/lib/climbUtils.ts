@@ -93,8 +93,8 @@ export function isTrad(c: Pick<ClimbRecord, "discipline">): boolean {
 }
 
 /**
- * Climbs matching a pyramid view (setting + type), narrowed to sport or trad.
- * Top-rope-only routes are left out of every route view.
+ * Climbs matching a pyramid view (setting + type), narrowed to one discipline:
+ * sport, trad or top-rope-only. "all" keeps every route.
  */
 export function climbsInView(
   climbs: ClimbRecord[],
@@ -104,9 +104,8 @@ export function climbsInView(
   const { setting, type } = viewDef(view);
   return climbs.filter((c) => {
     if (c.setting !== setting || c.type !== type) return false;
-    if (type === "boulder") return true;
-    const d = climbDiscipline(c);
-    return d !== "tr" && (discipline === "all" || d === discipline);
+    if (type === "boulder" || discipline === "all") return true;
+    return climbDiscipline(c) === discipline;
   });
 }
 

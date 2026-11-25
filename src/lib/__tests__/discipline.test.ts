@@ -57,13 +57,14 @@ describe("climbsInView with a discipline", () => {
   ];
   const ids = (cs: ClimbRecord[]) => cs.map((c) => c.id);
 
-  it("shows sport and trad for all, never top-rope-only routes", () => {
-    expect(ids(climbsInView(climbs, "outdoor-sport"))).toEqual(["old", "sport", "trad"]);
+  it("shows every outdoor route for all", () => {
+    expect(ids(climbsInView(climbs, "outdoor-sport"))).toEqual(["old", "sport", "trad", "tr"]);
   });
 
-  it("narrows to sport (including records without a discipline) or trad", () => {
+  it("narrows to sport (including records without a discipline), trad or TR", () => {
     expect(ids(climbsInView(climbs, "outdoor-sport", "sport"))).toEqual(["old", "sport"]);
     expect(ids(climbsInView(climbs, "outdoor-sport", "trad"))).toEqual(["trad"]);
+    expect(ids(climbsInView(climbs, "outdoor-sport", "tr"))).toEqual(["tr"]);
   });
 
   it("spans the time range over the narrowed climbs", () => {

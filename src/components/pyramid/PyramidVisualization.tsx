@@ -2,6 +2,7 @@ import { Mountain } from "lucide-react";
 import { buildPyramid, climbsInView, getFilteredClimbs, isLeadSend } from "../../lib/climbUtils";
 import { deduplicateForPyramid } from "../../lib/deduplication";
 import type { ClimbRecord } from "../../lib/climbs";
+import { disciplineName } from "../../constants/climbGrades";
 import type { DisciplineFilter, ViewKey } from "../../constants/climbGrades";
 import { PyramidBody } from "./PyramidBody";
 
@@ -39,15 +40,28 @@ export function PyramidVisualization({
     : deduplicatedClimbs;
   const pyramidData = buildPyramid(finalClimbs, currentView);
 
+  // TR routes are mostly top-rope ticks, which Sends only hides.
+  if (pyramidData.length === 0 && discipline === "tr" && showSendsOnly && deduplicatedClimbs.length > 0) {
+    return (
+      <div className="text-center py-12" data-testid="pyramid-empty-discipline">
+        <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
+        <h3 className="text-lg font-semibold text-white mb-2">No lead sends on TR routes</h3>
+        <p className="text-gray-400">
+          Top-rope ticks are hidden while Sends only is on. Tap the trophy to show them.
+        </p>
+      </div>
+    );
+  }
+
   // Some routes, just none of this kind: older imports have every route as
-  // sport, and a refresh is what sorts the trad out of them.
+  // sport, and a refresh is what sorts trad and TR out of them.
   if (pyramidData.length === 0 && discipline !== "all" && climbsInView(climbs, currentView).length > 0) {
     return (
       <div className="text-center py-12" data-testid="pyramid-empty-discipline">
         <Mountain className="mx-auto h-12 w-12 text-gray-600 mb-4" />
-        <h3 className="text-lg font-semibold text-white mb-2">No {discipline} routes here</h3>
+        <h3 className="text-lg font-semibold text-white mb-2">No {disciplineName(discipline)} routes here</h3>
         <p className="text-gray-400 mb-5">
-          Ticks imported before trad was tracked all count as sport. Refresh to sort them.
+          Ticks imported before trad and TR were tracked all count as sport. Refresh to sort them.
         </p>
         <button
           onClick={onRefreshClick}
@@ -66,7 +80,7 @@ export function PyramidVisualization({
         <h3 className="text-lg font-semibold text-white mb-2">No climbs yet</h3>
         <p className="text-gray-400 mb-5">
           {friendName
-            ? `${friendName} has no public ${discipline === "all" ? "outdoor route" : `outdoor ${discipline}`} ticks in this range, or they haven't loaded yet.`
+            ? `${friendName} has no public ${discipline === "all" ? "outdoor route" : `outdoor ${disciplineName(discipline)}`} ticks in this range, or they haven't loaded yet.`
             : "Your Mountain Project ticks show up here. Find your account in Settings, then refresh."}
         </p>
         <button
