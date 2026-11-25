@@ -35,6 +35,8 @@ type Props = {
   onShowPyramid: () => void;
   onShowSchedule: () => void;
   onEditLift: (liftId: string) => void;
+  /** Open the Workout tab's log form on this local date key. */
+  onLogDate: (date: string) => void;
 };
 
 type Today = { types: ScheduleDayType[]; logged: boolean };
@@ -57,6 +59,7 @@ export function ProgressScreen({
   onShowPyramid,
   onShowSchedule,
   onEditLift,
+  onLogDate,
 }: Props) {
   const { data: history, loading } = useHistoryData();
   const { data: today } = useLoad(loadToday, NOTHING_TODAY);
@@ -114,7 +117,7 @@ export function ProgressScreen({
       ) : (
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-5 pb-8 flex flex-col gap-8">
           <PyramidPreview climbs={climbs} onOpen={onShowPyramid} />
-          <OverviewCalendar sessions={sessions} climbs={climbs} onSelectDate={setSelectedDate} />
+          <OverviewCalendar sessions={sessions} climbs={climbs} onSelectDate={setSelectedDate} onLogDate={onLogDate} />
           <GradeTrendSection
             climbs={climbs}
             granularity={view.granularity}

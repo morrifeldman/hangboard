@@ -34,6 +34,7 @@ import { getSession } from "./lib/history";
 import type { SessionRecord } from "./lib/history";
 import { getNote } from "./lib/notes";
 import { forgetScrollPosition } from "./hooks/useScrollRestore";
+import { isDateKey, todayDateString } from "./lib/dates";
 
 // ─── Back ────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,12 @@ const homeRoute = createRoute({
         onShowPyramid={() => void navigate({ to: "/pyramid" })}
         onShowSchedule={() => void navigate({ to: "/schedule" })}
         onEditLift={(liftId) => void navigate({ to: `/lifts/${liftId}/edit` })}
+        onLogDate={(date) =>
+          void navigate({
+            to: "/workout",
+            search: { date: date === todayDateString() ? undefined : date },
+          })
+        }
       />
     );
   },
@@ -195,13 +202,24 @@ const scheduleRoute = createRoute({
   },
 });
 
+/** `?date=` pre-fills the log form (from an empty day on the Activity calendar). */
+type WorkoutSearch = { date?: string };
+
+function validateWorkoutSearch(raw: Record<string, unknown>): WorkoutSearch {
+  return isDateKey(raw.date) ? { date: raw.date } : {};
+}
+
 const workoutRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/workout",
+  validateSearch: validateWorkoutSearch,
   component: function Workout() {
     const navigate = useNavigate();
+    const { date } = workoutRoute.useSearch();
     return (
       <GymLogScreen
+        key={date ?? "today"}
+        initialDate={date}
         mode="tab"
         onBack={() => {}}
         onDone={() => {

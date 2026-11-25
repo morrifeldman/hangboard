@@ -26,11 +26,14 @@ function CalendarCell({
   day,
   size,
   zoomed,
+  loggable,
   onClick,
 }: {
   day: CalendarDay;
   size: number;
   zoomed: boolean;
+  /** Empty and not in the future: tapping it (zoomed) logs a workout on it. */
+  loggable: boolean;
   onClick: () => void;
 }) {
   const segments = ACTIVITY_CATEGORIES.filter((c) => day.categories.includes(c.id)).map((c) => ({
@@ -70,7 +73,15 @@ function CalendarCell({
       type="button"
       onClick={onClick}
       title={title}
-      aria-label={zoomed ? title ?? day.date.toLocaleDateString() : `Zoom week of ${day.date.toLocaleDateString()}`}
+      aria-label={
+        !zoomed
+          ? `Zoom week of ${day.date.toLocaleDateString()}`
+          : active
+            ? title
+            : loggable
+              ? `Log a workout on ${day.date.toLocaleDateString()}`
+              : day.date.toLocaleDateString()
+      }
       className={`relative shrink-0 overflow-hidden appearance-none border-0 p-0 cursor-pointer transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
         active ? "" : zoomed ? "bg-gray-700" : "bg-gray-800"
       } ${day.isToday ? "ring-1 ring-white ring-offset-1 ring-offset-gray-800" : ""}`}
@@ -95,6 +106,8 @@ type Props = {
   climbs: ClimbRecord[];
   /** Local date key (yyyy-mm-dd) of the tapped day. */
   onSelectDate: (date: string) => void;
+  /** An empty day (today or earlier) was tapped: log a workout on it. */
+  onLogDate: (date: string) => void;
 };
 
 /**
@@ -102,14 +115,16 @@ type Props = {
  *
  * Tapping a week (its header or any of its days) zooms that column to full
  * size with day numbers, like tapping a grade on the pyramid. In the zoomed
- * week, a logged day opens its detail; an empty day or the header collapses.
+ * week, a logged day opens its detail, an empty day up to today opens the log
+ * form on that date, and a future day or the header collapses.
  */
-export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
+export function OverviewCalendar({ sessions, climbs, onSelectDate, onLogDate }: Props) {
   const calendarWeeks = useMemo(() => buildCalendar(sessions, climbs), [sessions, climbs]);
   const monthLabels = useMemo(() => calendarMonthLabels(calendarWeeks), [calendarWeeks]);
   const [zoomedWeek, setZoomedWeek] = useState<number | null>(null);
 
   const rowHeight = rowHeightFor(zoomedWeek !== null);
+  const todayKey = toLocalDateString(new Date());
   const toggleWeek = (wi: number) => setZoomedWeek((w) => (w === wi ? null : wi));
 
   const zoomed = zoomedWeek !== null ? calendarWeeks[zoomedWeek] : null;
@@ -161,9 +176,12 @@ export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
                         day={day}
                         size={size}
                         zoomed={isZoomed}
+                        loggable={toLocalDateString(day.date) <= todayKey}
                         onClick={() => {
+                          const key = toLocalDateString(day.date);
                           if (!isZoomed) setZoomedWeek(wi);
-                          else if (day.categories.length > 0) onSelectDate(toLocalDateString(day.date));
+                          else if (day.categories.length > 0) onSelectDate(key);
+                          else if (key <= todayKey) onLogDate(key);
                           else setZoomedWeek(null);
                         }}
                       />
@@ -177,7 +195,7 @@ export function OverviewCalendar({ sessions, climbs, onSelectDate }: Props) {
 
         <p className="text-[11px] text-gray-500 mt-2 h-4">
           {zoomed
-            ? `${zoomedActiveDays} active day${zoomedActiveDays === 1 ? "" : "s"} · tap a day for details`
+            ? `${zoomedActiveDays} active day${zoomedActiveDays === 1 ? "" : "s"} · tap a day to see or log it`
             : "Tap a week to zoom in"}
         </p>
 

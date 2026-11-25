@@ -47,6 +47,8 @@ type Props = {
   /** Where "View" on the just-added line goes. */
   onShowHistory?: () => void;
   initialRecord?: SessionRecord;
+  /** Local date key a new log starts on (default today). Ignored when editing. */
+  initialDate?: string;
   /** "tab" = Workout tab (no back button, hangboard pill, gear); "edit" = drill-in editor. */
   mode?: "tab" | "edit";
   onShowSettings?: () => void;
@@ -62,7 +64,7 @@ const NO_AUTOCOMPLETE: GymAutocomplete = {
   campusSequences: {},
 };
 
-export function GymLogScreen({ onBack, onDone, onShowHistory, initialRecord, mode, onShowSettings }: Props) {
+export function GymLogScreen({ onBack, onDone, onShowHistory, initialRecord, initialDate, mode, onShowSettings }: Props) {
   const editing = initialRecord !== undefined;
   const tabMode = (mode ?? (editing ? "edit" : "tab")) === "tab";
   // The Workout tab opens on a gym type (ARC by default); the Hangboard pill switches in.
@@ -76,7 +78,7 @@ export function GymLogScreen({ onBack, onDone, onShowHistory, initialRecord, mod
   const initialWorkoutType: GymWorkoutType = initialRecord?.gymData?.type ?? "arc";
 
   const [dateValue, setDateValue] = useState(() =>
-    initialRecord ? toLocalDateString(initialRecord.startedAt) : todayDateString()
+    initialRecord ? toLocalDateString(initialRecord.startedAt) : (initialDate ?? todayDateString())
   );
   const [timeValue, setTimeValue] = useState(() =>
     initialRecord ? toLocalTimeString(initialRecord.startedAt) : toLocalTimeString(Date.now())
