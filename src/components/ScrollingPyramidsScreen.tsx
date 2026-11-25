@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useClimberClimbs } from "../hooks/useClimberClimbs";
 import { ClimberSwitcher } from "./pyramid/ClimberSwitcher";
-import { DisciplinePicker } from "./pyramid/DisciplinePicker";
+import { DisciplineToggle } from "./pyramid/DisciplineToggle";
 import { ToggleCaption } from "./pyramid/ToggleCaption";
 import { useToggleCaption } from "../hooks/useToggleCaption";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, BarChart2, CalendarDays, Trophy, Hash } from "lucide-react";
@@ -77,7 +77,7 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, discipline, onDisc
 
   return (
     <div className="h-full bg-gray-900 flex flex-col overflow-hidden">
-      <header className="relative bg-gray-800 px-4 py-4 flex items-center gap-3">
+      <header className="relative bg-gray-800 px-4 py-4 flex items-center gap-1 min-[400px]:gap-3">
         <ToggleCaption caption={caption} />
         <button
           onClick={onBack}
@@ -86,8 +86,9 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, discipline, onDisc
         >
           <BackChevronIcon />
         </button>
-        <h1 className="text-white text-xl font-bold">Over time</h1>
-        <div className="ml-auto flex items-center gap-2">
+        <h1 className="min-w-0 truncate text-white text-xl font-bold">Over time</h1>
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 min-[400px]:gap-2">
+          <DisciplineToggle value={discipline} onChange={onDiscipline} onCaption={show} />
           <IconToggle
             on={showSendsOnly}
             onToggle={() => {
@@ -140,13 +141,6 @@ export function ScrollingPyramidsScreen({ onBack, who, onWho, discipline, onDisc
       </header>
 
       <ClimberSwitcher friends={friends} who={who} onWho={onWho} onManageFriends={onManageFriends} />
-
-      <div className="px-4 pt-3">
-        <DisciplinePicker value={discipline} onChange={onDiscipline} />
-        {discipline === "all" && (
-          <p className="pt-2 text-xs text-gray-500">Trad routes are round stones once the tiles are big enough. Tap a grade to expand it.</p>
-        )}
-      </div>
 
       <PillRow className="px-4 py-3">
         {KINDS.map((k) => (

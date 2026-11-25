@@ -2,6 +2,8 @@ import { RefreshCw, BarChart2, Trophy, CalendarDays, Hash } from "lucide-react";
 import { IconToggle } from "../ui";
 import { BackChevronIcon } from "../icons";
 import { ToggleCaption } from "./ToggleCaption";
+import { DisciplineToggle } from "./DisciplineToggle";
+import type { DisciplineFilter } from "../../constants/climbGrades";
 import { useToggleCaption } from "../../hooks/useToggleCaption";
 
 type Props = {
@@ -14,25 +16,28 @@ type Props = {
   onToggleSendsOnly: () => void;
   showSessionCounts: boolean;
   onToggleSessionCounts: () => void;
+  discipline: DisciplineFilter;
+  onDiscipline: (d: DisciplineFilter) => void;
 };
 
-export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts }: Props) {
+export function PyramidHeader({ onRefresh, isRefreshing, onBack, showCounts, onToggleCounts, showSendsOnly, onToggleSendsOnly, showSessionCounts, onToggleSessionCounts, discipline, onDiscipline }: Props) {
   const { caption, show } = useToggleCaption();
   return (
     <div className="relative bg-gray-800 px-4 py-4">
       <ToggleCaption caption={caption} />
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
+      <div className="flex justify-between items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1 min-[400px]:gap-2">
           <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-2 -ml-2 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400" aria-label="Back">
             <BackChevronIcon />
           </button>
-          <h1 className="text-white text-xl font-bold">Pyramid</h1>
+          <h1 className="truncate text-white text-xl font-bold">Pyramid</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 min-[400px]:gap-2">
           {/* View toggles — grouped in one recessed well (like a B/I/U toolbar
               group) so "options that hold a state" read distinctly from the
               solid action buttons. Each segment lights up in accent when on. */}
           <div className="flex items-center gap-0.5 rounded-xl bg-gray-900 p-0.5 ring-1 ring-inset ring-white/5">
+            <DisciplineToggle value={discipline} onChange={onDiscipline} onCaption={show} />
             <IconToggle
               on={showSendsOnly}
               onToggle={() => {

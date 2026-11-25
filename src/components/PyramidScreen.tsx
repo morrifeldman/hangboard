@@ -7,7 +7,6 @@ import { TimelineVisualization } from "./pyramid/TimelineVisualization";
 import { Legend } from "./pyramid/Legend";
 import { ClimbDetailModal } from "./pyramid/modals/ClimbDetailModal";
 import { ClimberSwitcher } from "./pyramid/ClimberSwitcher";
-import { DisciplinePicker } from "./pyramid/DisciplinePicker";
 import { useClimberClimbs } from "../hooks/useClimberClimbs";
 import { fetchedAgo, isFriendStale, refreshFriend } from "../lib/friends";
 import { getMountainProjectUrl, refreshFromMountainProject } from "../lib/mpRefresh";
@@ -120,6 +119,8 @@ export function PyramidScreen({
         onToggleSendsOnly={() => setShowSendsOnly((v) => !v)}
         showSessionCounts={showSessionCounts}
         onToggleSessionCounts={() => setShowSessionCounts((v) => !v)}
+        discipline={discipline}
+        onDiscipline={onDiscipline}
       />
 
       {refreshNote && (
@@ -154,10 +155,6 @@ export function PyramidScreen({
       />
 
       <main ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5">
-        <div className="mb-4">
-          <DisciplinePicker value={discipline} onChange={onDiscipline} />
-        </div>
-
         <TimeRangeSlider
           climbs={climbs}
           currentView={currentView}
