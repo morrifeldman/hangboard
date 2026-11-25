@@ -14,15 +14,15 @@ function climb(overrides: Partial<ClimbRecord>): ClimbRecord {
 }
 
 describe("routeDiscipline", () => {
-  it("reads trad, sport and top-rope-only routes", () => {
+  it("reads trad and sport routes", () => {
     expect(routeDiscipline("Trad")).toBe("trad");
     expect(routeDiscipline("Sport")).toBe("sport");
-    expect(routeDiscipline("TR")).toBe("tr");
     expect(routeDiscipline("Trad, Aid")).toBe("trad");
     expect(routeDiscipline("Trad, TR")).toBe("trad");
   });
 
-  it("counts mixed routes as sport", () => {
+  it("counts mixed and top-rope-only routes as sport", () => {
+    expect(routeDiscipline("TR")).toBe("sport");
     expect(routeDiscipline("Trad, Sport")).toBe("sport");
     expect(routeDiscipline("Sport, TR")).toBe("sport");
   });
@@ -52,19 +52,17 @@ describe("climbsInView with a discipline", () => {
     climb({ id: "old" }), // imported before discipline: sport
     climb({ id: "sport", discipline: "sport" }),
     climb({ id: "trad", discipline: "trad" }),
-    climb({ id: "tr", discipline: "tr" }),
     climb({ id: "indoor", setting: "indoor" }),
   ];
   const ids = (cs: ClimbRecord[]) => cs.map((c) => c.id);
 
   it("shows every outdoor route for all", () => {
-    expect(ids(climbsInView(climbs, "outdoor-sport"))).toEqual(["old", "sport", "trad", "tr"]);
+    expect(ids(climbsInView(climbs, "outdoor-sport"))).toEqual(["old", "sport", "trad"]);
   });
 
-  it("narrows to sport (including records without a discipline), trad or TR", () => {
+  it("narrows to sport (including records without a discipline) or trad", () => {
     expect(ids(climbsInView(climbs, "outdoor-sport", "sport"))).toEqual(["old", "sport"]);
     expect(ids(climbsInView(climbs, "outdoor-sport", "trad"))).toEqual(["trad"]);
-    expect(ids(climbsInView(climbs, "outdoor-sport", "tr"))).toEqual(["tr"]);
   });
 
   it("spans the time range over the narrowed climbs", () => {

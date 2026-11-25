@@ -118,7 +118,7 @@ Saving a new log on the Workout tab **stays on the tab**: the save button reads 
 - `src/lib/mpAccount.ts` — `tickExportUrlFrom(input)` turns a tick-export URL, any profile link or a bare user id into the export URL (only the numeric id matters to Mountain Project), and `searchMountainProjectUsers` / `parseMpUserSearch` read the undocumented user search through `api/search-mp-users.js`. `MpUserSearch` is the one search UI (Settings and Friends).
 - `src/lib/mpFetch.ts` — `fetchTickExport` / `parseOrRefuse`: the one gate every tick import passes.
 - `src/lib/friends.ts` — one `friends` record per friend (id = Mountain Project user id) with their ticks **embedded**. Friends' ticks never go in `climbs`, which is the user's own log. Backups keep `FriendRef`s only; ticks are refetched when a friend is opened and the copy is over a day old.
-- The pyramid screens take `?who=<id>` (`useClimberClimbs`, `ClimberSwitcher`) and `?gear=sport|trad|tr` (omitted = all); a `who` that isn't saved falls back to your own climbs. Both API proxies have a dev twin in `vite.config.ts`: keep them in sync.
+- The pyramid screens take `?who=<id>` (`useClimberClimbs`, `ClimberSwitcher`) and `?gear=sport|trad` (omitted = all); a `who` that isn't saved falls back to your own climbs. Both API proxies have a dev twin in `vite.config.ts`: keep them in sync.
 
 ### Workout types
 - **Repeaters** (`workoutType: "repeaters"`) — Workout A, 2 sets of 7/6 reps, 7s hang / 3s rest.
@@ -146,8 +146,8 @@ The one taxonomy. The log picker, History (chips, filter groups, climbing-day ro
 Max-hang hold IDs are separately prefixed (`b-chisel`, `b-hc`, `b-open`, etc.) and share no relation to the repeaters board.
 
 ### Sport and trad
-- Trad routes keep `type: "sport"` (same YDS scale) and carry `discipline: "trad"` on the `ClimbRecord`. `routeDiscipline()` in `mountainProjectImport.ts` reads MP's Route Type: mixed "Trad, Sport" is sport, "TR"-only is `"tr"`. A missing `discipline` means sport (records imported before it existed).
-- `climbsInView(climbs, view, discipline)` is the one filter: All keeps every route, otherwise it narrows to sport, trad or TR (top-rope-only). The pyramid, over-time screen, timeline, preview and grade trend all go through it.
+- Trad routes keep `type: "sport"` (same YDS scale) and carry `discipline: "trad"` on the `ClimbRecord`. `routeDiscipline()` in `mountainProjectImport.ts` reads MP's Route Type: mixed "Trad, Sport" and top-rope-only "TR" are sport. A missing `discipline` means sport (records imported before it existed).
+- `climbsInView(climbs, view, discipline)` is the one filter: All keeps every route, otherwise it narrows to sport or trad. The pyramid, over-time screen, timeline, preview and grade trend all go through it.
 - On screen, trad is a round stone (`tileRadius` in `pyramid/stone.ts`): always in the timeline, and in the pyramid once tiles are at least `TRAD_SHAPE_MIN_TILE` or the row is expanded.
 
 ### Progress screen

@@ -27,16 +27,12 @@ export function convertStyle(leadStyle: string | undefined, style?: string): Cli
 
 /**
  * Read Mountain Project's Route Type ("Trad", "Sport", "Trad, Sport", "TR",
- * "Trad, Aid", …) as a route discipline. Any bolts make it sport, so mixed
- * routes are sport. Only a route with no sport or trad listed is top-rope-only.
- * Anything else (Aid, Ice, a blank column) reads as sport, as it always has.
+ * "Trad, Aid", …) as a route discipline. Trad is a route listed as trad and not
+ * sport; everything else (mixed, top-rope-only, Aid, a blank column) is sport.
  */
 export function routeDiscipline(routeType: string | undefined): RouteDiscipline {
   const parts = (routeType ?? "").split(",").map((p) => p.trim().toLowerCase());
-  if (parts.includes("sport")) return "sport";
-  if (parts.includes("trad")) return "trad";
-  if (parts.includes("tr")) return "tr";
-  return "sport";
+  return parts.includes("trad") && !parts.includes("sport") ? "trad" : "sport";
 }
 
 /** Detect indoor gym from location string (whole words, so "Gymnasium Rock" is not a gym). */

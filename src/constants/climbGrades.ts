@@ -16,23 +16,16 @@ export type ClimbSetting = "outdoor" | "indoor";
 /**
  * How a roped route is protected, from Mountain Project's Route Type. Trad uses
  * the same YDS grades as sport, so it stays `type: "sport"` and this field tells
- * them apart. Mixed routes ("Trad, Sport") count as sport. `tr` is a top-rope-only
- * route, which the route views show under TR (and All).
+ * them apart. Mixed ("Trad, Sport") and top-rope-only ("TR") routes count as sport.
  */
-export type RouteDiscipline = "sport" | "trad" | "tr";
-/** The route views' All / Sport / Trad / TR choice. */
+export type RouteDiscipline = "sport" | "trad";
+/** The route views' All / Sport / Trad choice. */
 export type DisciplineFilter = "all" | RouteDiscipline;
 export const DISCIPLINE_FILTERS: readonly { value: DisciplineFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "sport", label: "Sport" },
   { value: "trad", label: "Trad" },
-  { value: "tr", label: "TR" },
 ];
-
-/** "sport", "trad" or "TR", for running text. */
-export function disciplineName(d: RouteDiscipline): string {
-  return d === "tr" ? "TR" : d;
-}
 
 export type ViewKey = "outdoor-sport" | "indoor-sport" | "outdoor-boulder" | "indoor-boulder";
 

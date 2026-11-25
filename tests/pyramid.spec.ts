@@ -77,7 +77,7 @@ test("pyramid: a toggle says what it switched to, then the caption goes away", a
   await expect(page.getByTestId("toggle-caption")).toHaveText("Oldest first");
 });
 
-test("pyramid: All / Sport / Trad / TR narrows the routes and stays in the URL", async ({ page }) => {
+test("pyramid: All / Sport / Trad narrows the routes and stays in the URL", async ({ page }) => {
   await page.goto("/pyramid?test");
   await page.evaluate(() =>
     (window as unknown as { __seedSyntheticClimbs: (s?: string) => Promise<unknown> }).__seedSyntheticClimbs("default"),
@@ -100,12 +100,6 @@ test("pyramid: All / Sport / Trad / TR narrows the routes and stays in the URL",
   const sport = Number((await count.locator("span").textContent()) ?? "0");
   expect(trad).toBeGreaterThan(0);
   expect(sport + trad).toBe(all);
-
-  // The seed has no top-rope-only routes.
-  await group.getByRole("button", { name: "TR", exact: true }).click();
-  await expect(page).toHaveURL(/gear=tr\b/);
-  await expect(count).toContainText("Outdoor TR · 0");
-  await group.getByRole("button", { name: "Sport", exact: true }).click();
 
   // The choice carries over to the over-time screen.
   await page.getByRole("button", { name: "Pyramids over time" }).click();
