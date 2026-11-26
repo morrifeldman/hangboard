@@ -1,7 +1,7 @@
 import { useHistoryData } from "../hooks/useLoad";
 import { Fragment, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { climbStyleLabel } from "../lib/climbUtils";
+import { climbStyleLabel, impossibleTicksInLog } from "../lib/climbUtils";
 import type { SessionRecord, GymData } from "../lib/history";
 import type { ClimbRecord } from "../lib/climbs";
 import type { NoteRecord } from "../lib/notes";
@@ -36,6 +36,8 @@ export type HistoryView = {
   query: string;
   tags: string[];
   types: string[];
+  /** Under Climbs: only impossible ticks (an onsight or flash of a route already ticked). */
+  impossible: boolean;
 };
 
 type Props = {
@@ -238,8 +240,9 @@ const STYLE_TONES: Record<string, ChipTone> = {
 
 // ─── Rows ─────────────────────────────────────────────────────────────────────
 
-function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }: {
+function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false, impossible }: {
   climbs: ClimbRecord[];
+  impossible: Set<string>;
   showDate: boolean;
   onRouteClick: (routeName: string) => void;
   defaultExpanded?: boolean;
@@ -289,6 +292,11 @@ function ClimbDayRow({ climbs, showDate, onRouteClick, defaultExpanded = false }
                   <span className="font-num text-gray-300 text-sm">{c.grade}</span>
                   <Chip tone={STYLE_TONES[c.style] ?? "muted"}>{styleLabel}</Chip>
                 </div>
+                {impossible.has(c.id) && (
+                  <p className="text-red-400 text-xs">
+                    {c.style === "flash" ? "Flash" : "Onsight"} after an earlier tick: probably a logging error
+                  </p>
+                )}
                 {c.notes && (
                   <p className="text-gray-500 text-xs italic">"{c.notes}"</p>
                 )}
@@ -407,9 +415,11 @@ export function HistoryScreen({
     [storedSessions, liftLibrary],
   );
   const prsBySession = useMemo(() => sessionPRs(sessions), [sessions]);
+  const impossibleIds = useMemo(() => impossibleTicksInLog(climbs), [climbs]);
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const { filter, query } = view;
+  const onlyImpossible = filter === "climbs" && view.impossible;
   const selectedTags = useMemo(() => new Set(view.tags), [view.tags]);
   const workoutTypes = useMemo(() => new Set(view.types), [view.types]);
   const setQuery = (q: string) => onViewChange({ query: q });
@@ -475,6 +485,13 @@ export function HistoryScreen({
       );
     } else if (filter === "climbs") {
       all = all.filter((i) => i.kind === "climbs");
+      if (onlyImpossible) {
+        all = all.flatMap((i): TimelineItem[] => {
+          if (i.kind !== "climbs") return [];
+          const flagged = i.climbs.filter((c) => impossibleIds.has(c.id));
+          return flagged.length > 0 ? [{ ...i, climbs: flagged }] : [];
+        });
+      }
     } else if (filter === "notes") {
       all = all.filter(
         (i) => i.kind === "note" &&
@@ -492,7 +509,7 @@ export function HistoryScreen({
       });
     }
     return all;
-  }, [sessions, climbs, notes, filter, selectedTags, workoutTypes, query]);
+  }, [sessions, climbs, notes, filter, selectedTags, workoutTypes, query, onlyImpossible, impossibleIds]);
 
   // The timeline is newest-first, so each week's entries are already contiguous.
   const weeks = useMemo(() => {
@@ -565,6 +582,7 @@ export function HistoryScreen({
                     filter: f,
                     tags: f === "notes" ? view.tags : [],
                     types: f === "workouts" ? view.types : [],
+                    impossible: f === "climbs" && view.impossible,
                   })
                 }
                 aria-pressed={filter === f}
@@ -604,6 +622,19 @@ export function HistoryScreen({
                   clear
                 </button>
               )}
+            </div>
+          )}
+          {/* Climbs sub-filter: ticks that can't be true, to find and fix on Mountain Project */}
+          {filter === "climbs" && impossibleIds.size > 0 && (
+            <div className={PILL_ROW}>
+              <button
+                onClick={() => onViewChange({ impossible: !view.impossible })}
+                aria-pressed={view.impossible}
+                className={subChipClass(view.impossible)}
+                data-testid="history-impossible-filter"
+              >
+                Impossible ticks · <span className="font-num">{impossibleIds.size}</span>
+              </button>
             </div>
           )}
           {/* Note tag sub-filter */}
@@ -673,7 +704,7 @@ export function HistoryScreen({
                   const newDay = !prev || toLocalDateString(prev.ts) !== toLocalDateString(item.ts);
                   return (
                     <li
-                      key={item.kind === "climbs" ? `${item.date}-${climbCategory(item.climbs[0])}-${searching}` : item.record.id}
+                      key={item.kind === "climbs" ? `${item.date}-${climbCategory(item.climbs[0])}-${searching}-${onlyImpossible}` : item.record.id}
                       className={i === 0 ? "" : newDay
                         ? "border-t border-gray-700/60"
                         // Same-day rows share the date column, so their divider starts after it.
@@ -686,7 +717,8 @@ export function HistoryScreen({
                           climbs={item.climbs}
                           showDate={newDay}
                           onRouteClick={setSelectedRoute}
-                          defaultExpanded={searching}
+                          defaultExpanded={searching || onlyImpossible}
+                          impossible={impossibleIds}
                         />
                       ) : (
                         <NoteRow record={item.record} showDate={newDay} onEdit={onEditNote} />

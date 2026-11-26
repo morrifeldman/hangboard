@@ -246,6 +246,8 @@ type HistorySearch = {
   q?: string;
   tags?: string;
   types?: string;
+  /** Climbs narrowed to impossible ticks (likely logging errors). */
+  impossible?: true;
 };
 
 /** Empty values are left out so the common case stays a bare `/history`. */
@@ -259,6 +261,9 @@ function validateHistorySearch(raw: Record<string, unknown>): HistorySearch {
   if (tags) out.tags = tags;
   const types = searchText(raw.types);
   if (types) out.types = types;
+  if (raw.impossible === true || raw.impossible === 1 || raw.impossible === "1" || raw.impossible === "true") {
+    out.impossible = true;
+  }
   return out;
 }
 
@@ -278,6 +283,7 @@ const historyRoute = createRoute({
       query: search.q ?? "",
       tags: splitList(search.tags),
       types: splitList(search.types),
+      impossible: search.impossible === true,
     };
 
     // `replace` keeps typing in the search box out of the history stack —
@@ -292,6 +298,7 @@ const historyRoute = createRoute({
           q: next.query === "" ? undefined : next.query,
           tags: joinList(next.tags),
           types: joinList(next.types),
+          impossible: next.filter === "climbs" && next.impossible ? true : undefined,
         },
       });
     };
