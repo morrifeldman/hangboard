@@ -1,5 +1,19 @@
-/** Trailing protection ratings Mountain Project appends: "5.10a PG13", "5.10b R", "V5 PG13". */
-const PROTECTION_RE = /\s+(?:PG13|PG|R|X)$/i;
+/**
+ * What can trail a rock grade on Mountain Project: a protection rating (PG13,
+ * R, X), an aid grade (A0, C2+), or an ice, mixed or snow grade on an alpine
+ * route ("5.8 WI3", "5.9 M5", "5.6 Mod. Snow"). Stripped one at a time from the
+ * end, so "5.9 A1 R" becomes "5.9".
+ */
+const SUFFIX_RE = /\s+(?:PG13|PG|R|X|[AC]\d[+-]?|A?WI\d[+-]?|AI\d[+-]?|M\d+[+-]?|(?:Easy|Mod\.?|Steep)\s+Snow|Snow)$/i;
+
+function stripSuffixes(grade: string): string {
+  let g = grade;
+  for (let prev = ""; prev !== g; ) {
+    prev = g;
+    g = g.replace(SUFFIX_RE, "");
+  }
+  return g;
+}
 
 const LETTERS = "abcd";
 
@@ -40,13 +54,13 @@ function formatYds({ num, letter }: Yds): string {
 /**
  * Normalize a climbing grade to the app's standard form (e.g. 5.12b, V4).
  * Slash/range grades take the harder side, +/- map to d/a for 5.10+, and
- * protection ratings are dropped. Unrecognised input is returned trimmed.
+ * protection ratings and aid, ice, mixed or snow grades are dropped. Unrecognised input is returned trimmed.
  */
 export function normalizeGrade(grade: string | null | undefined): string | null {
   if (!grade) return null;
   const trimmed = grade.toString().trim();
   if (!trimmed) return null;
-  const g = trimmed.replace(PROTECTION_RE, "");
+  const g = stripSuffixes(trimmed);
 
   // Bouldering: VB, V-easy, V3, V3+, V3/4, V3-4
   if (/^V(?:B|-?easy)$/i.test(g)) return "VB";
