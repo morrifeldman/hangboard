@@ -242,68 +242,32 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
         </div>
 
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">Setting</label>
-              <p className="text-gray-200 capitalize">{climb.setting}</p>
+          {(stars !== undefined || avgStars !== undefined) && (
+            <div className="flex items-center gap-2 -mt-2" data-testid="climb-stars">
+              {stars !== undefined && (
+                <StarRow value={stars} label={`${climberName ? `${climberName}’s` : "Your"} rating: ${stars} of 4 stars`} />
+              )}
+              {avgStars !== undefined && (
+                <span className="text-sm text-gray-400" title="Mountain Project average">
+                  {stars !== undefined && "· "}
+                  <span className="font-num text-base text-gray-200">{avgStars.toFixed(1)}</span> avg
+                </span>
+              )}
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Type</label>
-              <p className="text-gray-200 capitalize">{climb.type}</p>
-            </div>
-          </div>
+          )}
 
           <div>
-            <label className="text-sm font-medium text-gray-500">Location</label>
-            <p className="text-gray-200">{climb.location || "Not specified"}</p>
+            {climb.location && <p className="text-gray-200">{climb.location}</p>}
             {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
 
-          {(stars !== undefined || avgStars !== undefined) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">{climberName ? `${climberName}’s rating` : "Your rating"}</label>
-                {stars !== undefined ? <StarRow value={stars} /> : <p className="text-gray-500">Not rated</p>}
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Average</label>
-                {avgStars !== undefined ? (
-                  <div className="flex items-center gap-2">
-                    <StarRow value={avgStars} />
-                    <span className="font-num text-gray-200">{avgStars.toFixed(1)}</span>
-                  </div>
-                ) : (
-                  <p className="text-gray-500">No ratings</p>
-                )}
-              </div>
-            </div>
-          )}
+          <p className="text-sm text-gray-400">
+            {[formatDateKey(climb.date), `${capitalize(climb.setting)} ${climb.type}`, attemptsNote(climb)]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">Date</label>
-              <p className="text-gray-200">{formatDateKey(climb.date)}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">Climbs</label>
-              <p className="text-gray-200">
-                {climb.style === "attempt"
-                  ? `${climb.climbs} attempt${climb.climbs !== 1 ? "s" : ""}`
-                  : climb.style === "toprope"
-                  ? "Top rope"
-                  : climb.climbs === 1
-                    ? `${climb.style === "onsight" ? "Onsight" : climb.style === "flash" ? "Flash" : "Send"}`
-                    : `Sent after ${climb.climbs - 1} attempt${climb.climbs - 1 !== 1 ? "s" : ""}`}
-              </p>
-            </div>
-          </div>
-
-          {climb.notes && (
-            <div>
-              <label className="text-sm font-medium text-gray-500">Notes</label>
-              <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>
-            </div>
-          )}
+          {climb.notes && <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>}
         </div>
 
         {routeHistory.length > 1 && (
@@ -331,6 +295,17 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
   );
 }
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** What the style alone doesn't say: falls before a send, or how many tries. */
+function attemptsNote(c: ClimbRecord): string | null {
+  if (c.style === "attempt") return `${c.climbs} attempt${c.climbs !== 1 ? "s" : ""}`;
+  if (c.style === "redpoint" && c.climbs > 1) {
+    return `sent after ${c.climbs - 1} attempt${c.climbs - 1 !== 1 ? "s" : ""}`;
+  }
+  return null;
+}
+
 const STAR_PATH =
   "M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.85L10 14.9l-5.25 2.75 1-5.85L1.5 7.7l5.9-.9z";
 
@@ -339,14 +314,14 @@ const STAR_PATH =
  * shows a little under three and a half. Gray-on-gray: stars are information,
  * not something to tap, so they stay out of the accent colour.
  */
-function StarRow({ value }: { value: number }) {
+function StarRow({ value, label }: { value: number; label: string }) {
   const quarters = Math.round(value * 4) / 4;
   return (
-    <div className="flex items-center gap-0.5 py-0.5" role="img" aria-label={`${value} of 4 stars`}>
+    <div className="flex items-center gap-0.5 py-0.5" role="img" aria-label={label}>
       {[0, 1, 2, 3].map((i) => {
         const fill = Math.min(1, Math.max(0, quarters - i));
         return (
-          <svg key={i} viewBox="0 0 20 20" className="w-5 h-5" aria-hidden>
+          <svg key={i} viewBox="0 0 20 20" className="w-4 h-4" aria-hidden>
             <path d={STAR_PATH} className="fill-gray-600" />
             {fill > 0 && (
               <path
