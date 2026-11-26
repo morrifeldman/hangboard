@@ -72,15 +72,31 @@ describe("deduplicateForPyramid", () => {
     expect(result[0].sessions).toBe(1);
   });
 
-  it("uses best style (onsight > flash > redpoint > attempt)", () => {
-    const climbs = [
-      makeClimb({ style: "redpoint", date: "2024-01-01" }),
-      makeClimb({ style: "flash", date: "2024-01-02" }),
-    ];
+  it("follows the first real ascent, not a later impossible flash", () => {
+    const rp = makeClimb({ style: "redpoint", date: "2024-01-01" });
+    const climbs = [rp, makeClimb({ style: "flash", date: "2024-01-02" })];
     const result = deduplicateForPyramid(climbs);
-    expect(result[0].style).toBe("flash");
-    // Counted to the first real ascent, the redpoint the day before.
+    expect(result[0].style).toBe("redpoint");
+    expect(result[0].date).toBe("2024-01-01");
+    expect(result[0].id).toBe(rp.id);
     expect(result[0].sessions).toBe(1);
+  });
+
+  it("takes the best style when one day has several sends", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ style: "redpoint", date: "2024-01-01" }),
+      makeClimb({ style: "flash", date: "2024-01-01" }),
+    ]);
+    expect(result[0].style).toBe("flash");
+  });
+
+  it("gives an unsent route its best non-send style", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ style: "attempt", date: "2024-01-01" }),
+      makeClimb({ style: "toprope", date: "2024-01-02" }),
+    ]);
+    expect(result[0].style).toBe("toprope");
+    expect(result[0].date).toBe("2024-01-02");
   });
 
   it("doesn't count re-sends in climbs or sessions", () => {

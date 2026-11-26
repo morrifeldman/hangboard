@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ascentSummary, climbStyleLabel, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
+import { ascentSummary, climbStyleLabel, impossibleTickIds, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
 import { routeStars, routeUrl, type ClimbRecord } from "../../../lib/climbs";
 import { deduplicateForPyramid } from "../../../lib/deduplication";
 import { MountainProjectLink } from "../../MountainProjectLink";
@@ -215,6 +215,7 @@ function ClimbCard({ climb: tapped, allClimbs, climberName, position, onEdgeTap,
   const url = climb.url ?? routeUrl(routeHistory);
   const { stars, avgStars } = routeStars([climb, ...routeHistory]);
   const summary = ascentSummary(climb, routeHistory);
+  const impossible = impossibleTickIds(routeHistory);
 
   return (
     <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" data-climb-card onClick={onClick}>
@@ -301,6 +302,11 @@ function ClimbCard({ climb: tapped, allClimbs, climberName, position, onEdgeTap,
                         {styleLabel}
                       </span>
                     </div>
+                    {impossible.has(c.id) && (
+                      <p className="mt-0.5 text-xs text-red-400" data-testid="impossible-tick">
+                        {c.style === "flash" ? "Flash" : "Onsight"} after an earlier tick: probably a logging error
+                      </p>
+                    )}
                     {c.notes && <p className="mt-0.5 text-sm text-gray-200 whitespace-pre-wrap">{c.notes}</p>}
                   </div>
                 );

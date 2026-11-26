@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ascentSummary, countToFirstSend, tileFailures } from "../climbUtils";
+import { ascentSummary, countToFirstSend, firstAscent, impossibleTickIds, tileFailures } from "../climbUtils";
 import type { ClimbStyle } from "../../constants/climbGrades";
 
 const t = (date: string, style: ClimbStyle, climbs = 1) => ({ date, style, climbs });
@@ -50,5 +50,31 @@ describe("tileFailures", () => {
   it("counts every try when there's no send", () => {
     expect(tileFailures({ style: "attempt", climbs: 3 })).toBe(3);
     expect(tileFailures({ style: "toprope", climbs: 2 })).toBe(2);
+  });
+});
+
+describe("firstAscent", () => {
+  it("is the earliest send, not the best", () => {
+    const rp = t("2024-01-01", "redpoint");
+    expect(firstAscent([t("2024-02-01", "flash"), rp, t("2023-12-01", "attempt", 3)])).toBe(rp);
+  });
+  it("is null with no lead send", () => {
+    expect(firstAscent([t("2024-01-01", "toprope"), t("2024-01-02", "attempt")])).toBeNull();
+  });
+});
+
+describe("impossibleTickIds", () => {
+  const tick = (id: string, date: string, style: ClimbStyle) => ({ id, date, style });
+  it("flags an onsight or flash after any earlier tick", () => {
+    const ids = impossibleTickIds([
+      tick("a", "2024-01-01", "toprope"),
+      tick("b", "2024-02-01", "flash"),
+      tick("c", "2024-03-01", "onsight"),
+      tick("d", "2024-03-01", "redpoint"),
+    ]);
+    expect([...ids].sort()).toEqual(["b", "c"]);
+  });
+  it("leaves a first-day flash alone, even next to other ticks that day", () => {
+    expect(impossibleTickIds([tick("a", "2024-01-01", "flash"), tick("b", "2024-01-01", "attempt")]).size).toBe(0);
   });
 });

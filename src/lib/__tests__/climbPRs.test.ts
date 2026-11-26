@@ -56,4 +56,12 @@ describe("climbPRs", () => {
     const sport2 = climb("2026-03-04", "5.11b", "redpoint");
     expect(climbPRs([sport, attempt, boulder, sport2])).toEqual(new Set([sport2.id]));
   });
+
+  it("never counts an impossible tick (a flash of a route already ticked)", () => {
+    const first = climb("2026-03-01", "5.10a", "flash");
+    const rp = climb("2026-03-05", "5.12a", "redpoint", { route: "Project" });
+    const bogus = climb("2026-04-01", "5.12a", "flash", { route: "Project" });
+    const prs = climbPRs([first, rp, bogus]);
+    expect(prs.has(bogus.id)).toBe(false);
+  });
 });

@@ -1,5 +1,6 @@
 import { SPORT_GRADES, BOULDER_GRADES, type ClimbStyle } from "../constants/climbGrades";
 import type { ClimbRecord } from "./climbs";
+import { impossibleTicksInLog } from "./climbUtils";
 
 const SEND_STYLES: readonly ClimbStyle[] = ["onsight", "flash", "redpoint"];
 
@@ -8,7 +9,8 @@ const SEND_STYLES: readonly ClimbStyle[] = ["onsight", "flash", "redpoint"];
  * than every earlier onsight (or flash, or redpoint) of the same type. Styles
  * are tracked separately, so a 5.12a flash doesn't stop a 5.11d redpoint from
  * being a redpoint PR. The first send of a style has nothing to beat and isn't
- * one. On a day with several, only the hardest counts.
+ * one. On a day with several, only the hardest counts. An impossible tick (an
+ * onsight or flash of a route already ticked) is a logging error and never is.
  *
  * Pass every climb in the view, not just the visible time range, so a send
  * stays a PR (or not) however the range is zoomed.
@@ -18,8 +20,9 @@ export function climbPRs(climbs: ClimbRecord[]): Set<string> {
   // Best grade index so far, per type and style.
   const best = new Map<string, number>();
   const byDate = new Map<string, ClimbRecord[]>();
+  const impossible = impossibleTicksInLog(climbs);
   for (const c of climbs) {
-    if (!SEND_STYLES.includes(c.style)) continue;
+    if (!SEND_STYLES.includes(c.style) || impossible.has(c.id)) continue;
     const day = byDate.get(c.date);
     if (day) day.push(c);
     else byDate.set(c.date, [c]);

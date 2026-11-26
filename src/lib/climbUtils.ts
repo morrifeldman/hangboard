@@ -1,4 +1,4 @@
-import { SPORT_GRADES, BOULDER_GRADES } from "../constants/climbGrades";
+import { SPORT_GRADES, BOULDER_GRADES, STYLE_PRIORITY } from "../constants/climbGrades";
 import type { ClimbRecord } from "./climbs";
 import { VIEWS } from "../constants/climbGrades";
 import type { ClimbStyle, DisciplineFilter, RouteDiscipline, ViewKey } from "../constants/climbGrades";
@@ -166,6 +166,54 @@ export function getDateRangeInfo(
 
 /** A real ascent: led clean. Onsight and flash are redpoints that took one try. */
 const REAL_ASCENT: ReadonlySet<ClimbStyle> = new Set(["onsight", "flash", "redpoint"]);
+
+/**
+ * A route's first real ascent: the earliest day with an onsight, flash or
+ * redpoint (the best of them if a day has several). It decides the pyramid
+ * tile's colour and date; later ticks, even "better" ones, don't move it.
+ */
+export function firstAscent<T extends Pick<ClimbRecord, "style" | "date">>(ticks: T[]): T | null {
+  let first: T | null = null;
+  for (const c of ticks) {
+    if (!REAL_ASCENT.has(c.style)) continue;
+    if (
+      !first ||
+      c.date < first.date ||
+      (c.date === first.date && STYLE_PRIORITY[c.style] < STYLE_PRIORITY[first.style])
+    ) {
+      first = c;
+    }
+  }
+  return first;
+}
+
+/**
+ * Ticks that can't be true: an onsight or flash of a route already ticked on
+ * an earlier day (attempt, top rope or send). Almost certainly a logging
+ * error. Ticks on the same day aren't compared; the export doesn't order them.
+ */
+export function impossibleTickIds(ticks: Pick<ClimbRecord, "id" | "style" | "date">[]): Set<string> {
+  const earliest = ticks.reduce<string | null>((d, c) => (d === null || c.date < d ? c.date : d), null);
+  return new Set(
+    ticks
+      .filter((c) => (c.style === "onsight" || c.style === "flash") && earliest !== null && c.date > earliest)
+      .map((c) => c.id),
+  );
+}
+
+/** impossibleTickIds over a whole log: each route (name, location, type, setting) on its own. */
+export function impossibleTicksInLog(climbs: ClimbRecord[]): Set<string> {
+  const byRoute = new Map<string, ClimbRecord[]>();
+  for (const c of climbs) {
+    const key = JSON.stringify([c.route, c.location, c.type, c.setting]);
+    const list = byRoute.get(key);
+    if (list) list.push(c);
+    else byRoute.set(key, [c]);
+  }
+  const ids = new Set<string>();
+  for (const ticks of byRoute.values()) impossibleTickIds(ticks).forEach((id) => ids.add(id));
+  return ids;
+}
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
