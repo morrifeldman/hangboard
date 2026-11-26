@@ -84,16 +84,15 @@ export function normalizeGrade(grade: string | null | undefined): string | null 
 }
 
 /**
- * Approximate French sport grade for each rung of the YDS ladder. The scales
- * don't line up exactly (5.11b sits between 6c and 6c+, and the easy grades
- * bunch up), so each YDS grade gets the one French grade it's most often
- * charted against. Display only: grades are always stored as YDS.
+ * Approximate French sport grade for each rung of the YDS ladder. Where a YDS
+ * grade falls between two French grades it shows both ("6c/6c+"). Display
+ * only: grades are always stored as YDS.
  */
 const YDS_TO_FRENCH: Record<string, string> = {
   "5.0": "1", "5.1": "2", "5.2": "2+", "5.3": "3", "5.4": "3+", "5.5": "4a",
-  "5.6": "4b", "5.7": "4c", "5.8": "5b", "5.9": "5c",
+  "5.6": "4b", "5.7": "4c/5a", "5.8": "5b", "5.9": "5c",
   "5.10a": "6a", "5.10b": "6a+", "5.10c": "6b", "5.10d": "6b+",
-  "5.11a": "6c", "5.11b": "6c", "5.11c": "6c+", "5.11d": "7a",
+  "5.11a": "6c", "5.11b": "6c/6c+", "5.11c": "6c+", "5.11d": "7a",
   "5.12a": "7a+", "5.12b": "7b", "5.12c": "7b+", "5.12d": "7c",
   "5.13a": "7c+", "5.13b": "8a", "5.13c": "8a+", "5.13d": "8b",
   "5.14a": "8b+", "5.14b": "8c", "5.14c": "8c+", "5.14d": "9a",

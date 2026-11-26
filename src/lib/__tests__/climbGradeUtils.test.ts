@@ -88,6 +88,11 @@ describe("frenchGrade", () => {
     expect(frenchGrade("5.14d")).toBe("9a");
   });
 
+  it("shows both sides where a YDS grade straddles two French grades", () => {
+    expect(frenchGrade("5.11b")).toBe("6c/6c+");
+    expect(frenchGrade("5.7")).toBe("4c/5a");
+  });
+
   it("returns null for boulder and unrecognised grades", () => {
     expect(frenchGrade("V5")).toBeNull();
     expect(frenchGrade("6a")).toBeNull();
