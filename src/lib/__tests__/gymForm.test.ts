@@ -78,9 +78,13 @@ describe("meaningfulFields", () => {
 describe("freeform", () => {
   const blank = [{ name: "", entries: [{ key: "", value: "" }] }];
 
-  it("needs a title and at least one entry", () => {
+  it("needs a title", () => {
     expect(buildFreeformGymData("", [{ name: "", entries: [{ key: "a", value: "1" }] }])).toBeNull();
-    expect(buildFreeformGymData("Day", blank)).toBeNull();
+    expect(buildFreeformGymData("  ", blank)).toBeNull();
+  });
+
+  it("saves a title alone (notes live on the session)", () => {
+    expect(buildFreeformGymData("Yoga", blank)).toEqual({ type: "freeform", title: "Yoga", sections: [] });
   });
 
   it("trims and drops blank entries and empty unnamed sections", () => {

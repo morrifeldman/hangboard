@@ -65,12 +65,11 @@ export function emptyFreeformSections(): FreeformSection[] {
 }
 
 // Build a freeform GymData; drops empty entries and empty unnamed sections.
-// Returns null when the result has no title or no remaining non-empty entries.
+// Only the title is required: a title plus session notes is a complete log.
 export function buildFreeformGymData(title: string, sections: FreeformSection[]): GymData | null {
   const trimmedTitle = title.trim();
   if (!trimmedTitle) return null;
   const cleanedSections: FreeformSection[] = [];
-  let totalEntries = 0;
   for (const sec of sections) {
     const name = sec.name.trim();
     const entries = sec.entries
@@ -78,9 +77,7 @@ export function buildFreeformGymData(title: string, sections: FreeformSection[])
       .filter((e) => e.key !== "" || e.value !== "");
     if (entries.length === 0 && name === "") continue;
     cleanedSections.push({ name, entries });
-    totalEntries += entries.length;
   }
-  if (totalEntries === 0) return null;
   return { type: "freeform", title: trimmedTitle, sections: cleanedSections };
 }
 

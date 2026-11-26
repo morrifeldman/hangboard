@@ -102,7 +102,7 @@ export function GymLogScreen({ onBack, onDone, onShowHistory, initialRecord, ini
     initialRecord?.gymData?.type === "freeform" ? initialRecord.gymData : null;
   const [freeformTitle, setFreeformTitle] = useState(initialFreeform?.title ?? "");
   const [freeformSections, setFreeformSections] = useState<FreeformSection[]>(() =>
-    initialFreeform
+    initialFreeform && initialFreeform.sections.length > 0
       ? initialFreeform.sections.map((s) => ({
           name: s.name,
           entries: s.entries.map((e) => ({ ...e })),
@@ -248,10 +248,12 @@ export function GymLogScreen({ onBack, onDone, onShowHistory, initialRecord, ini
   const useLastFreeform = () => {
     if (!lastFreeform || lastFreeform.gymData?.type !== "freeform") return;
     const gd = lastFreeform.gymData;
-    const sections = gd.sections.map((s) => ({
-      name: s.name,
-      entries: s.entries.map((e) => ({ key: e.key, value: "" })),
-    }));
+    const sections = gd.sections.length > 0
+      ? gd.sections.map((s) => ({
+          name: s.name,
+          entries: s.entries.map((e) => ({ key: e.key, value: "" })),
+        }))
+      : emptyFreeformSections();
     setFreeformTitle(gd.title);
     setFreeformSections(sections);
     // Carried-forward headings aren't the person's work yet; only what they add is.
