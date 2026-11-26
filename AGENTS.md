@@ -3,7 +3,7 @@
 This file is the canonical onboarding doc for AI coding agents. Repo dir is still `~/hangboard/` for historical reasons; the user-facing app is **Cairn**. IndexedDB and localStorage keys also still use the `hangboard-*` prefix — never rename them.
 
 ## Stack
-Vite 7 · React 19 · TypeScript 5.9 (strict) · Tailwind 3 · Zustand 5 · vite-plugin-pwa 1.3 · Recharts · Vitest 4 · Playwright 1.58
+Vite 7 · React 19 · TypeScript 5.9 (strict) · Tailwind 3 · Zustand 5 · vite-plugin-pwa 1.3 · Recharts · Vitest 4 · Playwright 1.63
 
 ## Commands
 
@@ -167,6 +167,11 @@ The E2E suite runs on **:5174** (`playwright.config.ts` starts its own
 `npm run dev -- --port 5174`), so it doesn't collide with a dev server on :5173.
 Run both at once. `reuseExistingServer` is on, so a stale server already on
 :5174 gets reused; kill it with `fuser -k 5174/tcp` if tests act strangely.
+
+If Playwright reports `Executable doesn't exist at …/chromium_headless_shell-NNNN`,
+its version expects a browser build that isn't installed. Locally, run
+`npx playwright install`. In a cloud session, use the preinstalled browser
+instead: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test`.
 
 ### Debug seed helpers
 - `window.__store` — raw Zustand store. `__store.getState()`, `__store.setState({...})`. Useful for jumping into specific phase states.

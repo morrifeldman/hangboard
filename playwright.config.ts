@@ -17,6 +17,8 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         launchOptions: {
+          // Use a preinstalled Chromium whose build doesn't match this Playwright.
+          executablePath: process.env.PW_CHROMIUM_PATH || undefined,
           args: ["--disable-background-timer-throttling", "--disable-renderer-backgrounding"],
         },
       },
