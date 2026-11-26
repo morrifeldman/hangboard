@@ -110,9 +110,10 @@ export function ProgressScreen({
         <div className="flex-1 flex items-center justify-center">
           <div className="text-gray-500 text-sm">Loading…</div>
         </div>
-      ) : sessions.length === 0 ? (
+      ) : sessions.length === 0 && climbs.length === 0 ? (
+        // Climbs alone are enough: a Mountain Project import has no sessions yet.
         <div className="flex-1 flex items-center justify-center px-8 text-center">
-          <p className="text-gray-500">Complete a session to see your progress.</p>
+          <p className="text-gray-500">Log a workout or import your climbs to see your progress.</p>
         </div>
       ) : (
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-5 pb-8 flex flex-col gap-8">

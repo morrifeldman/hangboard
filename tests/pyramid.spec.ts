@@ -115,3 +115,14 @@ test("pyramid: the All / Sport / Trad toggle narrows the routes and stays in the
   await expect(page).toHaveURL(/\/pyramid\/scrolling\?gear=sport/);
   await expect(page.getByTestId("discipline-toggle")).toHaveText("Sport");
 });
+
+test("progress: climbs alone fill the screen (a fresh Mountain Project import has no sessions)", async ({ page }) => {
+  await page.goto("/?test");
+  await expect(page.getByText("Log a workout or import your climbs")).toBeVisible();
+  await page.evaluate(() =>
+    (window as unknown as { __seedSyntheticClimbs: (s?: string) => Promise<unknown> }).__seedSyntheticClimbs("default"),
+  );
+  await page.goto("/");
+  await expect(page.getByTestId("open-pyramid")).toBeVisible();
+  await expect(page.getByText("Log a workout or import your climbs")).toHaveCount(0);
+});
