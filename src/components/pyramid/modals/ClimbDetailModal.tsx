@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { climbStyleLabel, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
+import { ascentSummary, climbStyleLabel, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
 import { routeStars, routeUrl, type ClimbRecord } from "../../../lib/climbs";
 import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
@@ -207,6 +207,9 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
     .sort((a, b) => b.date.localeCompare(a.date));
   const url = climb.url ?? routeUrl(routeHistory);
   const { stars, avgStars } = routeStars([climb, ...routeHistory]);
+  // A pyramid tile stands for every tick of its route; a timeline tile for its day.
+  const wholeProject = "sessions" in climb;
+  const summary = ascentSummary(climb, routeHistory, wholeProject);
 
   return (
     <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" data-climb-card onClick={onClick}>
@@ -221,13 +224,8 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
                   {frenchGrade(climb.grade)}
                 </span>
               )}
-              <div
-                className={`w-3 h-3 ${isTrad(climb) ? "rounded-full" : "rounded-[3px]"} ${getStyleColor(climb.style)}`}
-                style={{ boxShadow: STONE_EDGE }}
-              />
-              {/* The date of this ascent, so it reads "Flash · Mar 15, 2024". */}
               <span className="text-sm text-gray-400">
-                <span className="capitalize">{climb.style}</span> · {formatDateKey(climb.date)}
+                · {climb.type === "boulder" ? "Boulder" : isTrad(climb) ? "Trad" : "Sport"}
               </span>
               {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
               {position && (
@@ -258,8 +256,19 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
                 </span>
               </>
             )}
-            <span aria-hidden>·</span>
-            <span>{climb.type === "boulder" ? "Boulder" : isTrad(climb) ? "Trad" : "Sport"}</span>
+          </div>
+
+          {/* The ascent: style icon (its colour is the style), date, and what it took. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-400">
+            <span
+              role="img"
+              aria-label={climbStyleLabel({ style: climb.style, climbs: 1 })}
+              title={climbStyleLabel({ style: climb.style, climbs: 1 })}
+              className={`w-3 h-3 shrink-0 ${isTrad(climb) ? "rounded-full" : "rounded-[3px]"} ${getStyleColor(climb.style)}`}
+              style={{ boxShadow: STONE_EDGE }}
+            />
+            <span className="text-gray-200">{formatDateKey(climb.date)}</span>
+            {summary && <span>{summary}</span>}
           </div>
 
           <div>
@@ -267,7 +276,6 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
             {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
 
-          {attemptsNote(climb) && <p className="text-sm text-gray-400">{attemptsNote(climb)}</p>}
 
           {climb.notes && <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>}
         </div>
@@ -295,15 +303,6 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
       </div>
     </div>
   );
-}
-
-/** What the style alone doesn't say: falls before a send, or how many tries. */
-function attemptsNote(c: ClimbRecord): string | null {
-  if (c.style === "attempt") return `${c.climbs} attempt${c.climbs !== 1 ? "s" : ""}`;
-  if (c.style === "redpoint" && c.climbs > 1) {
-    return `Sent after ${c.climbs - 1} attempt${c.climbs - 1 !== 1 ? "s" : ""}`;
-  }
-  return null;
 }
 
 const STAR_PATH =

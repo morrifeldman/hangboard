@@ -163,3 +163,41 @@ export function getDateRangeInfo(
     isFullRange: w.min === w.max || (timeRange[0] === 0 && timeRange[1] === 100),
   };
 }
+
+/** A real ascent: led clean. Onsight and flash are redpoints that took one try. */
+const REAL_ASCENT: ReadonlySet<ClimbStyle> = new Set(["onsight", "flash", "redpoint"]);
+
+/**
+ * What a route took, for the climb card: tries and sessions up to and
+ * including the first real ascent. Repeats afterwards don't change it, so only
+ * that ascent's card gets a summary. Onsight and flash say nothing (one try,
+ * one session). A route never sent counts its ticks to the card's date, or all
+ * of them when `wholeProject` (its pyramid tile stands for the whole project).
+ */
+export function ascentSummary(
+  climb: Pick<ClimbRecord, "style" | "date">,
+  routeTicks: Pick<ClimbRecord, "style" | "climbs" | "date">[],
+  wholeProject = false,
+): string | null {
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const count = (ticks: typeof routeTicks) => {
+    const sessions = new Set(ticks.map((c) => c.date)).size;
+    return {
+      tries: ticks.reduce((n, c) => n + c.climbs, 0),
+      over: sessions > 1 ? ` over ${plural(sessions, "session")}` : "",
+    };
+  };
+
+  const sendDates = routeTicks.filter((c) => REAL_ASCENT.has(c.style)).map((c) => c.date);
+  if (sendDates.length === 0) {
+    if (climb.style !== "attempt") return null;
+    const { tries, over } = count(wholeProject ? routeTicks : routeTicks.filter((c) => c.date <= climb.date));
+    return tries > 0 ? `${plural(tries, "attempt")}${over}` : null;
+  }
+
+  const firstSend = sendDates.reduce((a, b) => (b < a ? b : a));
+  if (climb.style !== "redpoint" || climb.date !== firstSend) return null;
+  const { tries, over } = count(routeTicks.filter((c) => c.date <= firstSend));
+  const falls = tries - 1;
+  return falls > 0 ? `after ${plural(falls, "attempt")}${over}` : null;
+}
