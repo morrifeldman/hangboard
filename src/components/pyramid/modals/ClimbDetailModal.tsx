@@ -5,6 +5,7 @@ import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
 import { frenchGrade } from "../../../lib/climbGradeUtils";
+import { ordinal } from "../../../lib/format";
 
 type Props = {
   climb: ClimbRecord | null;
@@ -224,7 +225,7 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
               {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
               {position && (
                 <span className="text-sm text-gray-500">
-                  (<span className="font-num">{position.index + 1}</span> of{" "}
+                  (<span className="font-num">{ordinal(position.index + 1)}</span> of{" "}
                   <span className="font-num">{position.count}</span>)
                 </span>
               )}
