@@ -2,6 +2,8 @@
 
 This file is the canonical onboarding doc for AI coding agents. Repo dir is still `~/hangboard/` for historical reasons; the user-facing app is **Cairn**. IndexedDB and localStorage keys also still use the `hangboard-*` prefix — never rename them.
 
+`CLAUDE.md` is a symlink to this file. Edit `AGENTS.md`, never `CLAUDE.md`: in-place tools such as `sed -i` replace the link with a plain copy, and the two drift apart.
+
 ## Stack
 Vite 7 · React 19 · TypeScript 5.9 (strict) · Tailwind 3 · Zustand 5 · vite-plugin-pwa 1.3 · Recharts · Vitest 4 · Playwright 1.63
 
