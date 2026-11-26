@@ -194,6 +194,7 @@ export function PyramidScreen({
         climb={selectedClimb}
         allClimbs={climbs}
         siblings={selectedRow}
+        climberName={friend?.name}
         onNavigate={setSelectedClimb}
         onClose={() => setSelectedClimb(null)}
       />

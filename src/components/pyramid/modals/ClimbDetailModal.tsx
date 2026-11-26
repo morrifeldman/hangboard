@@ -12,6 +12,8 @@ type Props = {
   allClimbs: ClimbRecord[];
   /** The climbs to swipe through (the tapped grade row, oldest first). */
   siblings?: ClimbRecord[];
+  /** Whose climbs these are when they're a friend's; labels their star rating. */
+  climberName?: string;
   onNavigate?: (c: ClimbRecord) => void;
   onClose: () => void;
 };
@@ -33,7 +35,7 @@ type Dir = -1 | 1;
  * either side of the open card, a swipe drags them in, and letting go slides
  * the whole strip so the new card arrives as its own card.
  */
-export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, onClose }: Props) {
+export function ClimbDetailModal({ climb, allClimbs, siblings = [], climberName, onNavigate, onClose }: Props) {
   const index = climb ? siblings.findIndex((c) => c.id === climb.id) : -1;
   const canNavigate = !!onNavigate && index !== -1 && siblings.length > 1;
   const prev = canNavigate && index > 0 ? siblings[index - 1] : null;
@@ -164,6 +166,7 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
                   <ClimbCard
                     climb={slot.climb}
                     allClimbs={allClimbs}
+                    climberName={climberName}
                     position={canNavigate && slotIndex !== -1 ? { index: slotIndex, count: siblings.length } : null}
                     onClose={onClose}
                     onEdgeTap={isCurrent && canNavigate ? go : undefined}
@@ -181,13 +184,14 @@ export function ClimbDetailModal({ climb, allClimbs, siblings = [], onNavigate, 
 type CardProps = {
   climb: ClimbRecord;
   allClimbs: ClimbRecord[];
+  climberName?: string;
   position: { index: number; count: number } | null;
   /** Tap on the card's left/right edge, like turning a page in an e-reader. */
   onEdgeTap?: (dir: Dir) => void;
   onClose: () => void;
 };
 
-function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps) {
+function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose }: CardProps) {
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onEdgeTap) return;
     // Buttons keep their own meaning; only taps on plain content turn the page.
@@ -258,7 +262,7 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
           {(stars !== undefined || avgStars !== undefined) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">Your rating</label>
+                <label className="text-sm font-medium text-gray-500">{climberName ? `${climberName}’s rating` : "Your rating"}</label>
                 {stars !== undefined ? <StarRow value={stars} /> : <p className="text-gray-500">Not rated</p>}
               </div>
               <div>
