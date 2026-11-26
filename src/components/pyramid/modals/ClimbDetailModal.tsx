@@ -252,7 +252,10 @@ function ClimbCard({ climb: tapped, allClimbs, climberName, position, onEdgeTap,
             {/* Unrated shows four empty stars. */}
             <StarRow
               value={stars ?? 0}
-              label={`${climberName ? `${climberName}’s` : "Your"} rating: ${stars === undefined ? "not rated" : `${stars} of 4 stars`}`}
+              bomb={stars === 0}
+              label={`${climberName ? `${climberName}’s` : "Your"} rating: ${
+                stars === undefined ? "not rated" : stars === 0 ? "a bomb" : `${stars} of 4 stars`
+              }`}
             />
             {avgStars !== undefined && (
               <>
@@ -327,10 +330,18 @@ const STAR_PATH =
  * shows a little under three and a half. Gray-on-gray: stars are information,
  * not something to tap, so they stay out of the accent colour.
  */
-function StarRow({ value, label }: { value: number; label: string }) {
+function StarRow({ value, label, bomb = false }: { value: number; label: string; bomb?: boolean }) {
   const quarters = Math.round(value * 4) / 4;
   return (
     <div className="flex items-center gap-0.5 py-0.5" role="img" aria-label={label}>
+      {/* Mountain Project's lowest rating, below one star: a bomb ahead of four empty stars. */}
+      {bomb && (
+        <svg viewBox="0 0 20 20" className="w-4 h-4 mr-0.5" aria-hidden data-testid="bomb">
+          <circle cx="8.5" cy="11.5" r="6.5" className="fill-gray-100" />
+          <path d="M12.5 6.5l2-2" className="stroke-gray-100" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M14.5 4.5c1-1.5 2.5-1.5 3.5-.5" className="stroke-gray-100" fill="none" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      )}
       {[0, 1, 2, 3].map((i) => {
         const fill = Math.min(1, Math.max(0, quarters - i));
         return (
