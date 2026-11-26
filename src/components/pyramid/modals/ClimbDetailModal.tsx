@@ -214,7 +214,7 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-xl font-bold text-white">{climb.route}</h3>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
               <span className="font-num text-xl text-white">{climb.grade}</span>
               {climb.type === "sport" && frenchGrade(climb.grade) && (
                 <span className="font-num text-xl text-gray-500" title="Approximate French grade">
@@ -225,8 +225,10 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
                 className={`w-3 h-3 ${isTrad(climb) ? "rounded-full" : "rounded-[3px]"} ${getStyleColor(climb.style)}`}
                 style={{ boxShadow: STONE_EDGE }}
               />
-              <span className="text-sm text-gray-400 capitalize">{climb.style}</span>
-              {isTrad(climb) && <span className="text-sm text-gray-400">· Trad</span>}
+              {/* The date of this ascent, so it reads "Flash · Mar 15, 2024". */}
+              <span className="text-sm text-gray-400">
+                <span className="capitalize">{climb.style}</span> · {formatDateKey(climb.date)}
+              </span>
               {/* Where this climb sits in its grade row; swipe, tap an edge or use arrow keys to move. */}
               {position && (
                 <span className="text-sm text-gray-500">
@@ -242,30 +244,30 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
         </div>
 
         <div className="space-y-3">
-          {(stars !== undefined || avgStars !== undefined) && (
-            <div className="flex items-center gap-2 -mt-2" data-testid="climb-stars">
-              {stars !== undefined && (
-                <StarRow value={stars} label={`${climberName ? `${climberName}’s` : "Your"} rating: ${stars} of 4 stars`} />
-              )}
-              {avgStars !== undefined && (
-                <span className="text-sm text-gray-400" title="Mountain Project average">
-                  {stars !== undefined && "· "}
+          <div className="flex items-center gap-2 -mt-2 text-sm text-gray-400" data-testid="climb-stars">
+            {/* Unrated shows four empty stars. */}
+            <StarRow
+              value={stars ?? 0}
+              label={`${climberName ? `${climberName}’s` : "Your"} rating: ${stars === undefined ? "not rated" : `${stars} of 4 stars`}`}
+            />
+            {avgStars !== undefined && (
+              <>
+                <span aria-hidden>·</span>
+                <span title="Mountain Project average">
                   <span className="font-num text-base text-gray-200">{avgStars.toFixed(1)}</span> avg
                 </span>
-              )}
-            </div>
-          )}
+              </>
+            )}
+            <span aria-hidden>·</span>
+            <span>{climb.type === "boulder" ? "Boulder" : isTrad(climb) ? "Trad" : "Sport"}</span>
+          </div>
 
           <div>
             {climb.location && <p className="text-gray-200">{climb.location}</p>}
             {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
 
-          <p className="text-sm text-gray-400">
-            {[formatDateKey(climb.date), `${capitalize(climb.setting)} ${climb.type}`, attemptsNote(climb)]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+          {attemptsNote(climb) && <p className="text-sm text-gray-400">{attemptsNote(climb)}</p>}
 
           {climb.notes && <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>}
         </div>
@@ -295,13 +297,11 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
   );
 }
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 /** What the style alone doesn't say: falls before a send, or how many tries. */
 function attemptsNote(c: ClimbRecord): string | null {
   if (c.style === "attempt") return `${c.climbs} attempt${c.climbs !== 1 ? "s" : ""}`;
   if (c.style === "redpoint" && c.climbs > 1) {
-    return `sent after ${c.climbs - 1} attempt${c.climbs - 1 !== 1 ? "s" : ""}`;
+    return `Sent after ${c.climbs - 1} attempt${c.climbs - 1 !== 1 ? "s" : ""}`;
   }
   return null;
 }
