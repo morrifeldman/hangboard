@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { SPORT_GRADES, BOULDER_GRADES } from "../../constants/climbGrades";
 import { deduplicateForTimeline } from "../../lib/deduplication";
-import { climbsInView, getFilteredClimbs, getStyleColor, isLeadSend, isTrad } from "../../lib/climbUtils";
+import { climbsInView, getFilteredClimbs, getStyleColor, isLeadSend, isTrad, tileFailures } from "../../lib/climbUtils";
 import { climbPRs } from "../../lib/climbPRs";
 import { prGlow } from "./stone";
 import { formatDateKey } from "../../lib/dates";
@@ -125,10 +125,10 @@ export function TimelineVisualization({ climbs, currentView, discipline, showSen
                           )
                         }
                       >
-                        {/* That day's tries, as the pyramid tile shows the route's. */}
-                        {climb.climbs > 1 && (
+                        {/* That day's falls, as the pyramid tile shows the route's. */}
+                        {tileFailures(climb) > 1 && (
                           <span className="absolute inset-0 flex items-center justify-center text-xs text-white font-semibold">
-                            {climb.climbs}
+                            {tileFailures(climb)}
                           </span>
                         )}
                       </div>

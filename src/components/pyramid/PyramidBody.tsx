@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getStyleColor, isTrad } from "../../lib/climbUtils";
+import { getStyleColor, isTrad, tileFailures } from "../../lib/climbUtils";
 import type { ClimbRecord } from "../../lib/climbs";
 import type { PyramidRow } from "../../lib/climbUtils";
 import { STONE_EDGE, tileRadius as stoneShape } from "./stone";
@@ -183,12 +183,7 @@ export function PyramidBody({
 
               const tiles = r.climbs.map((climb, idx) => {
                 const sessions = climb.sessions ?? 1;
-                const value = showSessionCounts ? sessions : climb.climbs;
-                const threshold = showSessionCounts
-                  ? 1
-                  : climb.style === "redpoint"
-                    ? 2
-                    : 1;
+                const value = showSessionCounts ? sessions : tileFailures(climb);
                 return (
                   <button
                     key={idx}
@@ -204,7 +199,7 @@ export function PyramidBody({
                       boxShadow: STONE_EDGE,
                     }}
                   >
-                    {withCount && value > threshold ? value : ""}
+                    {withCount && value > 1 ? value : ""}
                   </button>
                 );
               });

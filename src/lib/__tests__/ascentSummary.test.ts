@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ascentSummary, countToFirstSend } from "../climbUtils";
+import { ascentSummary, countToFirstSend, tileFailures } from "../climbUtils";
 import type { ClimbStyle } from "../../constants/climbGrades";
 
 const t = (date: string, style: ClimbStyle, climbs = 1) => ({ date, style, climbs });
@@ -40,3 +40,15 @@ describe("ascentSummary", () => {
   });
 });
 
+
+describe("tileFailures", () => {
+  it("is falls before the send", () => {
+    expect(tileFailures({ style: "redpoint", climbs: 2 })).toBe(1); // second go: no number shown
+    expect(tileFailures({ style: "redpoint", climbs: 3 })).toBe(2);
+    expect(tileFailures({ style: "flash", climbs: 1 })).toBe(0);
+  });
+  it("counts every try when there's no send", () => {
+    expect(tileFailures({ style: "attempt", climbs: 3 })).toBe(3);
+    expect(tileFailures({ style: "toprope", climbs: 2 })).toBe(2);
+  });
+});

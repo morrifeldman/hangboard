@@ -207,3 +207,11 @@ export function ascentSummary(
   return tries > 0 ? `${plural(tries, climb.style === "attempt" ? "attempt" : "climb")}${over}` : null;
 }
 
+/**
+ * The number on a pyramid or timeline tile: falls before the send, so a
+ * second-go redpoint is 1 and a third-go redpoint 2. Attempts and top ropes
+ * (no send) count every try. Tiles show it only from 2 up.
+ */
+export function tileFailures(c: Pick<ClimbRecord, "style" | "climbs">): number {
+  return c.style === "attempt" || c.style === "toprope" ? c.climbs : c.climbs - 1;
+}
