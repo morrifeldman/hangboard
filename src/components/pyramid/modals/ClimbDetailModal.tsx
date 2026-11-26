@@ -4,6 +4,7 @@ import { routeUrl, type ClimbRecord } from "../../../lib/climbs";
 import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
+import { frenchGrade } from "../../../lib/climbGradeUtils";
 
 type Props = {
   climb: ClimbRecord | null;
@@ -209,6 +210,11 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
             <h3 className="text-xl font-bold text-white">{climb.route}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="font-num text-xl text-white">{climb.grade}</span>
+              {climb.type === "sport" && frenchGrade(climb.grade) && (
+                <span className="font-num text-xl text-gray-500" title="Approximate French grade">
+                  {frenchGrade(climb.grade)}
+                </span>
+              )}
               <div
                 className={`w-3 h-3 ${isTrad(climb) ? "rounded-full" : "rounded-[3px]"} ${getStyleColor(climb.style)}`}
                 style={{ boxShadow: STONE_EDGE }}

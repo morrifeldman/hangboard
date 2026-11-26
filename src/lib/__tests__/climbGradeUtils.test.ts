@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { normalizeGrade } from "../climbGradeUtils";
+import { frenchGrade, normalizeGrade } from "../climbGradeUtils";
+import { SPORT_GRADES } from "../../constants/climbGrades";
 
 describe("normalizeGrade", () => {
   it("returns null for null/undefined/empty", () => {
@@ -71,5 +72,24 @@ describe("normalizeGrade", () => {
     ["WI4", "WI4"],
   ])("normalizes %s → %s", (input, expected) => {
     expect(normalizeGrade(input)).toBe(expected);
+  });
+});
+
+describe("frenchGrade", () => {
+  it("converts every rung of the YDS ladder", () => {
+    for (const g of SPORT_GRADES) expect(frenchGrade(g)).toBeTruthy();
+  });
+
+  it("uses the standard chart", () => {
+    expect(frenchGrade("5.10a")).toBe("6a");
+    expect(frenchGrade("5.11d")).toBe("7a");
+    expect(frenchGrade("5.12a")).toBe("7a+");
+    expect(frenchGrade("5.13b")).toBe("8a");
+    expect(frenchGrade("5.14d")).toBe("9a");
+  });
+
+  it("returns null for boulder and unrecognised grades", () => {
+    expect(frenchGrade("V5")).toBeNull();
+    expect(frenchGrade("6a")).toBeNull();
   });
 });
