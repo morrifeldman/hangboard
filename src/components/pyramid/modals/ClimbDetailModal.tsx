@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { climbStyleLabel, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
-import { routeUrl, type ClimbRecord } from "../../../lib/climbs";
+import { routeStars, routeUrl, type ClimbRecord } from "../../../lib/climbs";
 import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
@@ -202,6 +202,7 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
     .filter((c) => c.route === climb.route)
     .sort((a, b) => b.date.localeCompare(a.date));
   const url = climb.url ?? routeUrl(routeHistory);
+  const { stars, avgStars } = routeStars([climb, ...routeHistory]);
 
   return (
     <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" data-climb-card onClick={onClick}>
@@ -254,6 +255,26 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
             {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
 
+          {(stars !== undefined || avgStars !== undefined) && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Your rating</label>
+                {stars !== undefined ? <StarRow value={stars} /> : <p className="text-gray-500">Not rated</p>}
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Average</label>
+                {avgStars !== undefined ? (
+                  <div className="flex items-center gap-2">
+                    <StarRow value={avgStars} />
+                    <span className="font-num text-gray-200">{avgStars.toFixed(1)}</span>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No ratings</p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-500">Date</label>
@@ -302,6 +323,37 @@ function ClimbCard({ climb, allClimbs, position, onEdgeTap, onClose }: CardProps
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const STAR_PATH =
+  "M10 1.5l2.6 5.3 5.9.9-4.25 4.1 1 5.85L10 14.9l-5.25 2.75 1-5.85L1.5 7.7l5.9-.9z";
+
+/**
+ * Four stars, filled to `value` (0–4) in quarter steps, so an average of 3.4
+ * shows a little under three and a half. Gray-on-gray: stars are information,
+ * not something to tap, so they stay out of the accent colour.
+ */
+function StarRow({ value }: { value: number }) {
+  const quarters = Math.round(value * 4) / 4;
+  return (
+    <div className="flex items-center gap-0.5 py-0.5" role="img" aria-label={`${value} of 4 stars`}>
+      {[0, 1, 2, 3].map((i) => {
+        const fill = Math.min(1, Math.max(0, quarters - i));
+        return (
+          <svg key={i} viewBox="0 0 20 20" className="w-5 h-5" aria-hidden>
+            <path d={STAR_PATH} className="fill-gray-600" />
+            {fill > 0 && (
+              <path
+                d={STAR_PATH}
+                className="fill-gray-100"
+                style={fill < 1 ? { clipPath: `inset(0 ${(1 - fill) * 100}% 0 0)` } : undefined}
+              />
+            )}
+          </svg>
+        );
+      })}
     </div>
   );
 }

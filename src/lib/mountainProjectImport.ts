@@ -67,6 +67,17 @@ export function parseRouteUrl(value: string | undefined): string | undefined {
   }
 }
 
+/**
+ * Read a Mountain Project star column ("Your Stars", "Avg Stars"). Unrated is
+ * -1 (or blank); a rating is 0–4, the average with decimals.
+ */
+export function parseStars(value: string | undefined): number | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 4 ? n : undefined;
+}
+
 /** RFC-4180 parser over the whole text: quoted fields, "" escapes, embedded commas/newlines, CRLF/LF. */
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -145,6 +156,8 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
 
     const url = parseRouteUrl(row.URL);
     const isBoulder = row["Route Type"] === "Boulder";
+    const stars = parseStars(row["Your Stars"]);
+    const avgStars = parseStars(row["Avg Stars"]);
     climbs.push({
       id: crypto.randomUUID(),
       route: row.Route,
@@ -158,6 +171,8 @@ export function parseMountainProjectCSV(csvContent: string): ClimbRecord[] {
       date: parseDate(row.Date) ?? todayDateString(),
       notes: row.Notes || "",
       ...(url ? { url } : {}),
+      ...(stars !== undefined ? { stars } : {}),
+      ...(avgStars !== undefined ? { avgStars } : {}),
     });
   }
 

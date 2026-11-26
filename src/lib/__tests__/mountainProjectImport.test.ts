@@ -7,6 +7,7 @@ import {
   parseMountainProjectCSV,
   importMountainProjectCSV,
   hasMountainProjectHeaders,
+  parseStars,
 } from "../mountainProjectImport";
 
 describe("parsePitches", () => {
@@ -205,5 +206,30 @@ describe("route URL", () => {
     expect(parseRouteUrl("https://evilmountainproject.com/route/1")).toBeUndefined();
     expect(parseRouteUrl("not a url")).toBeUndefined();
     expect(parseRouteUrl("https://mountainproject.com/route/1/x")).toBe("https://mountainproject.com/route/1/x");
+  });
+});
+
+describe("star ratings", () => {
+  it("parseStars reads 0–4 and treats -1, blank and junk as unrated", () => {
+    expect(parseStars("3.4")).toBe(3.4);
+    expect(parseStars("0")).toBe(0);
+    expect(parseStars("4")).toBe(4);
+    expect(parseStars("-1")).toBeUndefined();
+    expect(parseStars("")).toBeUndefined();
+    expect(parseStars(undefined)).toBeUndefined();
+    expect(parseStars("5")).toBeUndefined();
+    expect(parseStars("abc")).toBeUndefined();
+  });
+
+  it("keeps Your Stars and Avg Stars from the export", () => {
+    const csv =
+      'Date,Route,Rating,Notes,URL,Pitches,Location,"Avg Stars","Your Stars",Style,"Lead Style","Route Type","Your Rating",Length,"Rating Code"\n' +
+      "2024-03-15,Power Surge,5.12a,,,1,Somewhere > Crag,3.4,4,Lead,Redpoint,Sport,,80,6600\n" +
+      "2024-04-02,Easy Street,5.10a,,,1,Somewhere > Crag,2.5,-1,Lead,Onsight,Sport,,60,2600\n";
+    const [a, b] = parseMountainProjectCSV(csv);
+    expect(a.stars).toBe(4);
+    expect(a.avgStars).toBe(3.4);
+    expect(b.avgStars).toBe(2.5);
+    expect("stars" in b).toBe(false);
   });
 });
