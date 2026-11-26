@@ -281,8 +281,8 @@ function ClimbCard({ climb: tapped, allClimbs, climberName, position, onEdgeTap,
             {url && <MountainProjectLink url={url} className="mt-1" />}
           </div>
 
-
-          {climb.notes && <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>}
+          {/* With several sessions each note sits in its own row below. */}
+          {routeHistory.length <= 1 && climb.notes && <p className="text-gray-200 whitespace-pre-wrap">{climb.notes}</p>}
         </div>
 
         {routeHistory.length > 1 && (
@@ -292,13 +292,16 @@ function ClimbCard({ climb: tapped, allClimbs, climberName, position, onEdgeTap,
               {routeHistory.map((c) => {
                 const styleLabel = climbStyleLabel(c);
                 return (
-                  <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === tapped.id ? "bg-gray-700/60" : ""}`}>
-                    <span className="text-gray-300 text-xs flex-1">
-                      {formatDateKey(c.date)}
-                    </span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styleBadgeClass(c.style)}`}>
-                      {styleLabel}
-                    </span>
+                  <div key={c.id} className={`rounded px-2 py-1 ${c.id === tapped.id ? "bg-gray-700/60" : ""}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-300 text-xs flex-1">
+                        {formatDateKey(c.date)}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styleBadgeClass(c.style)}`}>
+                        {styleLabel}
+                      </span>
+                    </div>
+                    {c.notes && <p className="mt-0.5 text-sm text-gray-200 whitespace-pre-wrap">{c.notes}</p>}
                   </div>
                 );
               })}
