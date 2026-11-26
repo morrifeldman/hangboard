@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ascentSummary, climbStyleLabel, getStyleColor, isTrad, styleBadgeClass } from "../../../lib/climbUtils";
 import { routeStars, routeUrl, type ClimbRecord } from "../../../lib/climbs";
+import { deduplicateForPyramid } from "../../../lib/deduplication";
 import { MountainProjectLink } from "../../MountainProjectLink";
 import { STONE_EDGE } from "../stone";
 import { formatDateKey } from "../../../lib/dates";
@@ -191,7 +192,7 @@ type CardProps = {
   onClose: () => void;
 };
 
-function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose }: CardProps) {
+function ClimbCard({ climb: tapped, allClimbs, climberName, position, onEdgeTap, onClose }: CardProps) {
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onEdgeTap) return;
     // Buttons keep their own meaning; only taps on plain content turn the page.
@@ -203,13 +204,17 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
   };
 
   const routeHistory = allClimbs
-    .filter((c) => c.route === climb.route)
+    .filter((c) => c.route === tapped.route)
     .sort((a, b) => b.date.localeCompare(a.date));
+  // The card is about the route, whichever tile opened it: a timeline day shows
+  // the same card as the route's pyramid tile (its send, what the send took).
+  const climb =
+    deduplicateForPyramid(routeHistory).find(
+      (r) => r.location === tapped.location && r.type === tapped.type && r.setting === tapped.setting,
+    ) ?? tapped;
   const url = climb.url ?? routeUrl(routeHistory);
   const { stars, avgStars } = routeStars([climb, ...routeHistory]);
-  // A pyramid tile stands for every tick of its route; a timeline tile for its day.
-  const wholeProject = "sessions" in climb;
-  const summary = ascentSummary(climb, routeHistory, wholeProject);
+  const summary = ascentSummary(climb, routeHistory);
 
   return (
     <div className="bg-gray-800 rounded-2xl w-full overflow-y-auto overscroll-contain" data-climb-card onClick={onClick}>
@@ -287,7 +292,7 @@ function ClimbCard({ climb, allClimbs, climberName, position, onEdgeTap, onClose
               {routeHistory.map((c) => {
                 const styleLabel = climbStyleLabel(c);
                 return (
-                  <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === climb.id ? "bg-gray-700/60" : ""}`}>
+                  <div key={c.id} className={`flex items-center gap-2 rounded px-2 py-1 ${c.id === tapped.id ? "bg-gray-700/60" : ""}`}>
                     <span className="text-gray-300 text-xs flex-1">
                       {formatDateKey(c.date)}
                     </span>

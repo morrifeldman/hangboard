@@ -167,37 +167,43 @@ export function getDateRangeInfo(
 /** A real ascent: led clean. Onsight and flash are redpoints that took one try. */
 const REAL_ASCENT: ReadonlySet<ClimbStyle> = new Set(["onsight", "flash", "redpoint"]);
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 /**
- * What a route took, for the climb card: tries and sessions up to and
- * including the first real ascent. Repeats afterwards don't change it, so only
- * that ascent's card gets a summary. Onsight and flash say nothing (one try,
- * one session). A route never sent counts its ticks to the card's date, or all
- * of them when `wholeProject` (its pyramid tile stands for the whole project).
+ * What a route took: tries (the ticks' climbs) and sessions (distinct days) up
+ * to and including the day of its first real ascent. Repeats and falls after
+ * it change nothing. A route never sent counts every tick. The pyramid tile's
+ * numbers and the climb card's summary both come from here.
+ */
+export function countToFirstSend(ticks: Pick<ClimbRecord, "style" | "climbs" | "date">[]): {
+  tries: number;
+  sessions: number;
+  sent: boolean;
+} {
+  let firstSend: string | null = null;
+  for (const c of ticks) {
+    if (REAL_ASCENT.has(c.style) && (firstSend === null || c.date < firstSend)) firstSend = c.date;
+  }
+  const counted = firstSend === null ? ticks : ticks.filter((c) => c.date <= firstSend);
+  return {
+    tries: counted.reduce((n, c) => n + c.climbs, 0),
+    sessions: new Set(counted.map((c) => c.date)).size,
+    sent: firstSend !== null,
+  };
+}
+
+/**
+ * The climb card's summary for a pyramid tile: "after 4 attempts over 2
+ * sessions" for a redpoint that took falls, nothing for an onsight or flash,
+ * and the running total for a route not sent yet.
  */
 export function ascentSummary(
-  climb: Pick<ClimbRecord, "style" | "date">,
+  climb: Pick<ClimbRecord, "style">,
   routeTicks: Pick<ClimbRecord, "style" | "climbs" | "date">[],
-  wholeProject = false,
 ): string | null {
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  const count = (ticks: typeof routeTicks) => {
-    const sessions = new Set(ticks.map((c) => c.date)).size;
-    return {
-      tries: ticks.reduce((n, c) => n + c.climbs, 0),
-      over: sessions > 1 ? ` over ${plural(sessions, "session")}` : "",
-    };
-  };
-
-  const sendDates = routeTicks.filter((c) => REAL_ASCENT.has(c.style)).map((c) => c.date);
-  if (sendDates.length === 0) {
-    if (climb.style !== "attempt") return null;
-    const { tries, over } = count(wholeProject ? routeTicks : routeTicks.filter((c) => c.date <= climb.date));
-    return tries > 0 ? `${plural(tries, "attempt")}${over}` : null;
-  }
-
-  const firstSend = sendDates.reduce((a, b) => (b < a ? b : a));
-  if (climb.style !== "redpoint" || climb.date !== firstSend) return null;
-  const { tries, over } = count(routeTicks.filter((c) => c.date <= firstSend));
-  const falls = tries - 1;
-  return falls > 0 ? `after ${plural(falls, "attempt")}${over}` : null;
+  const { tries, sessions, sent } = countToFirstSend(routeTicks);
+  const over = sessions > 1 ? ` over ${plural(sessions, "session")}` : "";
+  if (sent) return tries > 1 ? `after ${plural(tries - 1, "attempt")}${over}` : null;
+  return tries > 0 ? `${plural(tries, climb.style === "attempt" ? "attempt" : "climb")}${over}` : null;
 }
+

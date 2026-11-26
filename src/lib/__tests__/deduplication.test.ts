@@ -79,10 +79,11 @@ describe("deduplicateForPyramid", () => {
     ];
     const result = deduplicateForPyramid(climbs);
     expect(result[0].style).toBe("flash");
-    expect(result[0].sessions).toBe(2);
+    // Counted to the first real ascent, the redpoint the day before.
+    expect(result[0].sessions).toBe(1);
   });
 
-  it("counts sessions independently of climb sums on re-sends", () => {
+  it("doesn't count re-sends in climbs or sessions", () => {
     const climbs = [
       makeClimb({ date: "2024-03-15", style: "redpoint", climbs: 1 }),
       makeClimb({ date: "2024-04-01", style: "redpoint", climbs: 1 }),
@@ -90,9 +91,29 @@ describe("deduplicateForPyramid", () => {
     ];
     const result = deduplicateForPyramid(climbs);
     expect(result).toHaveLength(1);
-    expect(result[0].sessions).toBe(3);
-    // Re-sends don't sum into climbs
+    expect(result[0].sessions).toBe(1);
     expect(result[0].climbs).toBe(1);
+  });
+
+  it("doesn't count falls on a repeat after the redpoint", () => {
+    // Newest first, as getClimbs returns them.
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-06-01", style: "attempt", climbs: 2 }),
+      makeClimb({ date: "2024-05-01", style: "redpoint", climbs: 1 }),
+      makeClimb({ date: "2024-03-15", style: "redpoint", climbs: 3 }),
+      makeClimb({ date: "2024-03-01", style: "attempt", climbs: 2 }),
+    ]);
+    expect(result[0].climbs).toBe(5);
+    expect(result[0].sessions).toBe(2);
+  });
+
+  it("counts every tick of a route not sent yet", () => {
+    const result = deduplicateForPyramid([
+      makeClimb({ date: "2024-03-15", style: "attempt", climbs: 3 }),
+      makeClimb({ date: "2024-03-01", style: "attempt", climbs: 2 }),
+    ]);
+    expect(result[0].climbs).toBe(5);
+    expect(result[0].sessions).toBe(2);
   });
 });
 

@@ -1,5 +1,6 @@
 import type { ClimbRecord } from "./climbs";
 import { STYLE_PRIORITY } from "../constants/climbGrades";
+import { countToFirstSend } from "./climbUtils";
 
 /** Pyramid climb after dedup — `sessions` is the number of source ClimbRecord entries merged. */
 export type PyramidClimb = ClimbRecord & { sessions: number };
@@ -44,6 +45,8 @@ export function deduplicateForTimeline(climbs: ClimbRecord[]): ClimbRecord[] {
  * don't move it. A route never sent is dated by its first attempt. The grade
  * still follows the most recent session, so a regrade applies. `id` is the
  * dated session's, so the record behind the tile matches the date it shows.
+ * `climbs` and `sessions` count up to the first real ascent (countToFirstSend):
+ * falling on a route after sending it doesn't change its tile.
  */
 export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
   const byRoute: Record<string, PyramidClimb> = {};
@@ -55,17 +58,6 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
     const existing = byRoute[routeKey];
 
     if (existing) {
-      const isSend = (s: string) => s !== "attempt";
-      const existingIsSend = isSend(existing.style);
-      const newIsSend = isSend(climb.style);
-
-      if (existingIsSend && newIsSend) {
-        // Re-send — skip, keep the best ascent as-is
-      } else {
-        existing.climbs += climb.climbs;
-      }
-      existing.sessions += 1;
-
       if (climb.notes && climb.notes !== existing.notes) {
         existing.notes = existing.notes ? `${existing.notes}; ${climb.notes}` : climb.notes;
       }
@@ -86,6 +78,10 @@ export function deduplicateForPyramid(climbs: ClimbRecord[]): PyramidClimb[] {
       if (c.style === merged.style && (!sent || c.date < sent.date)) sent = c;
     }
     merged.grade = latest.grade;
+    // Tries and sessions up to the first real ascent; repeats don't count.
+    const { tries, sessions: days } = countToFirstSend(sessions);
+    merged.climbs = tries;
+    merged.sessions = days;
     if (sent) {
       merged.date = sent.date;
       merged.id = sent.id;
